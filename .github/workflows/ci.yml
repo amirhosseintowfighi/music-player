@@ -50,10 +50,12 @@ jobs:
           uv pip install --system --no-deps -e ../shared -e . -e ../indexer
       - name: Lint
         run: |
-          ruff check app tests migrations
-          ruff format --check app tests migrations
+          ruff check app tests migrations ../scripts
+          ruff format --check app tests migrations ../scripts
       - name: Type-check (strict)
-        run: mypy app
+        run: |
+          mypy app
+          mypy --strict ../scripts/setup.py
       - name: Forbid bare type ignores
         # every suppression must name the error code, e.g. `# type: ignore[arg-type]`
         run: "! grep -rnE 'type: ignore($|[^[])' app"
