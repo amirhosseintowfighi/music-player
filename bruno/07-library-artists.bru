@@ -1,0 +1,15 @@
+meta {
+  name: 07 Library artists
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{base}}/v1/library/artists
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

@@ -1,0 +1,15 @@
+meta {
+  name: 10 Featured channels
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{base}}/v1/channels/featured
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

@@ -1,0 +1,82 @@
+# Production edge (abroad). ${DOMAIN} and ${WG_*} are filled in by the nginx image's
+# envsubst step (only defined variables are replaced, so $host etc. stay intact).
+#
+#   cdn.${DOMAIN}   streaming for users (public, TLS)
+#   hook.${DOMAIN}  Telegram webhook ingress → core over WireGuard (public, TLS)
+#   :8088           Bot API egress for the core — published on the WireGuard address only
+
+proxy_cache_path /var/cache/nginx/stream levels=1:2 keys_zone=stream:200m
+                 max_size=${EDGE_CACHE_SIZE} inactive=7d use_temp_path=off;
+limit_req_zone $binary_remote_addr zone=stream_per_ip:20m rate=30r/s;
+limit_req_zone $binary_remote_addr zone=hook_per_ip:10m rate=50r/s;
+
+upstream edge_app {
+    server edge:8080;
+    keepalive 64;
+}
+
+upstream core_internal {
+    server ${WG_CORE_IP}:8080;
+    keepalive 16;
+}
+
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_session_cache shared:SSL:20m;
+ssl_session_timeout 1d;
+server_tokens off;
+
+server {
+    listen 80;
+    server_name cdn.${DOMAIN} hook.${DOMAIN};
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name cdn.${DOMAIN};
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    include /etc/nginx/snippets/stream-cache.conf;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name hook.${DOMAIN};
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+
+    # Telegram's published webhook source ranges.
+    allow 149.154.160.0/20;
+    allow 91.108.4.0/22;
+    deny all;
+
+    location = /tg/webhook {
+        limit_req zone=hook_per_ip burst=200 nodelay;
+        client_max_body_size 1m;
+        proxy_pass http://core_internal/tg/webhook;
+        proxy_set_header X-Telegram-Bot-Api-Secret-Token $http_x_telegram_bot_api_secret_token;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+    }
+    location / { return 404; }
+}
+
+# Bot API egress for the core: http://<edge WireGuard IP>:8088/bot<token>/<method>
+server {
+    listen 8088;
+    access_log off;  # URLs contain the bot token
+
+    location / {
+        proxy_pass https://api.telegram.org;
+        proxy_ssl_server_name on;
+        proxy_ssl_verify on;
+        proxy_ssl_trusted_certificate /etc/ssl/certs/ca-certificates.crt;
+        proxy_set_header Host api.telegram.org;
+        proxy_http_version 1.1;
+        proxy_read_timeout 70s;
+        client_max_body_size 55m;
+    }
+}

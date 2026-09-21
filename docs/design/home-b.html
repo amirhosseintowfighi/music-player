@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Home B — هیروی در حال پخش</title>
+<style>
+/* inlined from tokens.css so the file opens standalone */
+/* Liquid Glass — design tokens shared by the three Home mock-ups and by the Mini App.
+   The real implementation re-declares these in miniapp/src/design/tokens.css (Tailwind v4 @theme). */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces: three z-layers — background, content, chrome (tab bar, mini player, header). */
+  --bg-0: #07080c;
+  --bg-1: #0d1017;
+  --ink: #f4f6fb;
+  --ink-dim: #a9b1c6;
+  --ink-faint: #6b7489;
+
+  /* Accent: teal/cyan, overridable per user theme. */
+  --accent: #27e3c8;
+  --accent-2: #4aa8ff;
+  --accent-ink: #04211d;
+
+  /* The glass material itself. */
+  --glass-bg: rgba(255, 255, 255, 0.055);
+  --glass-bg-strong: rgba(255, 255, 255, 0.085);
+  --glass-blur: 28px;
+  --glass-saturate: 180%;
+  --glass-border-top: rgba(255, 255, 255, 0.34);
+  --glass-border-bottom: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 18px 50px -22px rgba(0, 0, 0, 0.85);
+  --glass-inner: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 26px;
+  --r-full: 999px;
+
+  --pad: 16px;
+  --gap: 12px;
+
+  /* Motion: springs only; no linear easing. */
+  --spring: linear(0, 0.006, 0.026, 0.057, 0.1, 0.154, 0.217, 0.288, 0.365, 0.446,
+                   0.53, 0.614, 0.696, 0.774, 0.846, 0.911, 0.967, 1.013, 1.048,
+                   1.073, 1.088, 1.094, 1.093, 1.086, 1.076, 1.063, 1.049, 1.035,
+                   1.023, 1.012, 1.004, 0.998, 0.995, 0.993, 0.993, 0.995, 0.997, 1);
+  --dur: 420ms;
+}
+
+/* Light theme keeps the same structure with inverted ink. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg-0: #eef1f7;
+  --bg-1: #ffffff;
+  --ink: #0d1017;
+  --ink-dim: #4a5265;
+  --ink-faint: #838da3;
+  --accent-ink: #04211d;
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border-top: rgba(255, 255, 255, 0.9);
+  --glass-border-bottom: rgba(10, 14, 25, 0.08);
+  --glass-shadow: 0 18px 40px -24px rgba(16, 24, 40, 0.45);
+}
+
+/* Weak devices (deviceMemory <= 4 or a sustained FPS drop) fall back to solid panels. */
+:root[data-perf='low'] {
+  --glass-blur: 0px;
+  --glass-bg: #171b24;
+  --glass-bg-strong: #1d222d;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--ink);
+  font-family: Vazirmatn, 'Segoe UI', Tahoma, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Layer 1 — the living background, tinted by the artwork of the current track. */
+.aurora {
+  position: fixed;
+  inset: -20% -20% auto -20%;
+  height: 70vh;
+  z-index: -1;
+  background:
+    radial-gradient(40% 50% at 20% 20%, color-mix(in oklab, var(--art-1, #2bd9c4) 55%, transparent), transparent 70%),
+    radial-gradient(45% 55% at 80% 10%, color-mix(in oklab, var(--art-2, #4a6bff) 45%, transparent), transparent 70%),
+    radial-gradient(60% 60% at 50% 60%, color-mix(in oklab, var(--art-3, #b02bd9) 28%, transparent), transparent 75%);
+  filter: blur(40px) saturate(150%);
+  opacity: 0.85;
+  transition: background var(--dur) ease;
+}
+
+/* The glass material: 1px gradient edge (light at the top, dark at the bottom) + inner sheen. */
+.glass {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  border-radius: var(--r-md);
+  box-shadow: var(--glass-shadow), var(--glass-inner);
+  isolation: isolate;
+}
+.glass::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom) 60%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+/* Specular highlight: follows scroll/tilt via --spec (0..1). */
+.glass::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    120% 60% at calc(var(--spec, 0.3) * 100%) -10%,
+    rgba(255, 255, 255, 0.22),
+    transparent 60%
+  );
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.strong { background: var(--glass-bg-strong); }
+
+.title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
+.sub { color: var(--ink-dim); font-size: 13px; margin: 2px 0 0; }
+.section-head { display: flex; align-items: center; justify-content: space-between; margin: 22px 4px 10px; }
+.section-head h2 { font-size: 16px; margin: 0; }
+.more { color: var(--accent); font-size: 13px; text-decoration: none; }
+.row { display: flex; gap: var(--gap); overflow-x: auto; padding: 2px 4px 6px; scrollbar-width: none; }
+.row::-webkit-scrollbar { display: none; }
+.cover {
+  border-radius: var(--r-sm);
+  background: linear-gradient(140deg, var(--c1, #2bd9c4), var(--c2, #4a6bff));
+  display: grid;
+  place-items: center;
+  font-size: 22px;
+  flex: none;
+}
+</style>
+<style>
+  .phone { width: 390px; min-height: 844px; margin: 0 auto; padding: 0 0 130px; position: relative; overflow: hidden; }
+  header { padding: 16px var(--pad) 4px; display: flex; align-items: center; justify-content: space-between; }
+  .greet { font-size: 15px; color: var(--ink-dim); margin: 0; }
+  .avatar { width: 34px; height: 34px; border-radius: var(--r-full); background: linear-gradient(140deg, #ffb86b, #ff6b9a); display: grid; place-items: center; font-weight: 700; color: #2a1206; font-size: 14px; }
+  main { padding: 0 var(--pad); }
+  /* hero */
+  .hero { padding: 16px; border-radius: var(--r-lg); margin-top: 8px; }
+  .hero-top { display: flex; gap: 14px; align-items: center; }
+  .hero .cover { width: 104px; height: 104px; border-radius: var(--r-md); font-size: 34px; box-shadow: 0 22px 40px -18px rgba(0,0,0,.9); }
+  .hero h1 { font-size: 21px; margin: 0 0 3px; letter-spacing: -0.02em; }
+  .hero p { margin: 0; color: var(--ink-dim); font-size: 13.5px; }
+  .tagline { display: inline-block; margin-top: 8px; font-size: 11px; color: var(--accent); background: color-mix(in oklab, var(--accent) 16%, transparent); padding: 4px 9px; border-radius: var(--r-full); }
+  .scrub { margin-top: 14px; height: 4px; border-radius: 4px; background: rgba(255,255,255,.14); position: relative; }
+  .scrub i { position: absolute; inset-inline-start: 0; top: 0; height: 100%; width: 38%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), var(--accent-2)); }
+  .scrub b { position: absolute; inset-inline-start: 38%; top: -4px; width: 12px; height: 12px; border-radius: 50%; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.6); }
+  .times { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-faint); margin-top: 7px; }
+  .controls { display: flex; align-items: center; justify-content: center; gap: 26px; margin-top: 6px; }
+  .controls i { font-style: normal; font-size: 21px; color: var(--ink-dim); }
+  .big { width: 56px; height: 56px; border-radius: var(--r-full); background: var(--ink); color: #0b0d12; display: grid; place-items: center; font-size: 20px; box-shadow: 0 14px 30px -14px rgba(255,255,255,.5); }
+  /* quick actions */
+  .quick { display: grid; grid-template-columns: repeat(4, 1fr); gap: 9px; margin-top: 16px; }
+  .q { padding: 13px 6px; display: grid; justify-items: center; gap: 6px; font-size: 11.5px; color: var(--ink-dim); border-radius: var(--r-md); }
+  .q i { font-style: normal; font-size: 20px; color: var(--accent); }
+  .list { padding: 6px; margin-top: 6px; }
+  .track { display: flex; align-items: center; gap: 11px; padding: 8px; border-radius: var(--r-sm); }
+  .track .cover { width: 44px; height: 44px; font-size: 17px; }
+  .track b { font-size: 14px; display: block; }
+  .track span { font-size: 12px; color: var(--ink-faint); }
+  .track em { margin-inline-start: auto; font-style: normal; color: var(--ink-faint); font-size: 15px; }
+  .row .card { width: 132px; flex: none; padding: 9px; }
+  .row .card .cover { width: 114px; height: 114px; margin-bottom: 8px; }
+  .row .card b { font-size: 13px; display: block; }
+  .row .card span { font-size: 11.5px; color: var(--ink-faint); }
+  .chrome { position: absolute; inset-inline: 10px; bottom: 10px; }
+  .tabs { display: flex; justify-content: space-around; padding: 11px 6px 13px; border-radius: var(--r-lg); }
+  .tab { display: grid; justify-items: center; gap: 4px; font-size: 10.5px; color: var(--ink-faint); }
+  .tab.on { color: var(--accent); }
+  .tab i { font-style: normal; font-size: 19px; }
+  .note { max-width: 390px; margin: 14px auto 40px; color: var(--ink-dim); font-size: 13px; line-height: 1.8; padding: 0 var(--pad); }
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="aurora" style="--art-1:#ff8a5c;--art-2:#ff3d77;--art-3:#7c3aed"></div>
+  <header>
+    <p class="greet">در حال پخش</p>
+    <div class="avatar">س</div>
+  </header>
+
+  <main>
+    <div class="glass strong hero" style="--spec:.35">
+      <div class="hero-top">
+        <div class="cover" style="--c1:#ff8a5c;--c2:#ff3d77">🎵</div>
+        <div>
+          <h1>شب بارونی</h1>
+          <p>معین · Persian Hits</p>
+          <span class="tagline">در ۱۲ کانال</span>
+        </div>
+      </div>
+      <div class="scrub"><i></i><b></b></div>
+      <div class="times"><span>۱:۳۲</span><span>−۲:۲۰</span></div>
+      <div class="controls"><i>⟲</i><i>⏮</i><div class="big">❚❚</div><i>⏭</i><i>♡</i></div>
+    </div>
+
+    <div class="quick">
+      <div class="glass q"><i>♡</i>لایک‌ها</div>
+      <div class="glass q"><i>≡</i>پلی‌لیست</div>
+      <div class="glass q"><i>📻</i>کانال‌ها</div>
+      <div class="glass q"><i>✦</i>کشف</div>
+    </div>
+
+    <div class="section-head"><h2>تازه در کانال‌های تو</h2><a class="more" href="#">همه</a></div>
+    <div class="glass list">
+      <div class="track"><div class="cover" style="--c1:#34d399;--c2:#0ea5e9">♫</div><div><b>بهت قول میدم</b><span>محسن یگانه · ۲ ساعت پیش</span></div><em>›</em></div>
+      <div class="track"><div class="cover" style="--c1:#f472b6;--c2:#8b5cf6">♫</div><div><b>نون و پنیر</b><span>داریوش · دیروز</span></div><em>›</em></div>
+      <div class="track"><div class="cover" style="--c1:#fbbf24;--c2:#f43f5e">♫</div><div><b>تقدیر</b><span>شادمهر عقیلی · دیروز</span></div><em>›</em></div>
+      <div class="track"><div class="cover" style="--c1:#22d3ee;--c2:#3b82f6">♫</div><div><b>گل سنگم</b><span>هایده · ۲ روز پیش</span></div><em>›</em></div>
+    </div>
+
+    <div class="section-head"><h2>خواننده‌های تو</h2><a class="more" href="#">همه</a></div>
+    <div class="row">
+      <div class="glass card"><div class="cover" style="--c1:#f59e0b;--c2:#ef4444">🎤</div><b>معین</b><span>۶۲ آهنگ</span></div>
+      <div class="glass card"><div class="cover" style="--c1:#2bd9c4;--c2:#1a7dff">🎤</div><b>گوگوش</b><span>۵۱ آهنگ</span></div>
+      <div class="glass card"><div class="cover" style="--c1:#a78bfa;--c2:#ec4899">🎤</div><b>هایده</b><span>۴۴ آهنگ</span></div>
+    </div>
+  </main>
+
+  <div class="chrome">
+    <div class="glass strong tabs">
+      <div class="tab on"><i>⌂</i>خانه</div>
+      <div class="tab"><i>⌕</i>جست‌وجو</div>
+      <div class="tab"><i>♪</i>کتابخانه</div>
+      <div class="tab"><i>☰</i>بیشتر</div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>گزینهٔ B — هیروی در حال پخش.</b> کارت بزرگ آهنگ جاری در بالا، رنگ پس‌زمینه از کاور همان آهنگ می‌آید و مینی‌پلیر حذف می‌شود (خودِ هیرو نقشش را دارد). بازگشت به پخش سریع‌ترین مسیر را دارد، ولی برای کاربری که تازه وارد شده و چیزی پخش نکرده، فضای زیادی می‌گیرد.</p>
+</body>
+</html>

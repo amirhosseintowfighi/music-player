@@ -1,0 +1,25 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tmusic
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: 1m
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    # /internal, /metrics and the webhook are never reachable from the internet.
+    nginx.ingress.kubernetes.io/server-snippet: |
+      location ~ ^/(internal|metrics|docs|openapi.json) { return 404; }
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [api.example.com]
+      secretName: tmusic-tls
+  rules:
+    - host: api.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: tmusic-api
+                port: { name: http }

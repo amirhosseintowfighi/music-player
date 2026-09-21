@@ -1,0 +1,15 @@
+meta {
+  name: 05 My channels
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{base}}/v1/library/channels
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

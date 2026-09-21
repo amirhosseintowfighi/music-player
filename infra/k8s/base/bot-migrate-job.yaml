@@ -1,0 +1,20 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tmusic-migrate
+  annotations:
+    # Runs before the new version serves traffic; migrations are backward compatible
+    # so the previous release keeps working while this runs.
+    argocd.argoproj.io/hook: PreSync
+spec:
+  backoffLimit: 2
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: migrate
+          image: ghcr.io/example/tmusic-backend:latest
+          command: ["alembic", "upgrade", "head"]
+          envFrom:
+            - configMapRef: { name: tmusic-config }
+            - secretRef: { name: tmusic-secrets }

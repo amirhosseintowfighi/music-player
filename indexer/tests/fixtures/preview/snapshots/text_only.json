@@ -1,0 +1,17 @@
+{
+  "channel": {
+    "subscribers": 2,
+    "title": "piano channel 🎹",
+    "username": "PianoMusicChannel"
+  },
+  "items": [],
+  "mentions": [],
+  "newest_id": 3,
+  "oldest_id": 1,
+  "stats": {
+    "audio": 0,
+    "messages": 3,
+    "skipped_no_title": 0,
+    "voice": 0
+  }
+}

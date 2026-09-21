@@ -1,0 +1,15 @@
+# /etc/wireguard/wg0.conf on the CORE server (Iran).   systemctl enable --now wg-quick@wg0
+# Keys: wg genkey | tee core.key | wg pubkey > core.pub
+[Interface]
+Address = 10.8.0.1/24
+ListenPort = 51820
+PrivateKey = <core private key>
+
+[Peer]
+# edge-1 (abroad)
+PublicKey = <edge-1 public key>
+AllowedIPs = 10.8.0.2/32
+Endpoint = <edge-1 public ip>:51820
+PersistentKeepalive = 25
+
+# [Peer]  edge-2 (reserve): AllowedIPs = 10.8.0.3/32

@@ -1,0 +1,161 @@
+@import 'tailwindcss';
+
+/* Liquid Glass — the material and the tokens behind it (docs/design/tokens.css is the
+   mock-up copy of this file). Three z-layers: aurora background, content, glass chrome. */
+
+@theme {
+  --color-ink: #f4f6fb;
+  --color-ink-dim: #a9b1c6;
+  --color-ink-faint: #6b7489;
+  --color-accent: #27e3c8;
+  --color-accent-2: #4aa8ff;
+  --color-accent-ink: #04211d;
+  --radius-glass: 18px;
+  --radius-glass-lg: 26px;
+  --font-sans: Vazirmatn, 'SF Pro Text', -apple-system, 'Segoe UI', Tahoma, system-ui, sans-serif;
+}
+
+:root {
+  color-scheme: dark;
+  --bg-0: #07080c;
+  --ink: #f4f6fb;
+  --ink-dim: #a9b1c6;
+  --ink-faint: #6b7489;
+  --accent: #27e3c8;
+  --accent-2: #4aa8ff;
+  --accent-ink: #04211d;
+
+  --glass-bg: rgba(255, 255, 255, 0.055);
+  --glass-bg-strong: rgba(255, 255, 255, 0.085);
+  --glass-blur: 28px;
+  --glass-saturate: 180%;
+  --glass-border-top: rgba(255, 255, 255, 0.34);
+  --glass-border-bottom: rgba(255, 255, 255, 0.06);
+  --glass-shadow: 0 18px 50px -22px rgba(0, 0, 0, 0.85);
+  --glass-inner: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+
+  /* Artwork-driven background colours, set by useDominantColor(). */
+  --art-1: #2bd9c4;
+  --art-2: #4a6bff;
+  --art-3: #b02bd9;
+
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --chrome-h: 132px;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg-0: #eef1f7;
+  --ink: #0d1017;
+  --ink-dim: #4a5265;
+  --ink-faint: #838da3;
+  --glass-bg: rgba(255, 255, 255, 0.55);
+  --glass-bg-strong: rgba(255, 255, 255, 0.72);
+  --glass-border-top: rgba(255, 255, 255, 0.9);
+  --glass-border-bottom: rgba(10, 14, 25, 0.08);
+  --glass-shadow: 0 18px 40px -24px rgba(16, 24, 40, 0.45);
+}
+
+/* Weak device or a measured FPS drop: drop the blur, keep the layout. */
+:root[data-perf='low'] {
+  --glass-blur: 0px;
+  --glass-bg: #171b24;
+  --glass-bg-strong: #1d222d;
+}
+:root[data-theme='light'][data-perf='low'] {
+  --glass-bg: #e6eaf3;
+  --glass-bg-strong: #f2f5fa;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-0);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@utility glass {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-shadow), var(--glass-inner);
+  isolation: isolate;
+}
+
+@utility glass-strong {
+  background: var(--glass-bg-strong);
+}
+
+/* 1px edge: light at the top, dark at the bottom — the "rim" of the glass. */
+@utility glass-edge {
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom) 60%);
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+/* Specular highlight; --spec (0..1) is moved by scroll and device tilt. */
+@utility glass-spec {
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      120% 60% at calc(var(--spec, 0.3) * 100%) -10%,
+      rgba(255, 255, 255, 0.22),
+      transparent 60%
+    );
+    pointer-events: none;
+    z-index: -1;
+  }
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Marquee for long titles in the player. */
+@keyframes marquee {
+  0%,
+  12% {
+    transform: translateX(0);
+  }
+  88%,
+  100% {
+    transform: translateX(var(--marquee-shift, 0));
+  }
+}

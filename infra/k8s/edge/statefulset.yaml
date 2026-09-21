@@ -1,0 +1,50 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: tmusic-edge
+spec:
+  serviceName: tmusic-edge
+  replicas: 1
+  selector:
+    matchLabels: { app: tmusic-edge }
+  template:
+    metadata:
+      labels: { app: tmusic-edge }
+    spec:
+      # A StatefulSet, not a Deployment: each pod owns encrypted MTProto sessions and
+      # its own cache. The same session must never be open in two processes (ADR-0013).
+      nodeSelector:
+        tmusic.dev/region: outside-iran
+      containers:
+        - name: edge
+          image: ghcr.io/example/tmusic-edge:latest
+          ports:
+            - { name: http, containerPort: 8081 }
+          envFrom:
+            - configMapRef: { name: tmusic-edge-config }
+            - secretRef: { name: tmusic-edge-secrets }
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 500m, memory: 512Mi }
+            limits: { cpu: "2", memory: 2Gi }
+          volumeMounts:
+            - { name: sessions, mountPath: /data/sessions }
+            - { name: cache, mountPath: /data/cache }
+      terminationGracePeriodSeconds: 120
+  volumeClaimTemplates:
+    - metadata: { name: sessions }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: { storage: 1Gi }
+    - metadata: { name: cache }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          # The ephemeral audio cache agreed in ARCHITECTURE §16.
+          requests: { storage: 40Gi }

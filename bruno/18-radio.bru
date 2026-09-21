@@ -1,0 +1,15 @@
+meta {
+  name: 18 Radio from a track
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{base}}/v1/tracks/1/radio?limit=30
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

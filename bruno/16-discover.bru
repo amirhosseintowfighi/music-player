@@ -1,0 +1,15 @@
+meta {
+  name: 16 Discover feed
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{base}}/v1/discover
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

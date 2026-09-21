@@ -1,0 +1,15 @@
+meta {
+  name: 15 Start free trial
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{base}}/v1/payments/trial
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

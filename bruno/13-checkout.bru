@@ -1,0 +1,23 @@
+meta {
+  name: 13 Checkout (card to card)
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{base}}/v1/payments/checkout
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "plan_code": "pro_monthly",
+    "provider": "card2card",
+    "discount_code": null
+  }
+}

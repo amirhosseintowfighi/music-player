@@ -1,0 +1,15 @@
+meta {
+  name: 24 Wrapped
+  type: http
+  seq: 24
+}
+
+get {
+  url: {{base}}/v1/me/wrapped
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

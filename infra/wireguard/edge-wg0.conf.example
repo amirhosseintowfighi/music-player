@@ -1,0 +1,12 @@
+# /etc/wireguard/wg0.conf on an EDGE server (abroad).
+[Interface]
+Address = 10.8.0.2/24
+ListenPort = 51820
+PrivateKey = <edge-1 private key>
+
+[Peer]
+# core (Iran)
+PublicKey = <core public key>
+AllowedIPs = 10.8.0.1/32
+Endpoint = <core public ip>:51820
+PersistentKeepalive = 25

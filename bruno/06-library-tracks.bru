@@ -1,0 +1,15 @@
+meta {
+  name: 06 Library tracks
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{base}}/v1/library/tracks?limit=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

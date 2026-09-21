@@ -1,0 +1,103 @@
+# Local development: the whole system (core + edge) on one machine.
+#   cp .env.example .env   # fill in BOT_TOKEN, TG_API_ID/HASH, and `python -m app.cli gen-keys` output
+#   docker compose up --build
+# API: http://localhost:8000/docs   streaming edge (nginx cache): http://localhost:8081
+# Production uses infra/compose/core.yml (Iran) and infra/compose/edge.yml (abroad).
+
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: backend/Dockerfile
+  image: tmusic-backend:dev
+  env_file: .env
+  environment:
+    DATABASE_URL: postgresql+asyncpg://tmusic:${POSTGRES_PASSWORD:-tmusic}@postgres:5432/tmusic
+    DB_BEHIND_PGBOUNCER: "false"
+    REDIS_URL: redis://redis:6379/0
+    MEILI_URL: http://meilisearch:7700
+    LOG_JSON: "false"
+  restart: unless-stopped
+
+services:
+  postgres:
+    image: postgres:16.15
+    environment:
+      POSTGRES_DB: tmusic
+      POSTGRES_USER: tmusic
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tmusic}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    ports: ["127.0.0.1:5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tmusic -d tmusic"]
+      interval: 5s
+      retries: 20
+
+  redis:
+    image: redis:8.6.6
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.53.2
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_API_KEY:?set MEILI_API_KEY in .env}
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_ENV: development
+    volumes: [meilidata:/meili_data]
+    ports: ["127.0.0.1:7700:7700"]
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  api:
+    <<: *backend
+    command: ["uvicorn", "app.api.main:create_app", "--factory", "--host", "0.0.0.0",
+              "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*", "--reload"]
+    volumes: ["./backend/app:/srv/backend/app:ro"]
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+
+  worker:
+    <<: *backend
+    command: ["arq", "app.workers.main.WorkerSettings"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+
+  edge:
+    build:
+      context: .
+      dockerfile: indexer/Dockerfile
+    image: tmusic-edge:dev
+    env_file: .env
+    environment:
+      CORE_URL: http://api:8000
+      LOG_JSON: "false"
+    volumes: [edgedata:/data]
+    depends_on: [api]
+    restart: unless-stopped
+
+  cdn:
+    image: nginx:stable-alpine3.24
+    volumes:
+      - ./infra/nginx/edge-dev.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/nginx/snippets:/etc/nginx/snippets:ro
+      - edgecache:/var/cache/nginx/stream
+    ports: ["127.0.0.1:8081:80"]
+    depends_on: [edge]
+
+volumes:
+  pgdata:
+  redisdata:
+  meilidata:
+  edgedata:
+  edgecache:

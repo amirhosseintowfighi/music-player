@@ -1,0 +1,15 @@
+meta {
+  name: 09 Suggest
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{base}}/v1/search/suggest?q=mo
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

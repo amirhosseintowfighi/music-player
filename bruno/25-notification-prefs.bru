@@ -1,0 +1,22 @@
+meta {
+  name: 25 Notification preferences
+  type: http
+  seq: 25
+}
+
+put {
+  url: {{base}}/v1/me/notifications
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {
+    "prefs": { "digest": false },
+    "tz_offset_minutes": 210
+  }
+}

@@ -1,0 +1,215 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  UV_VERSION: "0.5.31"
+
+jobs:
+  backend:
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16.15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-retries 20
+      meilisearch:
+        image: getmeili/meilisearch:v1.53.2
+        env:
+          MEILI_MASTER_KEY: ci-master-key-0123456789abcdef
+          MEILI_NO_ANALYTICS: "true"
+        ports: ["7700:7700"]
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/tmusic_test
+      TEST_MEILI_URL: http://127.0.0.1:7700
+      TEST_MEILI_KEY: ci-master-key-0123456789abcdef
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          pip install "uv==${UV_VERSION}"
+          uv pip install --system -r requirements-dev.lock -r ../indexer/requirements.lock
+          # the indexer is installed too: tests/integration/test_e2e_edge.py drives both services
+          uv pip install --system --no-deps -e ../shared -e . -e ../indexer
+      - name: Lint
+        run: |
+          ruff check app tests migrations
+          ruff format --check app tests migrations
+      - name: Type-check (strict)
+        run: mypy app
+      - name: Forbid bare type ignores
+        # every suppression must name the error code, e.g. `# type: ignore[arg-type]`
+        run: "! grep -rnE 'type: ignore($|[^[])' app"
+      - name: Wait for Meilisearch
+        run: timeout 60 sh -c 'until curl -sf http://127.0.0.1:7700/health; do sleep 1; done'
+      - name: Test
+        run: >-
+          pytest -q --cov=app --cov-report=term-missing --cov-report=xml
+          --cov-fail-under=85
+      - name: Service-layer coverage ≥ 70%
+        run: coverage report --include="app/services/*" --fail-under=70
+      - name: Migration round-trip
+        env:
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/tmusic_test
+          BOT_TOKEN: "1:x"
+          BOT_USERNAME: b
+          WEBAPP_URL: https://x
+          WEBHOOK_SECRET: s
+          JWT_PRIVATE_KEY: x
+          JWT_PUBLIC_KEY: x
+          STREAM_SIGNING_KEYS: k
+          INTERNAL_API_TOKEN: t
+        run: |
+          alembic downgrade base
+          alembic upgrade head
+
+  indexer:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: indexer
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          pip install "uv==${UV_VERSION}"
+          uv pip install --system -r requirements-dev.lock
+          uv pip install --system --no-deps -e ../shared -e .
+      - run: ruff check tmusic_indexer tests && ruff format --check tmusic_indexer tests
+      - run: mypy tmusic_indexer
+      - run: pytest -q --cov=tmusic_indexer --cov-report=term-missing --cov-fail-under=85
+
+  miniapp:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: miniapp
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: miniapp/package-lock.json
+      - run: npm ci
+      - name: API types are in sync with the backend
+        run: |
+          npm run gen:api
+          git diff --exit-code src/api/schema.d.ts
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build (fails if the bundle is over budget)
+        run: npm run build
+
+
+  admin:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: admin
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: admin/package-lock.json
+      - run: npm ci
+      - name: API types are in sync with the backend
+        run: |
+          npm run gen:api
+          git diff --exit-code src/api/schema.d.ts
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  k6:
+    # The scripts are executable config; a syntax error must not be found in production.
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: grafana/setup-k6-action@v1
+      - run: k6 archive --archive-out /dev/null infra/k6/load.js
+      - run: k6 archive --archive-out /dev/null infra/k6/stream.js
+
+  ops:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Shell scripts parse
+        run: for f in infra/scripts/*.sh; do bash -n "$f"; done
+      - name: Compose files are valid
+        run: |
+          docker compose -f compose.yaml config -q
+          DOMAIN=example.com POSTGRES_PASSWORD=x APP_DB_PASSWORD=x WG_CORE_IP=10.8.0.1 \
+          WG_EDGE_IP=10.8.0.2 GRAFANA_PASSWORD=x \
+            docker compose -f infra/compose/core.yml config -q
+      - name: Kubernetes manifests are valid
+        run: |
+          docker run --rm -v "$PWD:/w" -w /w ghcr.io/yannh/kubeconform:latest             -strict -summary -ignore-missing-schemas infra/k8s/base infra/k8s/edge
+      - name: Prometheus rules are valid
+        run: |
+          docker run --rm -v "$PWD/infra/monitoring:/m" prom/prometheus:v3.1.0 \
+            promtool check rules /m/alerts.yml
+
+  images:
+    runs-on: ubuntu-24.04
+    needs: [backend, indexer, miniapp, admin, k6, ops]
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Backend image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: backend/Dockerfile
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ghcr.io/${{ github.repository_owner }}/tmusic-backend:${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+      - name: Edge image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: indexer/Dockerfile
+          push: ${{ github.ref == 'refs/heads/main' }}
+          tags: ghcr.io/${{ github.repository_owner }}/tmusic-edge:${{ github.sha }}
+          cache-from: type=gha,scope=edge
+          cache-to: type=gha,mode=max,scope=edge
+      - name: Validate compose files
+        run: |
+          cp .env.example .env && cp .env.example .env.core && cp .env.example .env.edge
+          docker compose -f compose.yaml config -q
+          DOMAIN=x WG_CORE_IP=10.8.0.1 WG_EDGE_IP=10.8.0.2 POSTGRES_PASSWORD=x APP_DB_PASSWORD=x MEILI_API_KEY=x \
+            docker compose -f infra/compose/core.yml --env-file .env config -q
+          DOMAIN=x WG_CORE_IP=10.8.0.1 WG_EDGE_IP=10.8.0.2 \
+            docker compose -f infra/compose/edge.yml --env-file .env config -q

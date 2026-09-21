@@ -1,0 +1,41 @@
+# Production EDGE (outside Iran). Run from the repository root:
+#   docker compose -f infra/compose/edge.yml --env-file .env.edge up -d
+# The crawler needs no Telegram account. Log the ONE resolver account in when you
+# want playback of tracks nobody has resolved yet (interactive, once):
+#   docker compose -f infra/compose/edge.yml --env-file .env.edge run --rm edge python -m tmusic_indexer.login acc1
+
+services:
+  edge:
+    image: ${REGISTRY:-ghcr.io/example}/tmusic-edge:${VERSION:-latest}
+    env_file: ../../.env.edge
+    environment:
+      CORE_URL: http://${WG_CORE_IP}:8080
+    volumes: [edgedata:/data]
+    restart: always
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options: {max-size: "50m", max-file: "5"}
+
+  nginx:
+    image: nginx:stable-alpine3.24
+    environment:
+      DOMAIN: ${DOMAIN:?}
+      WG_CORE_IP: ${WG_CORE_IP:?}
+      EDGE_CACHE_SIZE: ${EDGE_CACHE_SIZE:-40g}
+    volumes:
+      - ../nginx/edge.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ../nginx/snippets:/etc/nginx/snippets:ro
+      - ../certs:/etc/nginx/certs:ro
+      - edgecache:/var/cache/nginx/stream
+    ports:
+      - "80:80"
+      - "443:443"
+      # Bot API egress is published on the WireGuard address only.
+      - "${WG_EDGE_IP:?}:8088:8088"
+    depends_on: [edge]
+    restart: always
+
+volumes:
+  edgedata:
+  edgecache:

@@ -1,0 +1,25 @@
+meta {
+  name: 19 Admin login (Telegram Login Widget payload)
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{base}}/admin/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "id": 123456789,
+    "first_name": "Owner",
+    "auth_date": 0,
+    "hash": "paste-a-real-widget-hash-here"
+  }
+}
+
+docs {
+  The hash is produced by Telegram's Login Widget and verified server-side with
+  SHA256(bot_token). A payload older than 5 minutes is rejected as a replay.
+}

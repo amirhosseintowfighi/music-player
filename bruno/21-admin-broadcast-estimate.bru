@@ -1,0 +1,22 @@
+meta {
+  name: 21 Admin broadcast estimate
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{base}}/admin/broadcasts/estimate
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{admin_token}}
+}
+
+body:json {
+  {
+    "plan": "free",
+    "inactive_days": 14
+  }
+}

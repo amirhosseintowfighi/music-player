@@ -1,0 +1,19 @@
+meta {
+  name: 04 Add channel
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{base}}/v1/library/channels
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{access_token}}
+}
+
+body:json {
+  {"ref": "t.me/demo_channel"}
+}

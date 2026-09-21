@@ -1,0 +1,21 @@
+meta {
+  name: 17 Trending (most added)
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{base}}/v1/trending?window=7d&kind=most_added&limit=20
+  body: none
+  auth: bearer
+}
+
+params:query {
+  window: 7d
+  kind: most_added
+  limit: 20
+}
+
+auth:bearer {
+  token: {{access_token}}
+}

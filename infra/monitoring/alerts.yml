@@ -1,0 +1,194 @@
+groups:
+  - name: api
+    rules:
+      - alert: ApiDown
+        expr: up{job="api"} == 0
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: 'API is not scrapeable'
+          runbook: 'docs/RUNBOOK.md#api-down'
+
+      - alert: High5xxRate
+        # The brief asks for an alert on 5xx; 2% over 5 minutes is a real incident,
+        # a single failed request is not.
+        expr: |
+          sum(rate(http_requests_total{status=~"5.."}[5m]))
+            / clamp_min(sum(rate(http_requests_total[5m])), 0.001) > 0.02
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: '{{ $value | humanizePercentage }} of requests are 5xx'
+
+      - alert: ApiLatencyBudgetMissed
+        # p95 over the §10 budget of 200 ms for a sustained period.
+        expr: |
+          histogram_quantile(
+            0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)
+          ) > 0.2
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'API p95 is {{ $value }}s (budget 0.2s)'
+
+      - alert: SearchLatencyBudgetMissed
+        expr: |
+          histogram_quantile(
+            0.95,
+            sum(rate(http_request_duration_seconds_bucket{route="/v1/search"}[5m])) by (le)
+          ) > 0.1
+        for: 10m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Search p95 is {{ $value }}s (budget 0.1s)'
+
+  - name: telegram
+    rules:
+      - alert: FloodWaitStorm
+        # FloodWait is normal in small numbers; a burst means an account is in trouble
+        # or a loop is retrying too fast.
+        expr: sum(increase(floodwaits_total[15m])) > 20
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: '{{ $value }} FloodWaits in 15 minutes'
+          runbook: 'docs/RUNBOOK.md#resolver'
+
+      - alert: ResolverAccountDown
+        # The catalogue does not depend on this account (ADR-002): only the first play
+        # of a track that has never been resolved does. Ticket, not a page.
+        expr: indexer_account_ready == 0
+        for: 30m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'The resolver account has been unusable for 30 minutes'
+          runbook: 'docs/RUNBOOK.md#resolver'
+
+  - name: crawler
+    rules:
+      - alert: CrawlerExtractionCollapsed
+        # Telegram changed its preview markup: pages still parse, but no tracks come
+        # out of them. This is the failure the parser monitor exists for.
+        expr: |
+          sum(rate(crawl_items_total[1h])) / clamp_min(sum(rate(crawl_pages_total[1h])), 1) < 1
+        for: 1h
+        labels: { severity: page }
+        annotations:
+          summary: 'Crawled pages are yielding almost no tracks'
+          runbook: 'docs/RUNBOOK.md#parser'
+
+      - alert: CrawlerStalled
+        expr: sum(increase(crawl_pages_total[1h])) == 0
+        for: 2h
+        labels: { severity: ticket }
+        annotations:
+          summary: 'No preview page has been crawled for two hours'
+          runbook: 'docs/RUNBOOK.md#recrawl'
+
+      - alert: EdgeDown
+        expr: up{job="edge"} == 0
+        for: 3m
+        labels: { severity: page }
+        annotations:
+          summary: 'Edge {{ $labels.node }} is unreachable — streaming is degraded'
+
+  - name: business
+    rules:
+      - alert: PaymentsFailing
+        expr: |
+          sum(rate(payments_total{status="failed"}[30m]))
+            / clamp_min(sum(rate(payments_total[30m])), 0.001) > 0.3
+        for: 15m
+        labels: { severity: page }
+        annotations:
+          summary: 'Most payment settlements are failing — check the gateway'
+
+      - alert: CardReviewsPilingUp
+        expr: payments_awaiting_review > 20
+        for: 2h
+        labels: { severity: ticket }
+        annotations:
+          summary: '{{ $value }} card transfers are waiting for an admin'
+
+      - alert: CopyrightReportsStale
+        expr: reports_open > 10
+        for: 6h
+        labels: { severity: ticket }
+        annotations:
+          summary: '{{ $value }} reports are open — the 48h SLA is at risk'
+
+      - alert: NoPlays
+        # The clearest "the app is broken" signal that a health check cannot see.
+        expr: sum(rate(plays_total[15m])) == 0
+        for: 30m
+        labels: { severity: page }
+        annotations:
+          summary: 'Nobody has played anything for 30 minutes'
+
+  - name: infrastructure
+    rules:
+      - alert: WorkerQueueBacklog
+        expr: worker_queue_depth > 5000
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'The job queue is {{ $value }} deep'
+
+      - alert: PostgresConnectionsHigh
+        expr: |
+          sum(pg_stat_activity_count) / clamp_min(sum(pg_settings_max_connections), 1) > 0.8
+        for: 5m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'Postgres is at {{ $value | humanizePercentage }} of max_connections'
+
+      - alert: DiskFillingUp
+        expr: |
+          node_filesystem_avail_bytes{mountpoint="/"}
+            / node_filesystem_size_bytes{mountpoint="/"} < 0.15
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: 'Less than 15% disk left on {{ $labels.instance }}'
+
+      - alert: BackupMissing
+        # The backup script writes this file; no fresh file means no backup ran.
+        expr: time() - tmusic_backup_last_success_timestamp > 129600
+        for: 1h
+        labels: { severity: page }
+        annotations:
+          summary: 'No successful database backup in 36 hours'
+          runbook: 'docs/RUNBOOK.md#backups'
+
+  - name: playback
+    rules:
+      # ADR-003 phase 10. With no CDN fallback (ADR-002 §8) the first play of a track
+      # waits for MTProto, so this share is the honest measure of whether pre-warm is
+      # keeping up. It is the first thing that breaks at scale.
+      - alert: InlineResolveRateHigh
+        expr: |
+          sum(rate(playback_inline_resolve_total{result="attempted"}[1h]))
+            / clamp_min(sum(rate(playback_tickets_total{kind="play"}[1h])), 0.0001) > 0.05
+        for: 30m
+        labels: { severity: ticket }
+        annotations:
+          summary: '{{ $value | humanizePercentage }} of plays had to resolve inline — pre-warm is behind'
+          runbook: 'docs/RUNBOOK.md#resolver'
+
+      - alert: PlaybackStartSlow
+        # The acceptance criterion is "under a second on a normal network".
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(playback_start_seconds_bucket[15m]))) > 2
+        for: 15m
+        labels: { severity: ticket }
+        annotations:
+          summary: 'p95 time to first sound is {{ $value }}s'
+
+      - alert: PlaybackFailing
+        expr: |
+          sum(rate(playback_errors_total[15m]))
+            / clamp_min(sum(rate(playback_tickets_total[15m])), 0.0001) > 0.05
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: 'More than 5% of playbacks are failing on clients'

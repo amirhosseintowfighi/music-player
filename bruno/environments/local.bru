@@ -1,0 +1,9 @@
+vars {
+  base: http://localhost:8000
+  init_data: paste output of: python -m app.cli dev-login 12345
+}
+vars:secret [
+  access_token,
+  admin_token,
+  refresh_token
+]

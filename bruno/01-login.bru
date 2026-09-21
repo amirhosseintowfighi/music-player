@@ -1,0 +1,20 @@
+meta {
+  name: 01 Login (initData)
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base}}/v1/auth/telegram
+  body: json
+  auth: none
+}
+
+body:json {
+  {"init_data": "{{init_data}}"}
+}
+
+script:post-response {
+  bru.setEnvVar("access_token", res.body.access_token);
+  bru.setEnvVar("refresh_token", res.body.refresh_token);
+}

@@ -1,0 +1,202 @@
+# Production CORE (Iran). Run from the repository root:
+#   docker compose -f infra/compose/core.yml --env-file .env.core up -d
+# Requires: WireGuard up (wg0), TLS certs in infra/certs/,
+# and the two front ends built into miniapp/dist/ and admin/dist/.
+
+x-backend: &backend
+  image: ${REGISTRY:-ghcr.io/example}/tmusic-backend:${VERSION:-latest}
+  env_file: ../../.env.core
+  environment:
+    DATABASE_URL: postgresql+asyncpg://tmusic_app:${APP_DB_PASSWORD}@pgbouncer:6432/tmusic
+    MIGRATION_DATABASE_URL: postgresql+asyncpg://tmusic:${POSTGRES_PASSWORD}@postgres:5432/tmusic
+    DB_BEHIND_PGBOUNCER: "true"
+    REDIS_URL: redis://redis:6379/0
+    MEILI_URL: http://meilisearch:7700
+    TG_API_BASE: http://${WG_EDGE_IP}:8088
+  restart: always
+  logging: &logging
+    driver: json-file
+    options: {max-size: "50m", max-file: "5"}
+
+services:
+  postgres:
+    image: postgres:16.15
+    environment:
+      POSTGRES_DB: tmusic
+      POSTGRES_USER: tmusic
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      APP_DB_PASSWORD: ${APP_DB_PASSWORD:?}
+    command:
+      - postgres
+      - -c
+      - shared_buffers=3GB
+      - -c
+      - effective_cache_size=9GB
+      - -c
+      - work_mem=16MB
+      - -c
+      - max_connections=200
+      - -c
+      - wal_level=replica
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_command=test ! -f /backups/wal/%f && cp %p /backups/wal/%f
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+      - backups:/backups
+    shm_size: 1g
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tmusic -d tmusic"]
+      interval: 5s
+      retries: 30
+    restart: always
+    logging: *logging
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.2-p0
+    environment:
+      DB_HOST: postgres
+      DB_NAME: tmusic
+      DB_USER: tmusic_app
+      DB_PASSWORD: ${APP_DB_PASSWORD:?}
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: "4000"
+      DEFAULT_POOL_SIZE: "40"
+      AUTH_TYPE: scram-sha-256
+    depends_on:
+      postgres: {condition: service_healthy}
+    restart: always
+    logging: *logging
+
+  redis:
+    image: redis:8.6.6
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "1gb", "--maxmemory-policy", "noeviction"]
+    volumes: [redisdata:/data]
+    restart: always
+    logging: *logging
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.53.2
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_API_KEY:?}
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+    volumes: [meilidata:/meili_data]
+    restart: always
+    logging: *logging
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  api:
+    <<: *backend
+    deploy:
+      replicas: ${API_REPLICAS:-2}
+    command: ["uvicorn", "app.api.main:create_app", "--factory", "--host", "0.0.0.0", "--port", "8000",
+              "--proxy-headers", "--forwarded-allow-ips", "*", "--no-server-header",
+              "--workers", "${API_WORKERS:-3}"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+
+  worker:
+    <<: *backend
+    command: ["arq", "app.workers.main.WorkerSettings"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+
+  nginx:
+    image: nginx:stable-alpine3.24
+    environment:
+      DOMAIN: ${DOMAIN:?}
+    volumes:
+      - ../nginx/core.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ../certs:/etc/nginx/certs:ro
+      - ../../miniapp/dist:/srv/miniapp:ro
+      - ../../admin/dist:/srv/admin:ro
+    ports:
+      - "80:80"
+      - "443:443"
+      # Internal listener is published on the WireGuard address only.
+      - "${WG_CORE_IP:?}:8080:8080"
+    depends_on: [api]
+    restart: always
+    logging: *logging
+
+  # ── monitoring (phase 9) ────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+      - --web.listen-address=127.0.0.1:9090
+    volumes:
+      - ../monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ../monitoring/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - promdata:/prometheus
+    network_mode: host
+    restart: always
+    logging: *logging
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.0
+    volumes:
+      - ../monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    network_mode: host
+    restart: always
+    logging: *logging
+
+  grafana:
+    image: grafana/grafana:11.5.1
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:?}
+      GF_SERVER_HTTP_ADDR: 127.0.0.1
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - grafanadata:/var/lib/grafana
+      - ../monitoring/grafana-dashboard.json:/etc/grafana/provisioning/dashboards/tmusic.json:ro
+    network_mode: host
+    restart: always
+    logging: *logging
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:v0.16.0
+    environment:
+      DATA_SOURCE_NAME: postgresql://tmusic:${POSTGRES_PASSWORD}@postgres:5432/tmusic?sslmode=disable
+    depends_on: [postgres]
+    restart: always
+    logging: *logging
+
+  redis-exporter:
+    image: oliver006/redis_exporter:v1.67.0
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on: [redis]
+    restart: always
+    logging: *logging
+
+  node-exporter:
+    image: prom/node-exporter:v1.8.2
+    command:
+      - --path.rootfs=/host
+      - --collector.textfile.directory=/var/lib/node_exporter/textfile_collector
+    volumes:
+      - /:/host:ro,rslave
+      - /var/lib/node_exporter/textfile_collector:/var/lib/node_exporter/textfile_collector:ro
+    network_mode: host
+    pid: host
+    restart: always
+    logging: *logging
+
+volumes:
+  pgdata:
+  redisdata:
+  meilidata:
+  backups:
+  promdata:
+  grafanadata:
