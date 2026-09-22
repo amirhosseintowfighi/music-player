@@ -83,7 +83,10 @@ class WorkerSettings:
         # The matrix first, then the per-user mixes that read it.
         cron(jobs.recommendations_nightly, hour={1}, minute={0}, unique=True),
         # ID3 backfill: hourly and small, so it never competes with playback.
-        cron(jobs.probe_metadata, minute={20}, unique=True),
+        # Four times an hour, not once: this is also where covers come from now, and
+        # 50 tracks an hour means a real catalogue waits days to stop showing blank
+        # squares. Still 50 at a time, still ~12 MB a run, still behind playback.
+        cron(jobs.probe_metadata, minute={5, 20, 35, 50}, unique=True),
         # Pre-warm is on the critical path now (ADR-002, 2026-09-20): every ten
         # minutes, so a track somebody asked for is ready before they ask again.
         cron(jobs.prewarm_resolver, minute={3, 13, 23, 33, 43, 53}, unique=True),
