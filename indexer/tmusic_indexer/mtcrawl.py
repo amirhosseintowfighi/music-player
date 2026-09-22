@@ -140,9 +140,20 @@ class MtprotoCrawler:
         on_batch: Any = None,
     ) -> CrawlProgress:
         """Walks backwards from ``before``, oldest-ward, like the web crawler does."""
-        account = self.account.account
-        if account is None or not account.available():
-            raise ChannelUnreadable("no crawling account is available")
+        # ready_or_reload, not ready: the session is usually logged in *after* the
+        # edge is already running, and without this the crawler would keep reporting
+        # "no account" at a file that is sitting right there on disk.
+        account = await self.account.ready_or_reload()
+        if account is None:
+            current = self.account.account
+            if current is None:
+                raise ChannelUnreadable(
+                    "no crawling session — log one in: "
+                    "docker compose run --rm edge python -m tmusic_indexer.login crawl1"
+                )
+            # An account that is cooling down is a different problem with a different
+            # answer: wait. Saying "no account" would send someone hunting for a file.
+            raise ChannelUnreadable(f"crawling account is {current.status}, not usable now")
 
         progress = CrawlProgress(channel_id=channel_id, username=username)
         limit = max_pages if max_pages is not None else self.settings.max_crawl_pages_mtproto

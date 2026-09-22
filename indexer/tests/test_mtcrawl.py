@@ -107,5 +107,35 @@ async def test_a_channel_the_account_cannot_see_is_reported_not_retried(
 
 async def test_without_a_session_nothing_pretends_to_crawl(settings: Settings) -> None:
     mt = MtprotoCrawler(ResolverAccount(settings, role="crawler"), settings)
-    with pytest.raises(ChannelUnreadable, match="no crawling account"):
+    with pytest.raises(ChannelUnreadable, match="login crawl1"):
         await mt.crawl(7, "music")
+
+
+async def test_a_session_logged_in_after_startup_is_picked_up(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The session is always created after the edge is already running."""
+    from tmusic_indexer.crypto import save_session
+
+    account = ResolverAccount(settings, client_factory=lambda _s: FakeClient(), role="crawler")
+    await account.start()
+    mt = MtprotoCrawler(account, settings)
+    with pytest.raises(ChannelUnreadable, match="login crawl1"):
+        await mt.crawl(7, "music")
+
+    save_session(settings.sessions_dir, "crawl1", "s", settings.session_enc_key.get_secret_value())
+    monkeypatch.setattr("tmusic_indexer.account.RELOAD_INTERVAL_S", 0.0)
+    progress = await mt.crawl(7, "music")
+    assert progress.finished is True
+
+
+async def test_a_cooling_account_says_so_instead_of_no_account(settings: Settings) -> None:
+    import time as _time
+
+    from tmusic_indexer.account import Account
+
+    account = ResolverAccount(settings, role="crawler")
+    account.account = Account(key="crawl1", client=FakeClient(), status="cooling")
+    account.account.cooling_until = _time.time() + 300
+    with pytest.raises(ChannelUnreadable, match="cooling"):
+        await MtprotoCrawler(account, settings).crawl(7, "music")
