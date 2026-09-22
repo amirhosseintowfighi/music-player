@@ -13,6 +13,12 @@
 # waits for the API to answer, and makes you an admin. Every step is a command you
 # could have typed yourself; nothing is hidden and nothing is piped from the
 # network into a shell.
+#
+# Profiles:
+#   PROFILE=dev    (default) local: ports on 127.0.0.1, no TLS, no front ends
+#   PROFILE=solo   one server, for real users: nginx + TLS + both front ends
+#   PROFILE=core   the Iran half of the split deployment
+#   PROFILE=edge   the abroad half
 set -euo pipefail
 
 REPO="${REPO:-https://github.com/amirhosseintowfighi/music-player.git}"
@@ -62,8 +68,31 @@ fi
 case "$PROFILE" in
   core) COMPOSE=(docker compose -f infra/compose/core.yml --env-file "$ENV_FILE") ;;
   edge) COMPOSE=(docker compose -f infra/compose/edge.yml --env-file "$ENV_FILE") ;;
+  solo) COMPOSE=(docker compose -f infra/compose/solo.yml --env-file "$ENV_FILE") ;;
   *)    COMPOSE=(docker compose) ;;
 esac
+
+DOMAIN="$(grep -E '^DOMAIN=' "$ENV_FILE" | cut -d= -f2- | tr -d '"' || true)"
+
+if [ "$PROFILE" = "solo" ]; then
+  [ -n "$DOMAIN" ] || die "DOMAIN is not set in $ENV_FILE."
+
+  say "Building the Mini App and the admin panel (inside Docker; no Node needed here)"
+  "${COMPOSE[@]}" --profile build run --rm frontend
+
+  # nginx will not start without a certificate, and certbot needs nginx on :80 to
+  # answer the ACME challenge. A self-signed placeholder breaks that circle; the
+  # real certificate replaces it a minute later.
+  if [ ! -f infra/certs/fullchain.pem ]; then
+    say "Making a placeholder certificate so nginx can start"
+    mkdir -p infra/certs
+    docker run --rm -v "$(pwd)/infra/certs:/certs" alpine:3.20 sh -ec "
+      apk add --no-cache openssl >/dev/null &&
+      openssl req -x509 -newkey rsa:2048 -nodes -days 3 \
+        -keyout /certs/privkey.pem -out /certs/fullchain.pem \
+        -subj '/CN=$DOMAIN' >/dev/null 2>&1"
+  fi
+fi
 
 say "Building and starting (this takes a few minutes the first time)"
 "${COMPOSE[@]}" up -d --build
@@ -103,9 +132,41 @@ fi
 # Without this row the API has nowhere to point the player and every play fails
 # with "no streaming edge available". The URL must be reachable by the *browser*,
 # so on a real server pass the public one: CDN_URL=https://cdn.example.com
-CDN="${CDN_URL:-http://localhost:8081}"
+CDN="${CDN_URL:-}"
+if [ -z "$CDN" ]; then
+  case "$PROFILE" in
+    solo) CDN="https://cdn.${DOMAIN}" ;;
+    *)    CDN="http://localhost:8081" ;;
+  esac
+fi
 say "Registering the streaming edge ($CDN)"
 "${COMPOSE[@]}" exec -T api python -m app.cli add-edge "$CDN" 100
+
+if [ "$PROFILE" = "solo" ]; then
+  say "Done. One thing left: the real TLS certificate"
+  cat <<TLS
+  Point these five names at this server first (A records):
+      app.${DOMAIN}  admin.${DOMAIN}  api.${DOMAIN}  cdn.${DOMAIN}  hook.${DOMAIN}
+
+  Then, once (C is the compose command for this deployment):
+      C="docker compose -f infra/compose/solo.yml --env-file ${ENV_FILE}"
+      \$C --profile certs run --rm certbot
+      \$C exec nginx nginx -s reload
+
+  Renewal is the same two commands; put them in a monthly cron.
+
+  Then:
+    1. register the bot's webhook
+         \$C exec api python -m app.bot.set_webhook
+    2. add the first channels to crawl
+         printf '%s\\n' @Musicirani_Official @PersianOldies > channels.txt
+         \$C exec -T api python -m app.cli seed-channels - < channels.txt
+    3. in @BotFather: /setdomain → https://app.${DOMAIN}, and /setmenubutton
+
+  Full guide: docs/GETTING-STARTED.md
+TLS
+  exit 0
+fi
 
 say "Done."
 cat <<'NEXT'

@@ -1,0 +1,167 @@
+# Single-server deployment: core and edge behind one nginx.
+#
+#   app.${DOMAIN}    Mini App static files
+#   admin.${DOMAIN}  admin panel static files + /admin/ API
+#   api.${DOMAIN}    REST for the Mini App
+#   cdn.${DOMAIN}    audio streaming, with the same LRU cache the split edge uses
+#   hook.${DOMAIN}   Telegram webhook ingress
+#
+# The split deployment (core.conf.template + edge.conf.template) keeps these on two
+# machines and reaches the core over WireGuard. Here everything is one hop away, so
+# the webhook goes straight to the API and there is no internal :8080 listener to
+# publish. Everything else — TLS, caching, rate limits, the CSP — is the same.
+
+proxy_cache_path /var/cache/nginx/stream levels=1:2 keys_zone=stream:200m
+                 max_size=${EDGE_CACHE_SIZE} inactive=7d use_temp_path=off;
+limit_req_zone $binary_remote_addr zone=api_per_ip:20m rate=20r/s;
+limit_req_zone $binary_remote_addr zone=stream_per_ip:20m rate=30r/s;
+limit_req_zone $binary_remote_addr zone=hook_per_ip:10m rate=50r/s;
+
+upstream api_app {
+    least_conn;
+    server api:8000;
+    keepalive 64;
+}
+
+upstream edge_app {
+    server edge:8080;
+    keepalive 64;
+}
+
+ssl_protocols TLSv1.2 TLSv1.3;
+ssl_session_cache shared:SSL:20m;
+ssl_session_timeout 1d;
+server_tokens off;
+gzip on;
+gzip_types application/json text/css application/javascript image/svg+xml;
+
+# Port 80 stays open for ACME renewals; everything else is redirected.
+server {
+    listen 80 default_server;
+    server_name _;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl default_server;
+    http2 on;
+    server_name api.${DOMAIN};
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    client_max_body_size 1m;
+
+    # Never exposed publicly, even on one machine.
+    location ~ ^/(internal|metrics|docs|openapi.json) { return 404; }
+
+    location / {
+        limit_req zone=api_per_ip burst=60 nodelay;
+        proxy_pass http://api_app;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Request-ID $request_id;
+        proxy_read_timeout 30s;
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name app.${DOMAIN};
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    root /srv/miniapp;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.${DOMAIN}; media-src https://cdn.${DOMAIN}; connect-src 'self' https://api.${DOMAIN}; font-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org" always;
+
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    location / {
+        try_files $uri /index.html;
+        add_header Cache-Control "no-cache";
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name admin.${DOMAIN};
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    root /srv/admin;
+
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header Referrer-Policy "no-referrer" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://t.me https://*.telegram.org; connect-src 'self' https://api.${DOMAIN}; font-src 'self'; frame-src https://oauth.telegram.org; frame-ancestors 'none'; base-uri 'none'; form-action 'none'" always;
+
+    # A second gate in front of the panel is cheap; see RUNBOOK.
+    # allow 1.2.3.4; deny all;
+
+    location /admin/ {
+        limit_req zone=api_per_ip burst=30 nodelay;
+        proxy_pass http://api_app;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Request-ID $request_id;
+    }
+
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+    location / {
+        try_files $uri /index.html;
+        add_header Cache-Control "no-cache";
+    }
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name cdn.${DOMAIN};
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+    include /etc/nginx/snippets/stream-cache.conf;
+}
+
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name hook.${DOMAIN};
+    ssl_certificate     /etc/nginx/certs/fullchain.pem;
+    ssl_certificate_key /etc/nginx/certs/privkey.pem;
+
+    # Telegram's published webhook source ranges.
+    allow 149.154.160.0/20;
+    allow 91.108.4.0/22;
+    deny all;
+
+    location = /tg/webhook {
+        limit_req zone=hook_per_ip burst=200 nodelay;
+        client_max_body_size 1m;
+        # One machine: straight to the API, no tunnel in between.
+        proxy_pass http://api_app/tg/webhook;
+        proxy_set_header X-Telegram-Bot-Api-Secret-Token $http_x_telegram_bot_api_secret_token;
+        proxy_connect_timeout 5s;
+        proxy_read_timeout 30s;
+    }
+    location / { return 404; }
+}

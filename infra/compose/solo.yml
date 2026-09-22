@@ -1,0 +1,166 @@
+# Single-server production. Run from the repository root:
+#   bash scripts/install.sh            # PROFILE=solo is the default for a server
+#   docker compose -f infra/compose/solo.yml --env-file .env up -d
+#
+# Everything on one machine — core, edge and nginx with TLS — built from this
+# checkout rather than pulled from a registry. The split deployment (core.yml +
+# edge.yml) is the same code on two machines; move to it when the bandwidth or the
+# geography asks for it, not before.
+#
+# Two one-shot helpers, both behind compose profiles so they never start by accident:
+#   --profile build run --rm frontend   builds miniapp/dist and admin/dist
+#   --profile certs run --rm certbot    gets (or renews) the TLS certificate
+
+x-backend: &backend
+  build:
+    context: ../..
+    dockerfile: backend/Dockerfile
+  image: tmusic-backend:solo
+  env_file: ../../.env
+  environment:
+    DATABASE_URL: postgresql+asyncpg://tmusic:${POSTGRES_PASSWORD:?}@postgres:5432/tmusic
+    REDIS_URL: redis://redis:6379/0
+    MEILI_URL: http://meilisearch:7700
+    DB_BEHIND_PGBOUNCER: "false"
+  restart: always
+  logging: &logging
+    driver: json-file
+    options: {max-size: "50m", max-file: "5"}
+
+services:
+  postgres:
+    image: postgres:16.15
+    environment:
+      POSTGRES_DB: tmusic
+      POSTGRES_USER: tmusic
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tmusic -d tmusic"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: always
+    logging: *logging
+
+  redis:
+    image: redis:8.6.6
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: always
+    logging: *logging
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.53.2
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_API_KEY:?}
+      MEILI_ENV: production
+    volumes: [meilidata:/meili_data]
+    restart: always
+    logging: *logging
+
+  migrate:
+    <<: *backend
+    command: ["alembic", "upgrade", "head"]
+    restart: "no"
+    depends_on:
+      postgres: {condition: service_healthy}
+
+  api:
+    <<: *backend
+    command: ["uvicorn", "app.api.main:create_app", "--factory", "--host", "0.0.0.0",
+              "--port", "8000", "--proxy-headers", "--forwarded-allow-ips", "*",
+              "--no-server-header", "--workers", "${API_WORKERS:-2}"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+
+  worker:
+    <<: *backend
+    command: ["arq", "app.workers.main.WorkerSettings"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+      redis: {condition: service_healthy}
+
+  # Crawler + lazy resolver + streaming server. Same image as the split edge.
+  edge:
+    build:
+      context: ../..
+      dockerfile: indexer/Dockerfile
+    image: tmusic-edge:solo
+    env_file: ../../.env
+    environment:
+      CORE_URL: http://api:8000
+    volumes: [edgedata:/data]
+    depends_on: [api]
+    restart: always
+    logging: *logging
+
+  nginx:
+    image: nginx:stable-alpine3.24
+    environment:
+      DOMAIN: ${DOMAIN:?}
+      EDGE_CACHE_SIZE: ${EDGE_CACHE_SIZE:-20g}
+    volumes:
+      - ../nginx/solo.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ../nginx/snippets:/etc/nginx/snippets:ro
+      - ../certs:/etc/nginx/certs:ro
+      - certbotwww:/var/www/certbot
+      - edgecache:/var/cache/nginx/stream
+      - ../../miniapp/dist:/srv/miniapp:ro
+      - ../../admin/dist:/srv/admin:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on: [api, edge]
+    restart: always
+    logging: *logging
+
+  # ── one-shot helpers ────────────────────────────────────────────────────────
+
+  # Builds both front ends inside Docker, so the server needs no Node at all.
+  frontend:
+    image: node:22-alpine
+    working_dir: /src
+    environment:
+      VITE_API_URL: https://api.${DOMAIN}
+      VITE_BOT_USERNAME: ${BOT_USERNAME:?}
+    volumes: [../..:/src]
+    command: >-
+      sh -ec "
+        cd /src/miniapp && npm ci --no-audit --no-fund && npm run build &&
+        cd /src/admin   && npm ci --no-audit --no-fund && npm run build
+      "
+    profiles: ["build"]
+
+  # Certificates for app/admin/api/cdn/hook.<domain>, via the ACME webroot nginx
+  # already serves on port 80. Re-run it to renew; nginx picks the files up on reload.
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - ../certs:/certs
+      - certbotwww:/var/www/certbot
+    entrypoint: >-
+      sh -ec "
+        certbot certonly --webroot -w /var/www/certbot
+          --non-interactive --agree-tos --email ${CERTBOT_EMAIL:?set CERTBOT_EMAIL}
+          -d app.${DOMAIN} -d admin.${DOMAIN} -d api.${DOMAIN}
+          -d cdn.${DOMAIN} -d hook.${DOMAIN} &&
+        cp -L /etc/letsencrypt/live/app.${DOMAIN}/fullchain.pem /certs/fullchain.pem &&
+        cp -L /etc/letsencrypt/live/app.${DOMAIN}/privkey.pem   /certs/privkey.pem &&
+        echo 'certificates written to infra/certs'
+      "
+    profiles: ["certs"]
+
+volumes:
+  pgdata:
+  redisdata:
+  meilidata:
+  edgedata:
+  edgecache:
+  certbotwww:

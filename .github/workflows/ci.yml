@@ -166,6 +166,9 @@ jobs:
           DOMAIN=example.com POSTGRES_PASSWORD=x APP_DB_PASSWORD=x WG_CORE_IP=10.8.0.1 \
           WG_EDGE_IP=10.8.0.2 GRAFANA_PASSWORD=x \
             docker compose -f infra/compose/core.yml config -q
+          DOMAIN=example.com POSTGRES_PASSWORD=x MEILI_API_KEY=x BOT_USERNAME=b \
+          CERTBOT_EMAIL=a@b.c \
+            docker compose -f infra/compose/solo.yml config -q
       - name: Kubernetes manifests are valid
         run: |
           docker run --rm -v "$PWD:/w" -w /w ghcr.io/yannh/kubeconform:latest             -strict -summary -ignore-missing-schemas infra/k8s/base infra/k8s/edge

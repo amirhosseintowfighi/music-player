@@ -50,8 +50,12 @@ docs/      مستندات
 
 ```bash
 git clone https://github.com/amirhosseintowfighi/music-player.git
-cd music-player && bash scripts/install.sh
+cd music-player && PROFILE=solo bash scripts/install.sh
 ```
+
+`PROFILE=solo` یعنی «یک سرور، آمادهٔ کاربر واقعی»: nginx با TLS، هر دو فرانت‌اند
+build‌شده داخل داکر، و edge با آدرس عمومی ثبت‌شده. بدون `PROFILE` هم کار می‌کند ولی
+حالت توسعه است (همه‌چیز روی `127.0.0.1`، بدون TLS).
 
 و اگر فقط تنظیمات را می‌خواهی و بقیه را خودت می‌زنی:
 

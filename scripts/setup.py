@@ -36,12 +36,12 @@ ROOT = Path(__file__).resolve().parent.parent
 EXAMPLE = ROOT / ".env.example"
 
 
-def _console_speaks_persian() -> bool:
-    """True when this terminal can actually print Persian.
+def _prepare_console() -> bool:
+    """Makes stdout UTF-8 if it can be, and says whether non-ASCII is safe to print.
 
-    A legacy Windows code page cannot, and printing to it either raises or prints
-    mojibake — so the wizard quietly switches to English instead of failing on its
-    very first line.
+    A legacy Windows code page can encode neither Persian nor an em dash, and
+    printing one raises halfway through a line. The wizard would rather drop to
+    plain ASCII than fail on its own first message.
     """
     stream = sys.stdout
     try:
@@ -50,14 +50,17 @@ def _console_speaks_persian() -> bool:
     except (AttributeError, OSError, ValueError):
         pass
     try:
-        "سلام".encode(stream.encoding or "utf-8")
+        "سلام — ✓".encode(stream.encoding or "utf-8")
     except (LookupError, UnicodeEncodeError):
         return False
     return True
 
 
-_WANTS_FA = os.environ.get("SETUP_LANG", "fa").lower().startswith("fa")
-FA = _WANTS_FA and _console_speaks_persian()
+UNICODE_OK = _prepare_console()
+# English by default: a server console is a mixed-locale place and most people meet
+# this over SSH. SETUP_LANG=fa switches it back.
+_WANTS_FA = os.environ.get("SETUP_LANG", "en").lower().startswith("fa")
+FA = _WANTS_FA and UNICODE_OK
 
 
 def say(en: str, fa: str) -> str:
@@ -441,6 +444,7 @@ def next_steps(profile: str, env_file: str, admin_tg_id: str) -> None:
     compose = {
         "core": f"docker compose -f infra/compose/core.yml --env-file {env_file}",
         "edge": f"docker compose -f infra/compose/edge.yml --env-file {env_file}",
+        "solo": f"docker compose -f infra/compose/solo.yml --env-file {env_file}",
     }.get(profile, "docker compose")
     steps = [
         (say("start everything", "بالا آوردن سرویس‌ها"), f"{compose} up -d"),
@@ -492,9 +496,12 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Telegram Music Mini App setup wizard")
     parser.add_argument(
         "--profile",
-        choices=("dev", "core", "edge"),
+        choices=("dev", "solo", "core", "edge"),
         default="dev",
-        help="dev = everything on one machine; core/edge = the split deployment",
+        help=(
+            "dev = local, ports on 127.0.0.1; solo = one server with TLS; "
+            "core/edge = the split deployment"
+        ),
     )
     parser.add_argument(
         "--output", default="", help="where to write (default depends on profile)"
@@ -562,6 +569,12 @@ def main(argv: list[str] | None = None) -> int:
         ask_edge(answers)
     else:
         ask_core(answers, domain)
+    if args.profile == "solo":
+        title(say("6. TLS", "۶. گواهی TLS"))
+        answers.set(
+            "CERTBOT_EMAIL",
+            ask(say("Email for Let's Encrypt", "ایمیل برای Let's Encrypt"), ""),
+        )
 
     output = Path(
         args.output
@@ -569,7 +582,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     target = output if output.is_absolute() else ROOT / output
     content = render_env(EXAMPLE.read_text("utf-8"), answers.values)
-    title(say("6. Writing the environment file", "۶. نوشتن فایل تنظیمات"))
+    title(say("Writing the environment file", "نوشتن فایل تنظیمات"))
     if write_env(target, content):
         ok(say(f"{target.name} written", f"فایل {target.name} نوشته شد"))
     next_steps(args.profile, target.name, answers.values.get("_admin_tg_id", ""))
