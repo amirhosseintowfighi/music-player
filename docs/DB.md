@@ -506,7 +506,11 @@ CREATE TABLE admin_users (
     role         text        NOT NULL CHECK (role IN ('owner','admin','moderator','support')),
     permissions  text[]      NOT NULL DEFAULT '{}',     -- ریزدانه: users.ban, payments.review, broadcast.send, ...
     is_active    boolean     NOT NULL DEFAULT true,
-    created_at   timestamptz NOT NULL DEFAULT now()
+    created_at   timestamptz NOT NULL DEFAULT now(),
+    -- ورود بدون تلگرام (0008). هر دو تا وقتی که کسی set-admin-password نزند null هستند.
+    login_username  text,                                 -- UNIQUE روی lower(login_username)
+    password_hash   text,                                 -- scrypt$n$r$p$salt$hash
+    password_set_at timestamptz
 );
 
 -- append-only. نقش دیتابیسی اپ فقط INSERT و SELECT دارد؛ UPDATE/DELETE حتی برای owner ممکن نیست.

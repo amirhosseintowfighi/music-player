@@ -363,6 +363,13 @@ class AdminLoginIn(ApiModel):
     photo_url: str | None = None
 
 
+class AdminPasswordLoginIn(ApiModel):
+    """Username + password, for signing in where the Telegram widget cannot run."""
+
+    username: str = Field(min_length=3, max_length=64)
+    password: str = Field(min_length=8, max_length=256)
+
+
 class AdminMeOut(ApiModel):
     id: int
     tg_id: int

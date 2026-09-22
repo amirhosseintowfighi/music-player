@@ -137,6 +137,12 @@ ADMIN_ID="${ADMIN_TG_ID:-$(grep -E '^PAYMENTS_ADMIN_CHAT_ID=' "$ENV_FILE" | cut 
 if [ -n "${ADMIN_ID:-}" ] && [ "$ADMIN_ID" != "0" ]; then
   say "Making $ADMIN_ID an admin"
   "${COMPOSE[@]}" exec -T api python -m app.cli add-admin "$ADMIN_ID" --apply
+
+  # A panel login that does not depend on Telegram: the widget needs the bot's one
+  # BotFather domain, this works from any device. Printed once, stored only as a hash.
+  say "Panel login for $ADMIN_ID"
+  "${COMPOSE[@]}" exec -T api python -m app.cli set-admin-password "$ADMIN_ID" \
+    "${ADMIN_USERNAME:-admin}" || true
 fi
 
 # ── 6. the streaming edge the player fetches bytes from ──────────────────────
@@ -178,9 +184,9 @@ if [ "$PROFILE" = "solo" ]; then
        One domain per bot, and it must be the admin one: the Mini App does not
        need /setdomain, the panel's login button does not work without it.
 
-    The admin panel has no username or password — you sign in at
-    https://admin.${DOMAIN} with the Telegram button, and only Telegram ids
-    added via \`add-admin\` are let in.
+    The admin panel is at https://admin.${DOMAIN} — sign in with the username and
+    password printed above (any device, no Telegram needed). To change them:
+        \$C exec api python -m app.cli set-admin-password <tg-id> <username>
 
   Full guide: docs/GETTING-STARTED.md
 TLS

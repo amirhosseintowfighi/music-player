@@ -8,6 +8,7 @@ python -m app.cli reindex-search
 python -m app.cli fake-initdata <n>   # signed initData for k6 (dev/staging only)
 python -m app.cli add-admin <tg_id>           # prints the SQL for the first owner
 python -m app.cli add-admin <tg_id> --apply   # ...or just does it, on the server
+python -m app.cli set-admin-password <tg_id> <username> [password]  # panel login
 python -m app.cli seed-channels <file>   # batch import channels to crawl (- for stdin)
 """
 
@@ -30,6 +31,8 @@ from app.config import get_settings
 from app.db import make_engine, make_sessionmaker, session_scope
 from app.models import Channel, EdgeNode
 from app.security.initdata import sign_init_data
+from app.security.password import generate_password
+from app.services import admin as admin_service
 from tmusic_common.indexer_contract import AudioItem
 
 
@@ -103,6 +106,26 @@ async def add_admin(tg_id: int) -> None:
         await session.execute(text(_ADD_ADMIN_SQL).bindparams(tg=tg_id))
     await engine.dispose()
     print(f"owner added: {tg_id}")
+
+
+async def set_admin_password(tg_id: int, username: str, password: str | None) -> None:
+    """Gives an existing admin a username and password for the panel.
+
+    CLI-only, like ``add-admin``: a shell on the server is the authorisation. With no
+    password argument one is generated and printed — which is the better habit, since
+    a password typed on a command line lands in the shell history.
+    """
+    secret = password or generate_password()
+    engine = make_engine(get_settings())
+    async with session_scope(make_sessionmaker(engine)) as session:
+        await admin_service.set_password(session, tg_id, username, secret)
+    await engine.dispose()
+    print(f"username: {username.strip().lower()}")
+    if password is None:
+        print(f"password: {secret}")
+        print("Save it now — it is not stored anywhere in readable form.")
+    else:
+        print("password: (the one you passed)")
 
 
 async def add_edge(host: str, weight: int) -> None:
@@ -227,6 +250,10 @@ def main(argv: list[str]) -> None:
             add_admin_sql(int(tg_id))
         case ["add-admin", tg_id, "--apply"]:
             asyncio.run(add_admin(int(tg_id)))
+        case ["set-admin-password", tg_id, username]:
+            asyncio.run(set_admin_password(int(tg_id), username, None))
+        case ["set-admin-password", tg_id, username, password]:
+            asyncio.run(set_admin_password(int(tg_id), username, password))
         case ["seed-demo"]:
             asyncio.run(seed_demo())
         case ["seed-channels", path]:

@@ -95,11 +95,7 @@ def bad(text: str) -> None:
 
 def ask(prompt: str, default: str = "", *, secret: bool = False) -> str:
     """One question. Empty answer keeps the default; Ctrl-C leaves cleanly."""
-    suffix = (
-        f" [{DIM}{'•' * 8 if secret and default else default}{RESET}]"
-        if default
-        else ""
-    )
+    suffix = f" [{DIM}{'•' * 8 if secret and default else default}{RESET}]" if default else ""
     try:
         answer = input(f"  {prompt}{suffix}: ").strip()
     except (EOFError, KeyboardInterrupt):
@@ -127,16 +123,13 @@ class Check:
 
 def _version(command: list[str]) -> str:
     try:
-        out = subprocess.run(
+        # S603: every command here is a literal in this file, never user input.
+        out = subprocess.run(  # noqa: S603
             command, capture_output=True, text=True, timeout=20, check=False
         )
     except (OSError, subprocess.SubprocessError):
         return ""
-    return (
-        (out.stdout or out.stderr).strip().splitlines()[0]
-        if out.returncode == 0
-        else ""
-    )
+    return (out.stdout or out.stderr).strip().splitlines()[0] if out.returncode == 0 else ""
 
 
 def port_free(port: int) -> bool:
@@ -148,9 +141,7 @@ def port_free(port: int) -> bool:
 def prerequisites(profile: str) -> list[Check]:
     checks = [
         Check("python", sys.version_info >= (3, 12), f"{sys.version.split()[0]}"),
-        Check(
-            "docker", bool(shutil.which("docker")), _version(["docker", "--version"])
-        ),
+        Check("docker", bool(shutil.which("docker")), _version(["docker", "--version"])),
         Check(
             "docker compose",
             bool(_version(["docker", "compose", "version"])),
@@ -169,9 +160,7 @@ def prerequisites(profile: str) -> list[Check]:
         "dev": (8000, 5432, 6379, 7700),
     }
     for port in ports.get(profile, ()):
-        checks.append(
-            Check(f"port {port}", port_free(port), say("free", "آزاد"), required=False)
-        )
+        checks.append(Check(f"port {port}", port_free(port), say("free", "آزاد"), required=False))
     return checks
 
 
@@ -219,17 +208,18 @@ def ed25519_keypair() -> tuple[str, str]:
         )
         return private, public
 
-    if shutil.which("openssl"):  # 2. openssl, which every server has
+    openssl = shutil.which("openssl")  # 2. openssl, which every server has
+    if openssl:
         try:
-            private = subprocess.run(
-                ["openssl", "genpkey", "-algorithm", "ed25519"],
+            private = subprocess.run(  # noqa: S603
+                [openssl, "genpkey", "-algorithm", "ed25519"],
                 capture_output=True,
                 text=True,
                 check=True,
                 timeout=30,
             ).stdout
-            public = subprocess.run(
-                ["openssl", "pkey", "-pubout"],
+            public = subprocess.run(  # noqa: S603
+                [openssl, "pkey", "-pubout"],
                 input=private,
                 capture_output=True,
                 text=True,
@@ -305,16 +295,10 @@ def ask_core(answers: Answers, domain: str) -> None:
     answers.set("BOT_TOKEN", token)
 
     while True:
-        username = ask(say("Bot username (without @)", "یوزرنیم ربات (بدون @)")).lstrip(
-            "@"
-        )
+        username = ask(say("Bot username (without @)", "یوزرنیم ربات (بدون @)")).lstrip("@")
         if USERNAME.match(username):
             break
-        bad(
-            say(
-                "4-32 characters, letters, digits, underscore.", "۴ تا ۳۲ کاراکتر مجاز."
-            )
-        )
+        bad(say("4-32 characters, letters, digits, underscore.", "۴ تا ۳۲ کاراکتر مجاز."))
     answers.set("BOT_USERNAME", username)
 
     title(say("4. Addresses", "۴. آدرس‌ها"))
@@ -429,10 +413,8 @@ def write_env(path: Path, content: str) -> bool:
         path.replace(path.with_suffix(path.suffix + ".bak"))
         ok(say("Old file kept as .bak", "فایل قبلی با پسوند .bak نگه داشته شد"))
     path.write_text(content, "utf-8", newline="\n")
-    try:
+    with contextlib.suppress(OSError):
         path.chmod(0o600)  # secrets: owner only (a no-op on Windows)
-    except OSError:
-        pass
     return True
 
 
@@ -464,9 +446,7 @@ def next_steps(profile: str, env_file: str, admin_tg_id: str) -> None:
                 f"{compose} exec api python -m app.bot.set_webhook",
             ),
             (
-                say(
-                    "add the first channels to crawl", "افزودن اولین کانال‌ها برای کرال"
-                ),
+                say("add the first channels to crawl", "افزودن اولین کانال‌ها برای کرال"),
                 f"{compose} exec api python -m app.cli seed-channels channels.txt",
             ),
         ]
@@ -503,9 +483,7 @@ def main(argv: list[str] | None = None) -> int:
             "core/edge = the split deployment"
         ),
     )
-    parser.add_argument(
-        "--output", default="", help="where to write (default depends on profile)"
-    )
+    parser.add_argument("--output", default="", help="where to write (default depends on profile)")
     parser.add_argument("--check", action="store_true", help="only check prerequisites")
     args = parser.parse_args(argv)
 
@@ -556,11 +534,7 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     answers = Answers(values)
-    domain = (
-        ask(say("Your domain", "دامنهٔ شما"), "example.com")
-        if args.profile != "edge"
-        else ""
-    )
+    domain = ask(say("Your domain", "دامنهٔ شما"), "example.com") if args.profile != "edge" else ""
     if domain:
         answers.set("DOMAIN", domain)
     answers.set("ENV", "dev" if args.profile == "dev" else "prod")
@@ -577,8 +551,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     output = Path(
-        args.output
-        or {"core": ".env.core", "edge": ".env.edge"}.get(args.profile, ".env")
+        args.output or {"core": ".env.core", "edge": ".env.edge"}.get(args.profile, ".env")
     )
     target = output if output.is_absolute() else ROOT / output
     content = render_env(EXAMPLE.read_text("utf-8"), answers.values)

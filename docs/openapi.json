@@ -321,6 +321,48 @@
         }
       }
     },
+    "/admin/login/password": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Login Password",
+        "description": "Username + password → admin JWT, for devices with no Telegram to log in with.\n\nSame token, same 8-hour life, same permissions as the widget login: this is a\nsecond door into the same room, not a second room.",
+        "operationId": "login_password_admin_login_password_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminPasswordLoginIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminTokenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/me": {
       "get": {
         "tags": [
@@ -6308,6 +6350,30 @@
           "permissions"
         ],
         "title": "AdminMeOut"
+      },
+      "AdminPasswordLoginIn": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 3,
+            "title": "Username"
+          },
+          "password": {
+            "type": "string",
+            "maxLength": 256,
+            "minLength": 8,
+            "title": "Password"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "title": "AdminPasswordLoginIn",
+        "description": "Username + password, for signing in where the Telegram widget cannot run."
       },
       "AdminTokenOut": {
         "properties": {

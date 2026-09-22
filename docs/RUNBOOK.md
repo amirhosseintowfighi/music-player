@@ -282,7 +282,7 @@ infra/scripts/purge-track.sh <track_id>
 
 ## دسترسی به پنل ادمین
 
-- ورود فقط با Telegram Login Widget و فقط برای ردیف فعال در `admin_users`.
+- ورود با نام کاربری/رمز (scrypt) یا Telegram Login Widget — هر دو فقط برای ردیف فعال در `admin_users`. رمز فقط از روی سرور و با `app.cli set-admin-password` ست می‌شود؛ API برای آن وجود ندارد.
 - افزودن ادمین: پنل → «مدیران»، یا برای اولین owner
   `python -m app.cli add-admin <tg_id>`.
 - اگر دسترسی همه قطع شد (مثلاً owner اکانتش را از دست داد)، همان SQL را مستقیم اجرا کن.

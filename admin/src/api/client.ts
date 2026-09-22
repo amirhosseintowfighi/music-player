@@ -126,6 +126,13 @@ export async function loginWithWidget(payload: Record<string, unknown>): Promise
   return token;
 }
 
+/** The Telegram-free door: works on any device, needs no bot and no widget. */
+export async function loginWithPassword(username: string, password: string): Promise<AdminToken> {
+  const token = await post<AdminToken>('/admin/login/password', { username, password });
+  saveToken(token.access_token);
+  return token;
+}
+
 /** `null` when nobody is signed in — the router shows the login screen. */
 export async function fetchMe(): Promise<AdminMe | null> {
   if (!readToken()) return null;

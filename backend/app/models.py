@@ -59,6 +59,10 @@ class AdminUser(Base):
     permissions: Mapped[list[str]] = mapped_column(ARRAY(Text))
     is_active: Mapped[bool] = mapped_column(Boolean)
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    # Both null until someone runs `set-admin-password`; the Telegram login needs neither.
+    login_username: Mapped[str | None] = mapped_column(Text)
+    password_hash: Mapped[str | None] = mapped_column(Text)
+    password_set_at: Mapped[datetime | None] = mapped_column(TS)
 
 
 class FeatureFlag(Base):

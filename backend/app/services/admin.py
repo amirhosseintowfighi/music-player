@@ -18,7 +18,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, Literal
 
 from redis.asyncio import Redis
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.domain.text.artist_parser import REVIEW_THRESHOLD
@@ -27,6 +27,7 @@ from app.errors import Conflict, Forbidden, InvalidInput, NotFound
 from app.models import AdminUser, Blacklist, Channel, Report, Track, User
 from app.redis_util import BANNED_SET, resolve
 from app.security.adminauth import AdminClaims
+from app.security.password import hash_password, verify_password
 from app.services import crawling, discovery, ingest, plans, resolving, subscriptions
 from tmusic_common.logging import get_logger
 
@@ -88,6 +89,54 @@ async def login(session: AsyncSession, tg_id: int) -> AdminUser:
     admin = (await session.scalars(select(AdminUser).where(AdminUser.tg_id == tg_id))).one_or_none()
     if admin is None or not admin.is_active:
         raise Forbidden("not an admin")
+    return admin
+
+
+async def login_with_password(session: AsyncSession, username: str, password: str) -> AdminUser:
+    """Username + password → the admin row. One error for every failure mode.
+
+    Distinguishing "no such user" from "wrong password" tells an attacker which half
+    to keep guessing, so both take the same path — including the hash comparison,
+    which runs even when the row is missing to keep the timing flat.
+    """
+    admin = (
+        await session.scalars(
+            select(AdminUser).where(
+                func.lower(AdminUser.login_username) == username.strip().lower()
+            )
+        )
+    ).one_or_none()
+    stored = admin.password_hash if admin is not None else None
+    ok = verify_password(password, stored)
+    if admin is None or not ok or not admin.is_active:
+        raise Forbidden("bad credentials")
+    return admin
+
+
+async def set_password(
+    session: AsyncSession, tg_id: int, username: str, password: str
+) -> AdminUser:
+    """Give an existing admin a username and password. CLI-only; see ``app.cli``."""
+    admin = (await session.scalars(select(AdminUser).where(AdminUser.tg_id == tg_id))).one_or_none()
+    if admin is None:
+        raise NotFound("not an admin")
+    name = username.strip().lower()
+    if len(name) < 3:
+        raise InvalidInput("username must be at least 3 characters")
+    taken = (
+        await session.scalars(
+            select(AdminUser).where(
+                func.lower(AdminUser.login_username) == name, AdminUser.id != admin.id
+            )
+        )
+    ).one_or_none()
+    if taken is not None:
+        raise Conflict("username already taken")
+    if len(password) < 12:
+        raise InvalidInput("password must be at least 12 characters")
+    admin.login_username = name
+    admin.password_hash = hash_password(password)
+    admin.password_set_at = datetime.now(UTC)
     return admin
 
 

@@ -143,6 +143,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/login/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login Password
+         * @description Username + password → admin JWT, for devices with no Telegram to log in with.
+         *
+         *     Same token, same 8-hour life, same permissions as the widget login: this is a
+         *     second door into the same room, not a second room.
+         */
+        post: operations["login_password_admin_login_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/me": {
         parameters: {
             query?: never;
@@ -1988,6 +2011,16 @@ export interface components {
              */
             is_active: boolean;
         };
+        /**
+         * AdminPasswordLoginIn
+         * @description Username + password, for signing in where the Telegram widget cannot run.
+         */
+        AdminPasswordLoginIn: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
         /** AdminTokenOut */
         AdminTokenOut: {
             /** Access Token */
@@ -3630,6 +3663,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AdminLoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTokenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_password_admin_login_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminPasswordLoginIn"];
             };
         };
         responses: {

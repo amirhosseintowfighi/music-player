@@ -19,6 +19,7 @@ from app.schemas import (
     AdminBroadcastOut,
     AdminLoginIn,
     AdminMeOut,
+    AdminPasswordLoginIn,
     AdminTokenOut,
     AdminUpsertIn,
     AuditEntryOut,
@@ -116,6 +117,37 @@ async def login(body: AdminLoginIn, session: SessionDep, settings: SettingsDep) 
             role=admin.role,
             permissions=list(permissions),
             first_name=payload.first_name,
+        ),
+    )
+
+
+@router.post("/login/password", response_model=AdminTokenOut, dependencies=[Depends(rate_limit_ip)])
+async def login_password(
+    body: AdminPasswordLoginIn, session: SessionDep, settings: SettingsDep
+) -> AdminTokenOut:
+    """Username + password → admin JWT, for devices with no Telegram to log in with.
+
+    Same token, same 8-hour life, same permissions as the widget login: this is a
+    second door into the same room, not a second room.
+    """
+    admin = await admin_service.login_with_password(session, body.username, body.password)
+    permissions = admin_service.effective_permissions(admin)
+    token, expires_at = encode_admin(
+        AdminClaims(admin_id=admin.id, tg_id=admin.tg_id, role=admin.role, permissions=permissions),
+        settings.jwt_private_key.get_secret_value(),
+        settings.jwt_issuer,
+        ADMIN_TOKEN_TTL_S,
+    )
+    log.info("admin.login", admin_id=admin.id, role=admin.role, method="password")
+    return AdminTokenOut(
+        access_token=token,
+        expires_at=expires_at,
+        me=AdminMeOut(
+            id=admin.id,
+            tg_id=admin.tg_id,
+            role=admin.role,
+            permissions=list(permissions),
+            first_name=admin.login_username or "",
         ),
     )
 

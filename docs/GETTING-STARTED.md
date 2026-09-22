@@ -254,8 +254,25 @@ docker compose -f infra/compose/core.yml --env-file .env.core \
 
 ## ۴. پنل ادمین
 
-`https://admin.<دامنه>` (یا در حالت محلی `http://localhost:5174`). ورود با
-Telegram Login Widget و همان اکانتی که `add-admin` شده.
+`https://admin.<دامنه>` (یا در حالت محلی `http://localhost:5174`).
+
+**دو راه ورود وجود دارد:**
+
+۱. **نام کاربری و رمز عبور** — روی هر دستگاهی کار می‌کند و به تلگرام کاری ندارد.
+   `install.sh` خودش یکی می‌سازد و چاپ می‌کند. دستی:
+
+   ```bash
+   docker compose -f infra/compose/solo.yml --env-file .env      exec api python -m app.cli set-admin-password <tg-id> <username>
+   ```
+
+   رمز فقط همان یک بار چاپ می‌شود (در دیتابیس فقط hash ذخیره می‌شود). برای عوض
+   کردنش همین دستور را دوباره بزن؛ رمز دلخواه را می‌توانی آخر خط اضافه کنی
+   (حداقل ۱۲ کاراکتر).
+
+۲. **دکمهٔ تلگرام** — فقط وقتی کار می‌کند که در BotFather دستور `/setdomain` روی
+   `admin.<دامنه>` تنظیم شده باشد.
+
+هر دو راه فقط برای کسی کار می‌کند که قبلاً با `add-admin` در فهرست مدیران ثبت شده باشد.
 
 | صفحه | برای چه |
 |---|---|

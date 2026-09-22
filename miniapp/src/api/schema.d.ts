@@ -143,6 +143,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/login/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login Password
+         * @description Username + password → admin JWT, for devices with no Telegram to log in with.
+         *
+         *     Same token, same 8-hour life, same permissions as the widget login: this is a
+         *     second door into the same room, not a second room.
+         */
+        post: operations["login_password_admin_login_password_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/me": {
         parameters: {
             query?: never;
@@ -828,6 +851,43 @@ export interface paths {
         get: operations["resolver_status_admin_crawler_resolver_get"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/metadata/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Metadata Queue */
+        get: operations["metadata_queue_admin_metadata_queue_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/metadata/{track_id}/fix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Fix Metadata
+         * @description Correct one track, or every track that shares its artist.
+         */
+        post: operations["fix_metadata_admin_metadata__track_id__fix_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1951,6 +2011,16 @@ export interface components {
              */
             is_active: boolean;
         };
+        /**
+         * AdminPasswordLoginIn
+         * @description Username + password, for signing in where the Telegram widget cannot run.
+         */
+        AdminPasswordLoginIn: {
+            /** Username */
+            username: string;
+            /** Password */
+            password: string;
+        };
         /** AdminTokenOut */
         AdminTokenOut: {
             /** Access Token */
@@ -2296,6 +2366,18 @@ export interface components {
             /** Sections */
             sections: components["schemas"]["SectionOut"][];
         };
+        /** FixMetadataIn */
+        FixMetadataIn: {
+            /** Title */
+            title?: string | null;
+            /** Artist */
+            artist?: string | null;
+            /**
+             * Apply To Artist
+             * @default false
+             */
+            apply_to_artist: boolean;
+        };
         /** FollowOut */
         FollowOut: {
             /** Following */
@@ -2419,6 +2501,28 @@ export interface components {
              * @default true
              */
             public_profile: boolean;
+        };
+        /**
+         * MetadataReviewOut
+         * @description A track the parser was unsure about, or a listener reported.
+         */
+        MetadataReviewOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Artists */
+            artists: string;
+            /** Metadata Confidence */
+            metadata_confidence: number;
+            /** File Name */
+            file_name?: string | null;
+            /** Album */
+            album?: string | null;
+            /** Reports */
+            reports: number;
+            /** Channel Title */
+            channel_title?: string | null;
         };
         /** MoveTrackIn */
         MoveTrackIn: {
@@ -3559,6 +3663,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["AdminLoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminTokenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_password_admin_login_password_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AdminPasswordLoginIn"];
             };
         };
         responses: {
@@ -4888,6 +5025,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResolverStatusOut"];
+                };
+            };
+        };
+    };
+    metadata_queue_admin_metadata_queue_get: {
+        parameters: {
+            query?: {
+                source?: "all" | "reported" | "unsure";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MetadataReviewOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    fix_metadata_admin_metadata__track_id__fix_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FixMetadataIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: number;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

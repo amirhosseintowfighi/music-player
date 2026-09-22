@@ -37,7 +37,7 @@
 backend/   FastAPI (api) + aiogram (bot webhook) + arq (worker) + Alembic
 indexer/   سرویس edge: کرالر پیش‌نمایش وب + resolver تک‌اکانته + سرور استریم
 miniapp/   مینی‌اپ کاربر: React 19 + Vite + Tailwind (Liquid Glass، فارسی/انگلیسی، RTL)
-admin/     پنل مدیریت: React + Vite، ورود با Telegram Login Widget
+admin/     پنل مدیریت: React + Vite، ورود با رمز یا Telegram Login Widget
 shared/    کد مشترک: قرارداد core↔edge، ticket استریم، لاگ JSON
 infra/     compose برای prod (core و edge)، nginx، WireGuard، مانیتورینگ، k6، اسکریپت‌ها
 bruno/     کالکشن Bruno برای تست دستی API
