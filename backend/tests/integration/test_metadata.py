@@ -48,6 +48,13 @@ async def test_candidates_skip_tracks_that_are_already_complete(
             id=ids[0]
         )
     )
+    # Tags are not the whole job: the same read answers "does this file carry a
+    # cover?", and a track showing a blank square is still worth one probe.
+    assert ids[0] in await metadata.candidates(session)
+
+    await session.execute(
+        text("UPDATE tracks SET has_thumb = true WHERE id = :id").bindparams(id=ids[0])
+    )
     assert ids[0] not in await metadata.candidates(session)
 
 
@@ -131,3 +138,32 @@ async def test_nothing_to_do_is_cheap(session: AsyncSession, settings: Any) -> N
             "filled": 0,
             "failed": 0,
         }
+
+
+async def test_a_cover_found_in_the_file_makes_the_track_show_one(
+    session: AsyncSession,
+) -> None:
+    """Telegram makes a thumbnail for some messages only; the file often has its own.
+
+    Until the probe reported it, the API handed the player no thumbnail URL and the
+    track stayed a blank square even though the artwork was inside it.
+    """
+    ids = await seed(session)
+    track_id = ids[0]
+    assert await metadata.apply(
+        session, metadata.Probed(track_id=track_id, album=None, year=None, genre=None)
+    ) in (True, False)
+    assert (
+        await session.scalar(
+            text("SELECT has_thumb FROM tracks WHERE id = :id").bindparams(id=track_id)
+        )
+        is False
+    )
+
+    assert await metadata.apply(
+        session,
+        metadata.Probed(track_id=track_id, album=None, year=None, genre=None, has_artwork=True),
+    )
+    assert await session.scalar(
+        text("SELECT has_thumb FROM tracks WHERE id = :id").bindparams(id=track_id)
+    )

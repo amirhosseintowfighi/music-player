@@ -44,17 +44,24 @@ class Probed:
     album: str | None
     year: int | None
     genre: str | None
+    # The file carries its own cover. Telegram only makes a thumbnail for some
+    # messages, so this is often the only artwork a crawled track has.
+    has_artwork: bool = False
 
 
 async def candidates(session: AsyncSession, limit: int = BATCH) -> list[int]:
-    """Playable tracks that are missing tag data and have never been probed."""
+    """Playable tracks missing tag data or a cover, that have never been probed.
+
+    ``NOT has_thumb`` is in the list because the embedded cover is found by the same
+    read: a track with an album but no artwork still has a blank square to fix.
+    """
     rows = await session.execute(
         text(
             """
         SELECT id FROM tracks
          WHERE canonical_track_id IS NULL AND NOT hidden AND playable
            AND metadata_probed_at IS NULL
-           AND (album IS NULL OR year IS NULL OR genre IS NULL)
+           AND (album IS NULL OR year IS NULL OR genre IS NULL OR NOT has_thumb)
            AND file_size BETWEEN 100000 AND 100000000
          ORDER BY channels_count DESC, id
          LIMIT :limit
@@ -74,16 +81,19 @@ async def apply(session: AsyncSession, probed: Probed) -> bool:
             normalized_album = coalesce(normalized_album, nullif(lower(:album), '')),
             year  = coalesce(year, :year),
             genre = coalesce(genre, :genre),
+            has_thumb = has_thumb OR :artwork,
             metadata_probed_at = now(),
             updated_at = now()
          WHERE id = :id
-        RETURNING (album IS NOT NULL OR year IS NOT NULL OR genre IS NOT NULL) AS filled
+        RETURNING (album IS NOT NULL OR year IS NOT NULL OR genre IS NOT NULL
+                   OR has_thumb) AS filled
         """
         ).bindparams(
             id=probed.track_id,
             album=(probed.album or None),
             year=probed.year,
             genre=(probed.genre or None),
+            artwork=probed.has_artwork,
         )
     )
     row = result.first()
@@ -150,6 +160,7 @@ async def probe_batch(
                 album=body.get("album"),
                 year=body.get("year"),
                 genre=body.get("genre"),
+                has_artwork=bool(body.get("has_artwork")),
             ),
         ):
             filled += 1

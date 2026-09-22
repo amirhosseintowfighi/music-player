@@ -202,3 +202,37 @@ def test_seeded_artist_keys_are_normalized() -> None:
         assert normalize_key(name) == key, name
         for alias in re.findall(r"'([^']+)'", aliases):
             assert normalize_key(alias) == alias, alias
+
+
+# ── the catalogue is not Persian-only ─────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("raw", "artist", "title"),
+    [
+        # English channels label their posts the way Persian ones do.
+        ("Dua Lipa - Levitating (Official Video)", "Dua Lipa", "Levitating"),
+        ("The Weeknd – Blinding Lights [320kbps]", "The Weeknd", "Blinding Lights"),
+        ("Free Download | Coldplay - Yellow", "Coldplay", "Yellow"),
+        ("Adele - Hello (HD)", "Adele", "Hello"),
+        ("Download Song Eminem - Lose Yourself", "Eminem", "Lose Yourself"),
+        # Arabic. The letters come back folded to their Persian shapes (ي→ی, ك→ک,
+        # ة→ه): that fold is what lets one song posted in both spellings dedupe to
+        # one track, and it is deliberate, not a bug to fix here.
+        ("حصري | عمرو دياب - تملي معاك", "عمرو دیاب", "تملی معاک"),
+        ("تحميل اغنية جديدة فيروز - زهرة المدائن", "فیروز", "زهره المداین"),
+        # Turkish.
+        ("Tarkan - Kuzu Kuzu", "Tarkan", "Kuzu Kuzu"),
+    ],
+)
+def test_titles_in_other_languages_parse_too(raw: str, artist: str, title: str) -> None:
+    """Nothing in the pipeline is Persian-only; only the seeded channels were."""
+    meta = parse_track_meta(raw, None, [])
+    assert meta.artists == (artist,)
+    assert meta.title == title
+
+
+def test_video_quality_labels_are_dropped_only_in_brackets() -> None:
+    """ "(HD)" is never part of a name; "HD" on its own might be."""
+    assert clean_display("Adele - Hello (HD)") == "Adele - Hello"
+    assert clean_display("HD Empire - Runaway") == "HD Empire - Runaway"

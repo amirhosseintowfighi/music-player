@@ -335,7 +335,14 @@ class Prober:
     def __init__(self, sources: Sources) -> None:
         self.sources = sources
 
-    async def probe(self, ticket: StreamTicket) -> id3.Tags:
+    async def probe(self, ticket: StreamTicket) -> tuple[id3.Tags, bool]:
+        """Tags, and whether the file carries its own cover.
+
+        The artwork answer comes free: it lives in the same head bytes already read
+        for the tags. Without it the core has no way to know a track has a cover
+        Telegram never made a thumbnail for, so the player shows a blank square for a
+        file that has had artwork inside it all along.
+        """
         _, source = self.sources.open(ticket)
         end = min(PROBE_HEAD_BYTES, max(ticket.size - 1, 0))
         head = b""
@@ -343,14 +350,15 @@ class Prober:
             head += chunk
             if len(head) >= PROBE_HEAD_BYTES:
                 break
+        artwork = id3.parse_artwork(head) is not None
         tags = id3.parse_id3v2(head)
         if not tags.empty or ticket.size <= id3.ID3V1_SIZE:
-            return tags
+            return tags, artwork
         # No v2 tag: the old 128-byte block lives at the very end of the file.
         tail = b""
         async for chunk in source(ticket.size - id3.ID3V1_SIZE, ticket.size - 1):
             tail += chunk
-        return id3.parse_id3v1(tail)
+        return id3.parse_id3v1(tail), artwork
 
 
 def _headers(ticket: StreamTicket, length: int) -> dict[str, str]:
@@ -487,7 +495,7 @@ def create_app(settings: Settings, sources: Sources) -> Starlette:
         except TicketError:
             return Response(status_code=403)
         try:
-            tags = await prober.probe(ticket)
+            tags, has_artwork = await prober.probe(ticket)
         except (ValueError, LookupError, RuntimeError, errors.RPCError) as exc:
             log.info("probe.failed", track_id=ticket.track_id, error=str(exc))
             return JSONResponse({"error": str(exc)}, status_code=502)
@@ -499,6 +507,7 @@ def create_app(settings: Settings, sources: Sources) -> Starlette:
                 "genre": tags.genre,
                 "title": tags.title,
                 "artist": tags.artist,
+                "has_artwork": has_artwork,
             }
         )
 

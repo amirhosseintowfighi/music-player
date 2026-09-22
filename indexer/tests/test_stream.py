@@ -278,6 +278,8 @@ async def test_probe_reads_tags_from_the_head_of_the_file(
         "genre": "Pop",
         "title": None,
         "artist": None,
+        # No APIC frame in this fixture, so the core is told there is no cover.
+        "has_artwork": False,
     }
     assert unauthorised.status_code == 401
     assert bad_ticket.status_code == 403
@@ -324,3 +326,28 @@ async def test_no_thumbnail_and_no_id3_cover_is_a_clean_404(
             resp = await edge.get(url(mt_ticket(), kind="t"))
 
     assert resp.status_code == 404
+
+
+async def test_probe_reports_a_cover_the_file_carries_itself(
+    settings: Settings, client_fake: FakeClient
+) -> None:
+    """Telegram makes a thumbnail for some messages only; the file often has its own.
+
+    Without this flag the core never learns the cover exists, so the API hands the
+    player no thumbnail URL and a track with artwork inside it shows a blank square.
+    """
+    from tests.test_id3 import apic_tag
+
+    tag = apic_tag(b"\x89PNG" + b"x" * 500)
+    client_fake.file_bytes = tag + DATA[len(tag) :]
+
+    async with httpx.AsyncClient(transport=bot_api_transport([])) as tg:
+        async with await make_http(settings, client_fake, tg) as http:
+            resp = await http.post(
+                "/internal/probe",
+                json={"ticket": sign(mt_ticket(), b"k1")},
+                headers={"Authorization": "Bearer internal-token"},
+            )
+
+    assert resp.status_code == 200
+    assert resp.json()["has_artwork"] is True

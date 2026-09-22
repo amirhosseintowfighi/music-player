@@ -107,13 +107,24 @@ _VERSION = re.compile(
     re.IGNORECASE,
 )
 _NOISE_WORDS = re.compile(
-    r"\b(?:exclusive|premiere|official\s+(?:audio|music|track)|new\s+song|full\s+version)\b"
+    r"\b(?:exclusive|premiere|official\s+(?:audio|music|track)|new\s+song|full\s+version"
+    r"|free\s+download|out\s+now)\b"
     r"|^\s*(?:new|exclusive|premiere)\s*(?=[|:\-–—])"
-    r"|(?<!\S)(?:اختصاصی|آهنگ\s+جدید|نسخه\s+کامل)(?!\S)",
+    r"|(?<!\S)(?:اختصاصی|آهنگ\s+جدید|نسخه\s+کامل)(?!\S)"
+    # Arabic channels label their posts the way Persian ones do. Written in the
+    # Persian letters the normaliser has already folded ي→ی and ة→ه into, because by
+    # the time this runs there is no Arabic spelling left to match.
+    r"|(?<!\S)(?:حصریا|حصری|اغنیه\s+جدیده|أغنیه\s+جدیده)(?!\S)",
     re.IGNORECASE,
 )
+# Video-quality labels, the one thing _BITRATE does not already cover. Only inside
+# brackets: "HD" alone could be part of a name, "(HD)" never is.
+_QUALITY = re.compile(r"\s*[\(\[]\s*(?:full\s*hd|hd|4k|hq)\s*[\)\]]", re.IGNORECASE)
+# What a stripped bitrate leaves behind: "Song [320kbps]" → "Song [ ]".
+_EMPTY_BRACKETS = re.compile(r"\s*[\(\[]\s*[\)\]]")
 _DOWNLOAD_PREFIX = re.compile(
-    r"^\s*(?:دانلود|download)\s+(?:(?:آهنگ|اهنگ|song|music)\s+)?(?:(?:جدید|new)\s+)?",
+    r"^\s*(?:دانلود|download|تحمیل|تنزیل)\s+"
+    r"(?:(?:آهنگ|اهنگ|song|music|اغنیه|أغنیه)\s+)?(?:(?:جدید|new|جدیده)\s+)?",
     re.IGNORECASE,
 )
 _EDGE_PUNCT = re.compile(r"^[\s\-–—_|:.,،؛]+|[\s\-–—_|:.,،؛]+$")
@@ -171,6 +182,8 @@ def clean_display(text: str | None, channel_names: Iterable[str | None] = ()) ->
     t = _VERSION.sub(" ", t)
     t = _BITRATE.sub(" ", t)
     t = _NOISE_WORDS.sub(" ", t)
+    t = _QUALITY.sub(" ", t)
+    t = _EMPTY_BRACKETS.sub(" ", t)
     t = _DOWNLOAD_PREFIX.sub("", t)
     t = _FILLER.sub(" ", t)
     t = _TRACK_NUMBER.sub("", t)
