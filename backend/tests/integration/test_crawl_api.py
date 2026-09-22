@@ -34,7 +34,7 @@ async def crawler_on(session: AsyncSession) -> Any:
     yield
     await session.rollback()
     await session.execute(
-        text("UPDATE feature_flags SET value = '\"mtproto\"' WHERE key = 'indexing_source'")
+        text("UPDATE feature_flags SET value = '\"crawler\"' WHERE key = 'indexing_source'")
     )
     await session.commit()
     plans.clear_caches()
@@ -88,8 +88,9 @@ async def test_nothing_is_claimed_while_the_flag_is_off(
     client: httpx.AsyncClient, session: AsyncSession
 ) -> None:
     await crawl_channel(session, "flagoff")
+    # Anything but "crawler", with the master switch off, means nobody indexes.
     await session.execute(
-        text("UPDATE feature_flags SET value = '\"mtproto\"' WHERE key = 'indexing_source'")
+        text("UPDATE feature_flags SET value = '\"disabled\"' WHERE key = 'indexing_source'")
     )
     await session.commit()
     plans.clear_caches()

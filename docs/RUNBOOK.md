@@ -120,8 +120,11 @@ cd indexer && pytest tests/test_preview_parser.py -q
 ۵. تا وقتی fix آماده نیست، کرالر را خاموش کن تا cursorها بیهوده جلو نروند:
 
 ```sql
-UPDATE feature_flags SET value = 'false' WHERE key = 'crawler_enabled';
-UPDATE feature_flags SET value = '"mtproto"' WHERE key = 'indexing_source';
+-- هر مقداری جز "crawler" یعنی خاموش؛ "mtproto" دیگر وجود ندارد (فاز ۶ حذفش کرد).
+UPDATE feature_flags SET value = '"disabled"' WHERE key = 'indexing_source';
+UPDATE feature_flags SET value = 'false'       WHERE key = 'crawler_enabled';
+-- برای روشن کردن دوباره:
+-- UPDATE feature_flags SET value = '"crawler"' WHERE key = 'indexing_source';
 ```
 
 ۶. بعد از fix، کانال‌های آسیب‌دیده را از ابتدا کرال کن (دکمهٔ «از ابتدا» در پنل یا
@@ -193,6 +196,21 @@ UPDATE channels
 worker در tick بعدی (پیش‌فرض ۱۰ ثانیه) آن را برمی‌دارد.
 
 ## کانال کرال نمی‌شود
+
+**اول سوئیچ را ببین.** اگر هیچ کانالی اصلاً کرال نمی‌شود و هیچ خطایی هم جایی
+نیست (همه در `indexing` می‌مانند، `crawl_status` همچنان `idle`، `fail_count = 0`)، مسئله این
+است که منبع ایندکس روی `crawler` نیست:
+
+```sql
+SELECT key, value FROM feature_flags WHERE key IN ('indexing_source', 'crawler_enabled');
+-- باید indexing_source = "crawler" باشد (migration 0009 این را درست می‌کند)
+UPDATE feature_flags SET value = '"crawler"' WHERE key = 'indexing_source';
+```
+
+مقدار قدیمی `"mtproto"` به کدی اشاره می‌کرد که در فاز ۶ حذف شد؛ نتیجه‌اش صف خالی و
+سکوت کامل بود. فلگ که درست شد، حداکثر ده ثانیه بعد edge کار را برمی‌دارد (`claim_interval_s`).
+
+اگر فقط بعضی کانال‌ها گیر کرده‌اند:
 
 ```sql
 SELECT id, username, status, crawl_status, crawl_error, fail_count,

@@ -235,7 +235,7 @@ async def test_a_channel_goes_from_preview_page_to_playing_bytes(
     assert (resolved.duration, resolved.file_size) == (180, len(AUDIO))
 
     await session.execute(
-        text("UPDATE feature_flags SET value = '\"mtproto\"' WHERE key = 'indexing_source'")
+        text("UPDATE feature_flags SET value = '\"crawler\"' WHERE key = 'indexing_source'")
     )
     await session.commit()
     plans.clear_caches()
@@ -279,7 +279,7 @@ async def test_the_crawler_needs_no_telegram_account_at_all(
     assert await session.scalar(text("SELECT count(*) FROM tracks")) == 3
 
     await session.execute(
-        text("UPDATE feature_flags SET value = '\"mtproto\"' WHERE key = 'indexing_source'")
+        text("UPDATE feature_flags SET value = '\"crawler\"' WHERE key = 'indexing_source'")
     )
     await session.commit()
     plans.clear_caches()

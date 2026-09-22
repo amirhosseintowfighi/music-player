@@ -50,8 +50,13 @@ class CrawlTask:
 
 
 async def enabled(session: AsyncSession) -> bool:
-    """The feature flag. Off means the old MTProto path still owns the catalogue."""
-    source = await plans.get_flag(session, "indexing_source", "mtproto")
+    """The feature flag, whose default is now the crawler (migration 0009).
+
+    It used to default to the MTProto pool — the code that phase 6 deleted — which
+    made "no flag" mean "index with nothing" and left added channels sitting in
+    ``indexing`` forever, silently.
+    """
+    source = await plans.get_flag(session, "indexing_source", "crawler")
     return bool(await plans.get_flag(session, "crawler_enabled", False)) or source == "crawler"
 
 

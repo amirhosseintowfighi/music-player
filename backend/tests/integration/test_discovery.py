@@ -349,7 +349,7 @@ async def test_the_probe_queue_is_served_over_the_internal_api(
     assert stats.json()["score"] > 0
 
     await session.execute(
-        text("UPDATE feature_flags SET value = '\"mtproto\"' WHERE key = 'indexing_source'")
+        text("UPDATE feature_flags SET value = '\"crawler\"' WHERE key = 'indexing_source'")
     )
     await session.commit()
     plans.clear_caches()

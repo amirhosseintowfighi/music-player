@@ -331,6 +331,7 @@ cd backend && pytest tests/unit/test_title_corpus.py -s -q
 | مینی‌اپ سفید می‌ماند | `WEBAPP_URL` غلط است یا باندل با `VITE_API_URL` اشتباه ساخته شده | کنسول مرورگر |
 | پنل ادمین: «something went wrong» روی دکمهٔ تلگرام | `/setdomain` روی `admin.<دامنه>` تنظیم نشده | [BotFather](https://t.me/BotFather) |
 | «الان قابل پخش نیست» | اکانت resolver لاگین نشده یا FloodWait خورده | [RUNBOOK → resolver مرده](RUNBOOK.md#resolver) |
+| کانال در حالت `indexing` می‌ماند و هیچ خطایی نیست | `indexing_source` روی `crawler` نیست — مایگریشن ۰۰۰۹ را اجرا کن | [RUNBOOK](RUNBOOK.md) |
 | کانال‌ها کرال می‌شوند ولی ترکی اضافه نمی‌شود | تلگرام HTML پیش‌نمایش را عوض کرده | [RUNBOOK → پارسر شکسته](RUNBOOK.md#parser) |
 | کانال در `preview_disabled` | کانال خصوصی است یا preview را بسته | از کاربر بخواه بات را ادمین کند |
 | ربات جواب نمی‌دهد | وبهوک ثبت نشده | `getWebhookInfo` و [RUNBOOK](RUNBOOK.md#api-down) |

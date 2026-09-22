@@ -149,7 +149,7 @@ async def test_backfill_twenty_thousand_messages(
     assert row.links == MESSAGES - MESSAGES // 10  # every music post is linked once
 
     await session.execute(
-        text("UPDATE feature_flags SET value = '\"mtproto\"' WHERE key = 'indexing_source'")
+        text("UPDATE feature_flags SET value = '\"crawler\"' WHERE key = 'indexing_source'")
     )
     await session.commit()
     plans.clear_caches()

@@ -217,7 +217,7 @@ async def test_crawled_pages_feed_the_parser_monitor(
     assert (row.pages, row.messages, row.audio_items, row.empty_pages) == (1, 20, 0, 1)
 
     await session.execute(
-        text("UPDATE feature_flags SET value = '\"mtproto\"' WHERE key = 'indexing_source'")
+        text("UPDATE feature_flags SET value = '\"crawler\"' WHERE key = 'indexing_source'")
     )
     await session.commit()
     plans.clear_caches()
