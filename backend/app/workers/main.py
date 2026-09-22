@@ -82,14 +82,14 @@ class WorkerSettings:
         cron(jobs.subscriptions_daily, hour={5}, minute={30}, unique=True),
         # The matrix first, then the per-user mixes that read it.
         cron(jobs.recommendations_nightly, hour={1}, minute={0}, unique=True),
-        # ID3 backfill: hourly and small, so it never competes with playback.
-        # Four times an hour, not once: this is also where covers come from now, and
-        # 50 tracks an hour means a real catalogue waits days to stop showing blank
-        # squares. Still 50 at a time, still ~12 MB a run, still behind playback.
-        cron(jobs.probe_metadata, minute={5, 20, 35, 50}, unique=True),
-        # Pre-warm is on the critical path now (ADR-002, 2026-09-20): every ten
-        # minutes, so a track somebody asked for is ready before they ask again.
-        cron(jobs.prewarm_resolver, minute={3, 13, 23, 33, 43, 53}, unique=True),
+        # ID3 backfill, every five minutes: this is where covers come from as well as tags, and a
+        # fresh catalogue of a few thousand tracks should stop showing blank squares
+        # in an evening, not over a weekend. It runs out of work by itself.
+        cron(jobs.probe_metadata, minute=set(range(0, 60, 5)), unique=True),
+        # Pre-warm is on the critical path (ADR-002, 2026-09-20), and on a new
+        # deployment it is also the only thing standing between a crawled catalogue
+        # and a playable one — so it runs every five minutes until it runs dry.
+        cron(jobs.prewarm_resolver, minute=set(range(3, 60, 5)), unique=True),
         # Daily, after a full day of crawling has been recorded.
         cron(jobs.crawler_healthcheck, hour={7}, minute={0}, unique=True),
         # Wrapped is rebuilt in the first days of January.

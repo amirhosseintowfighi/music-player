@@ -350,7 +350,11 @@ async def probe_metadata(ctx: Ctx) -> dict[str, int]:
         return await metadata.probe_batch(session, ctx["http"], settings)
 
 
-PREWARM_BATCH = 40
+# Sized for draining a new catalogue, not for keeping a warm one warm: a resolve is
+# one metadata call, no bytes. FloodWait still cools the account and the circuit
+# breaker still stops the job, so the ceiling is enforced by Telegram, not by this
+# number being cautious.
+PREWARM_BATCH = 120
 
 
 async def prewarm_resolver(ctx: Ctx) -> dict[str, int]:

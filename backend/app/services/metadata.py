@@ -33,7 +33,9 @@ from tmusic_common.stream_ticket import sign
 
 log = get_logger(__name__)
 
-BATCH = 50
+# Each probe reads up to 256 KB, so a run is ~25 MB — the one job here that moves
+# real bytes. It stops on its own when every track has been probed once.
+BATCH = 100
 TIMEOUT_S = 60.0
 TICKET_TTL_S = 120
 
