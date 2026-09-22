@@ -23,8 +23,10 @@ from tmusic_common.indexer_contract import (
     ReleaseIn,
 )
 from tmusic_common.logging import get_logger
+from tmusic_indexer.account import ResolverAccount
 from tmusic_indexer.config import Settings
 from tmusic_indexer.core_client import CoreClient, CoreUnavailable
+from tmusic_indexer.mtcrawl import ChannelUnreadable, MtprotoCrawler
 from tmusic_indexer.webpreview.crawler import (
     CrawlBlocked,
     Crawler,
@@ -38,7 +40,9 @@ log = get_logger(__name__)
 
 
 class CrawlWorker:
-    def __init__(self, settings: Settings, core: CoreClient) -> None:
+    def __init__(
+        self, settings: Settings, core: CoreClient, account: ResolverAccount | None = None
+    ) -> None:
         self.settings = settings
         self.core = core
         self.crawl_settings = CrawlSettings(
@@ -49,6 +53,9 @@ class CrawlWorker:
         )
         self.client = PreviewClient(self.crawl_settings)
         self.crawler = Crawler(self.client, self.crawl_settings)
+        # Only built when a crawling session exists; a task for a channel with no
+        # preview is reported unreadable otherwise, never silently dropped.
+        self.mtproto = MtprotoCrawler(account, settings) if account is not None else None
         # Set while Telegram is refusing this IP; nothing is claimed until it passes.
         self._blocked_until = 0.0
 
@@ -133,8 +140,20 @@ class CrawlWorker:
             if result is not None and not result.lease_valid:
                 raise LeaseLost
 
+        reader = self.crawler if task.source == "web_preview" else self.mtproto
+        if reader is None:
+            await self.core.crawl_failure(
+                task.channel_id,
+                CrawlFailureIn(
+                    lease_token=task.lease_token,
+                    reason="no_crawl_account",
+                    detail="mtproto fallback is on but this edge has no crawl* session",
+                ),
+            )
+            return
+
         try:
-            progress = await self.crawler.crawl(
+            progress = await reader.crawl(
                 task.channel_id,
                 task.username,
                 before=task.before,
@@ -153,6 +172,19 @@ class CrawlWorker:
                     reason="preview_disabled",
                     detail=str(exc),
                     preview_disabled=True,
+                ),
+            )
+            return
+        except ChannelUnreadable as exc:
+            # The account cannot see it either: private, restricted, or deleted. There
+            # is no third source, so it stops here with a stated reason rather than
+            # bouncing between two readers that both cannot help.
+            await self.core.crawl_failure(
+                task.channel_id,
+                CrawlFailureIn(
+                    lease_token=task.lease_token,
+                    reason="mtproto_unreadable",
+                    detail=str(exc),
                 ),
             )
             return

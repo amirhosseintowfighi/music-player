@@ -710,6 +710,8 @@ class CrawlerHealthOut(ApiModel):
     running: int
     errored: int
     preview_disabled: int
+    # Channels handed to the logged-in account because they have no preview at all.
+    mtproto: int = 0
     completed: int
     due: int
     unresolved_tracks: int

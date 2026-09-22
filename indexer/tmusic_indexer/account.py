@@ -39,6 +39,11 @@ log = get_logger(__name__)
 FLOODWAITS = Counter("floodwaits_total", "FloodWait responses from Telegram", ["kind"])
 ACCOUNT_READY = Gauge("indexer_account_ready", "1 when the resolver account can be used")
 
+# Sessions whose name starts with this belong to the crawler, everything else to
+# the resolver. One account must never do both: a crawling account can be limited
+# or banned, and playback may not go down with it.
+CRAWL_PREFIX = "crawl"
+
 ClientFactory = Callable[[str], Any]
 
 
@@ -64,10 +69,26 @@ class Account:
 class ResolverAccount:
     """Owns the session: connect, resolve peers, absorb FloodWait."""
 
-    def __init__(self, settings: Settings, client_factory: ClientFactory | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        client_factory: ClientFactory | None = None,
+        role: str = "resolver",
+    ) -> None:
         self.settings = settings
         self._factory = client_factory or self._telethon_client
+        self.role = role
         self.account: Account | None = None
+
+    def _mine(self, key: str) -> bool:
+        crawler = key.lower().startswith(CRAWL_PREFIX)
+        return crawler if self.role == "crawler" else not crawler
+
+    def _ready(self, value: int) -> None:
+        # One gauge, one meaning: whether playback can resolve files. A crawling
+        # account cooling down must not read as "the resolver is dead".
+        if self.role == "resolver":
+            ACCOUNT_READY.set(value)
 
     def _telethon_client(self, session_string: str) -> Any:
         return TelegramClient(
@@ -85,17 +106,25 @@ class ResolverAccount:
         return self.settings.sessions_dir / f"{key}.peers.json"
 
     async def start(self) -> None:
-        """Loads the newest session in ``sessions_dir``; extras are ignored, not pooled."""
-        sessions = load_sessions(
-            self.settings.sessions_dir, self.settings.session_enc_key.get_secret_value()
-        )
+        """Loads this role's session from ``sessions_dir``; extras are ignored, not pooled."""
+        sessions = {
+            key: value
+            for key, value in load_sessions(
+                self.settings.sessions_dir, self.settings.session_enc_key.get_secret_value()
+            ).items()
+            if self._mine(key)
+        }
         if not sessions:
-            log.warning("account.none_configured")  # crawling still works without one
-            ACCOUNT_READY.set(0)
+            # The web crawler needs no account at all, and the MTProto fallback simply
+            # stays unavailable until someone logs one in.
+            log.warning("account.none_configured", role=self.role)
+            self._ready(0)
             return
         key, session_string = next(iter(sorted(sessions.items())))
         if len(sessions) > 1:
-            log.warning("account.extra_sessions_ignored", using=key, found=len(sessions))
+            log.warning(
+                "account.extra_sessions_ignored", role=self.role, using=key, found=len(sessions)
+            )
 
         account = Account(key=key, client=self._factory(session_string))
         account.downloads = asyncio.Semaphore(self.settings.downloads_max)
@@ -115,8 +144,8 @@ class ResolverAccount:
             account.status = "disabled"
             log.exception("account.connect_failed", account=key)
         self.account = account
-        ACCOUNT_READY.set(1 if account.available() else 0)
-        log.info("account.started", account=key, status=account.status)
+        self._ready(1 if account.available() else 0)
+        log.info("account.started", role=self.role, account=key, status=account.status)
 
     async def stop(self) -> None:
         if self.account is None:
@@ -139,7 +168,7 @@ class ResolverAccount:
         """The account when it can be used right now, else None (never raises)."""
         account = self.account
         usable = account if account is not None and account.available() else None
-        ACCOUNT_READY.set(1 if usable else 0)
+        self._ready(1 if usable else 0)
         return usable
 
     def on_flood(self, seconds: int) -> AccountReportIn:
@@ -151,8 +180,8 @@ class ResolverAccount:
         wait = seconds + random.uniform(1, max(2.0, seconds * 0.1))  # noqa: S311 — jitter only
         account.cooling_until = time.time() + wait
         account.status = kind
-        ACCOUNT_READY.set(0)
-        log.warning("account.flood_wait", seconds=seconds, status=kind)
+        self._ready(0)
+        log.warning("account.flood_wait", role=self.role, seconds=seconds, status=kind)
         return AccountReportIn(
             status=kind,
             cooling_until=datetime.fromtimestamp(account.cooling_until, UTC),

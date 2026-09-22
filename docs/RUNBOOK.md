@@ -234,6 +234,45 @@ bash scripts/check-channels.sh < candidates.txt | grep '^ok' | cut -f2 > channel
 اگر IP کرالر بلاک شده باشد، لاگ edge پر از `crawl.blocked` است. پراکسی اضافه کن:
 `CRAWL_PROXIES=http://a:1,http://b:2` و edge را ری‌استارت کن.
 
+## <a id="mtproto"></a>fallback با MTProto
+
+**چیست:** برای کانال‌هایی که پیش‌نمایش وب ندارند، یک اکانت لاگین‌شده کانال را
+می‌خواند. پشت فلگ `mtproto_fallback` است و پیش‌فرض خاموش.
+
+**روشن کردن:** سشن دوم را لاگین کن (نامش با `crawl` شروع شود)، بعد فلگ را روشن کن.
+سشن‌های دیگر مال resolver هستند و به آن‌ها دست نزن.
+
+```bash
+docker compose -f infra/compose/solo.yml --env-file .env \
+  run --rm edge python -m tmusic_indexer.login crawl1
+```
+
+**خاموش کردن، فوری:** فلگ را خاموش کن. کانال‌های `source_type = 'mtproto'` دیگر
+claim نمی‌شوند؛ هیچ چیز دیگری تغییر نمی‌کند و کاتالوگ موجود سر جایش می‌ماند.
+
+```sql
+UPDATE feature_flags SET value = 'false' WHERE key = 'mtproto_fallback';
+```
+
+**اگر اکانت کرالر محدود یا بن شد:** پخش سالم است — resolver اکانت دیگری است. کرالر
+خودش FloodWait را جذب می‌کند (`account.flood_wait` با `role=crawler` در لاگ) و lease
+را برمی‌گرداند. اگر بن شد، فایل سشنش را پاک کن و در صورت نیاز یکی دیگر لاگین کن:
+
+```bash
+docker compose -f infra/compose/solo.yml --env-file .env exec edge sh -c 'rm -f /data/sessions/crawl1.session*'
+```
+
+**علائم در دیتابیس:**
+
+| نشانه | یعنی |
+|---|---|
+| `crawl_error` شامل `mtproto_unreadable` | اکانت هم کانال را نمی‌بیند: خصوصی، محدودشده یا حذف‌شده |
+| `crawl_error` شامل `no_crawl_account` | فلگ روشن است ولی هیچ سشن `crawl*` روی edge نیست |
+| کانال‌های `source_type = 'mtproto'` با `crawl_status = 'running'` که گیر کرده‌اند | lease منقضی می‌شود و کانال خودش برمی‌گردد؛ کاری لازم نیست |
+
+**ریسک را جدی بگیر:** این کار خلاف شرایط استفادهٔ تلگرام است و هزینه‌اش سوختن یک
+شماره است. با شمارهٔ شخصی یا شمارهٔ resolver این کار را نکن.
+
 ## <a id="backups"></a>پشتیبان و بازیابی
 
 بکاپ روزانه ساعت ۰۲:۰۰ و مته (drill) بازیابی یکشنبه‌ها ساعت ۰۴:۰۰ اجرا می‌شود.

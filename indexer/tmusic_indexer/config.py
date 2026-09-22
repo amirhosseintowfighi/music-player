@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # account, but rotating is cheaper still.
     crawl_proxies: str = ""
 
+    # MTProto fallback (ADR-002 §6): only used for channels with no web preview, and
+    # only when the core's `mtproto_fallback` flag hands one out. 50 pages of 100 is a
+    # long-but-finite run, so one big channel cannot hold the account all day.
+    max_crawl_pages_mtproto: int = 50
+
     claim_interval_s: float = 10.0
     # A FloodWait longer than this marks the account "limited" (needs attention).
     limited_after_s: int = 900

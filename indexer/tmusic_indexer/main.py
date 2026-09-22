@@ -30,6 +30,11 @@ async def main() -> None:
     configure_logging("edge", settings.log_level, settings.log_json)
     resolver = ResolverAccount(settings)
     await resolver.start()
+    # A second, separate session (named crawl*) for channels with no web preview. It
+    # stays empty on every deployment that never logs one in, and the crawler then
+    # simply reports those channels as unreadable instead of pretending.
+    crawl_account = ResolverAccount(settings, role="crawler")
+    await crawl_account.start()
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -45,7 +50,7 @@ async def main() -> None:
         )
         with contextlib.suppress(CoreUnavailable):  # the panel can wait; work cannot
             resolver.assign_ids(await core.register(settings.worker_id, resolver.registration()))
-        crawler = CrawlWorker(settings, core)
+        crawler = CrawlWorker(settings, core, crawl_account)
         app = create_app(settings, Sources(settings, resolver, tg_http))
         server = uvicorn.Server(
             uvicorn.Config(
@@ -65,6 +70,7 @@ async def main() -> None:
         server.should_exit = True
         await asyncio.gather(server_task, crawl_task, return_exceptions=True)
         await crawler.aclose()
+    await crawl_account.stop()
     await resolver.stop()
 
 

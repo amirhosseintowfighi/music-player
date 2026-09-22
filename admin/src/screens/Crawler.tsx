@@ -126,6 +126,7 @@ export function Crawler() {
           <Stat label="کامل‌شده" value={formatNumber(health.data.completed)} />
           <Stat label="خطا" value={formatNumber(health.data.errored)} />
           <Stat label="بدون پیش‌نمایش" value={formatNumber(health.data.preview_disabled)} />
+          <Stat label="با اکانت (MTProto)" value={formatNumber(health.data.mtproto ?? 0)} />
           <Stat label="نوبت‌رسیده" value={formatNumber(health.data.due)} />
         </div>
       )}

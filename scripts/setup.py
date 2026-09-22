@@ -364,8 +364,8 @@ def ask_edge(answers: Answers) -> None:
         "  "
         + DIM
         + say(
-            "Only needed to play a track nobody has resolved yet. my.telegram.org → API.",
-            "فقط برای پخش اولین‌بارِ ترک‌های resolve‌نشده لازم است. my.telegram.org → API.",
+            "Required before anything crawled can be played. my.telegram.org -> API.",
+            "برای پخش هر ترک کرال‌شده لازم است. my.telegram.org → API.",
         )
         + RESET
     )

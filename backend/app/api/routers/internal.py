@@ -84,6 +84,7 @@ async def crawl_claim(
                 username=task.username,
                 lease_token=task.lease_token,
                 mode=task.mode,
+                source=task.source,
                 before=task.before,
                 stop_at=task.stop_at,
                 needs_meta=task.needs_meta,

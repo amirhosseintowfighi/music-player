@@ -2330,6 +2330,11 @@ export interface components {
             errored: number;
             /** Preview Disabled */
             preview_disabled: number;
+            /**
+             * Mtproto
+             * @default 0
+             */
+            mtproto: number;
             /** Completed */
             completed: number;
             /** Due */

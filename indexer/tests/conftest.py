@@ -119,7 +119,11 @@ class FakeClient:
         if reverse:
             pool = [m for m in self.messages if m.id > min_id]
         else:
-            pool = [m for m in reversed(self.messages) if not offset_id or m.id < offset_id]
+            pool = [
+                m
+                for m in reversed(self.messages)
+                if (not offset_id or m.id < offset_id) and m.id > min_id
+            ]
         for m in pool[:limit]:
             yield m
 

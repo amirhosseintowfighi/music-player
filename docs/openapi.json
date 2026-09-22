@@ -7333,6 +7333,11 @@
             "type": "integer",
             "title": "Preview Disabled"
           },
+          "mtproto": {
+            "type": "integer",
+            "title": "Mtproto",
+            "default": 0
+          },
           "completed": {
             "type": "integer",
             "title": "Completed"

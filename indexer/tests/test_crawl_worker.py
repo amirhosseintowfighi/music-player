@@ -16,6 +16,7 @@ from tmusic_common.indexer_contract import (
     CrawlTaskOut,
 )
 from tmusic_indexer.config import Settings
+from tmusic_indexer.mtcrawl import MtprotoCrawler
 from tmusic_indexer.webpreview.crawler import PreviewClient
 from tmusic_indexer.webpreview.worker import CrawlWorker
 
@@ -211,3 +212,38 @@ async def test_candidates_are_not_probed_while_the_ip_is_blocked() -> None:
     await w.tick()
 
     assert core.stats == []
+
+
+# ── the MTProto fallback ──────────────────────────────────────────────────────
+
+
+async def test_a_task_for_a_preview_less_channel_uses_the_account(
+    settings: Settings,
+) -> None:
+    """The source on the task, not the worker's mood, decides which reader runs."""
+    from tests.conftest import FakeClient, audio_doc, audio_message
+    from tests.test_mtcrawl import account_with
+
+    core = FakeCore()
+    telegram = FakeTelegram(newest=40, oldest=1)
+    w = worker(core, telegram.client())
+    tg_client = FakeClient([audio_message(i, audio_doc(i * 10)) for i in range(1, 6)])
+    settings.crawl_min_delay_s = settings.crawl_max_delay_s = 0.0
+    w.mtproto = MtprotoCrawler(account_with(settings, tg_client), settings)
+
+    await w.run_task(task(source="mtproto"))
+
+    assert core.failures == []
+    # Five items, not the forty the web fake holds: the account did the reading.
+    assert sum(len(batch.items) for batch in core.batches) == 5
+
+
+async def test_without_a_crawl_session_the_channel_is_failed_not_dropped() -> None:
+    core = FakeCore()
+    w = worker(core, FakeTelegram(newest=10, oldest=1).client())
+    w.mtproto = None
+
+    await w.run_task(task(source="mtproto"))
+
+    assert core.batches == []
+    assert [body.reason for _, body in core.failures] == ["no_crawl_account"]

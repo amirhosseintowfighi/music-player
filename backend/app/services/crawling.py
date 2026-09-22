@@ -47,6 +47,9 @@ class CrawlTask:
     before: int | None
     stop_at: int | None
     needs_meta: bool
+    # Which reader the edge should use: the web preview, or the logged-in account for
+    # channels that have no preview at all.
+    source: str = "web_preview"
 
 
 async def enabled(session: AsyncSession) -> bool:
@@ -67,14 +70,24 @@ async def claim(
     if not await enabled(session):
         return []
 
+    # Channels whose preview is off are only handed out once an operator has turned
+    # the account-based fallback on; until then they stay parked, not retried.
+    readable = ["web_preview"]
+    fallback = bool(await plans.get_flag(session, "mtproto_fallback", False))
+    # Turning the flag on also un-parks everything that already gave up on the web
+    # preview, so an operator does not have to press "recrawl" on each of them.
+    crawl_states = ["idle", "error", "preview_disabled"] if fallback else ["idle", "error"]
+    if fallback:
+        readable.append("mtproto")
+
     due = (
         await session.scalars(
             select(Channel)
             .where(
                 Channel.username.is_not(None),
-                Channel.source_type == "web_preview",
+                Channel.source_type.in_(readable),
                 Channel.status.in_(("pending", "indexing", "active")),
-                Channel.crawl_status.in_(("idle", "error")),
+                Channel.crawl_status.in_(crawl_states),
                 Channel.next_crawl_at <= func.now(),
                 (Channel.lease_until.is_(None)) | (Channel.lease_until < func.now()),
                 Channel.fail_count < MAX_FAILURES,
@@ -90,6 +103,10 @@ async def claim(
     tasks: list[CrawlTask] = []
     for channel in due:
         token = secrets.token_hex(16)
+        if channel.crawl_status == "preview_disabled":
+            # It only got here because the fallback is on; the account reads it now.
+            channel.source_type = "mtproto"
+            channel.fail_count = 0
         channel.lease_owner = f"{worker_id}:{token}"
         channel.lease_until = lease_until
         channel.crawl_status = "running"
@@ -107,6 +124,7 @@ async def claim(
                 before=channel.oldest_crawled_msg_id if backfilling else None,
                 stop_at=None if backfilling else channel.newest_crawled_msg_id,
                 needs_meta=channel.title is None,
+                source=channel.source_type,
             )
         )
     await session.flush()
@@ -302,12 +320,21 @@ async def report_failure(
     channel.fail_count += 1
 
     if preview_disabled:
-        # The fallback path: a human or the MTProto resolver has to take it from here.
-        channel.crawl_status = "preview_disabled"
         channel.preview_available = False
         channel.status_reason = "preview_disabled"
-        channel.next_crawl_at = datetime.now(UTC) + timedelta(days=1)
-        log.warning("crawl.preview_disabled", channel_id=channel_id, username=channel.username)
+        if await plans.get_flag(session, "mtproto_fallback", False):
+            # Hand it to the account instead of parking it. The web path is never
+            # retried for this channel afterwards: the preview is a channel setting,
+            # not a transient failure, so asking again daily just burns requests.
+            channel.source_type = "mtproto"
+            channel.crawl_status = "idle"
+            channel.fail_count = 0
+            channel.next_crawl_at = datetime.now(UTC)
+            log.info("crawl.handed_to_mtproto", channel_id=channel_id, username=channel.username)
+        else:
+            channel.crawl_status = "preview_disabled"
+            channel.next_crawl_at = datetime.now(UTC) + timedelta(days=1)
+            log.warning("crawl.preview_disabled", channel_id=channel_id, username=channel.username)
     else:
         channel.crawl_status = "error"
         # Exponential, so a channel that is simply gone stops costing requests.
@@ -326,12 +353,13 @@ async def health(session: AsyncSession) -> dict[str, Any]:
             text(
                 """
         SELECT
-          count(*) FILTER (WHERE source_type = 'web_preview')                AS channels,
+          count(*) FILTER (WHERE source_type IN ('web_preview', 'mtproto'))  AS channels,
           count(*) FILTER (WHERE crawl_status = 'running')                   AS running,
           count(*) FILTER (WHERE crawl_status = 'error')                     AS errored,
           count(*) FILTER (WHERE crawl_status = 'preview_disabled')          AS no_preview,
-          count(*) FILTER (WHERE source_type = 'web_preview' AND status = 'active')
-                                                                             AS done,
+          count(*) FILTER (WHERE source_type IN ('web_preview', 'mtproto')
+                             AND status = 'active')                          AS done,
+          count(*) FILTER (WHERE source_type = 'mtproto')                    AS mtproto,
           count(*) FILTER (WHERE next_crawl_at <= now()
                              AND crawl_status IN ('idle', 'error'))          AS due
           FROM channels
@@ -347,6 +375,7 @@ async def health(session: AsyncSession) -> dict[str, Any]:
         "running": int(row.running),
         "errored": int(row.errored),
         "preview_disabled": int(row.no_preview),
+        "mtproto": int(row.mtproto),
         "completed": int(row.done),
         "due": int(row.due),
         "unresolved_tracks": int(unresolved or 0),

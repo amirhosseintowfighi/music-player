@@ -12,6 +12,9 @@ from typing import Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 TaskMode = Literal["backfill", "incremental"]
+# Which reader the edge uses. The web preview is the default and needs no account;
+# "mtproto" is the fallback for channels that have no public preview at all.
+TaskSource = Literal["web_preview", "mtproto"]
 
 
 class _Model(BaseModel):
@@ -107,6 +110,7 @@ class CrawlTaskOut(_Model):
     username: str
     lease_token: str
     mode: TaskMode
+    source: TaskSource = "web_preview"
     before: int | None = None
     stop_at: int | None = None
     needs_meta: bool = False

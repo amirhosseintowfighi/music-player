@@ -23,9 +23,7 @@ def new_trace_id() -> str:
     return uuid.uuid4().hex
 
 
-def configure_logging(
-    service: str, level: str = "INFO", json_logs: bool = True
-) -> None:
+def configure_logging(service: str, level: str = "INFO", json_logs: bool = True) -> None:
     def add_static(_: WrappedLogger, __: str, event: EventDict) -> EventDict:
         event.setdefault("service", service)
         event.setdefault("trace_id", trace_id_var.get())
