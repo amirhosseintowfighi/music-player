@@ -10,10 +10,9 @@ proxy_cache_path /var/cache/nginx/stream levels=1:2 keys_zone=stream:200m
 limit_req_zone $binary_remote_addr zone=stream_per_ip:20m rate=30r/s;
 limit_req_zone $binary_remote_addr zone=hook_per_ip:10m rate=50r/s;
 
-upstream edge_app {
-    server edge:8080;
-    keepalive 64;
-}
+# See the note in snippets/stream-cache.conf: a recreated container gets a new IP,
+# and an upstream block would hold the old one until nginx is reloaded.
+resolver 127.0.0.11 ipv6=off valid=10s;
 
 upstream core_internal {
     server ${WG_CORE_IP}:8080;
@@ -38,6 +37,7 @@ server {
     ssl_certificate     /etc/nginx/certs/fullchain.pem;
     ssl_certificate_key /etc/nginx/certs/privkey.pem;
     add_header Strict-Transport-Security "max-age=31536000" always;
+    set $edge_upstream edge:8080;
     include /etc/nginx/snippets/stream-cache.conf;
 }
 

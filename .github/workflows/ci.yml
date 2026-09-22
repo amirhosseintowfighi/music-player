@@ -169,6 +169,23 @@ jobs:
           DOMAIN=example.com POSTGRES_PASSWORD=x MEILI_API_KEY=x BOT_USERNAME=b \
           CERTBOT_EMAIL=a@b.c \
             docker compose -f infra/compose/solo.yml config -q
+      - name: nginx templates load in a real nginx
+        # `nginx -t` is the only thing that knows whether a directive is allowed where
+        # it is written. A template that does not load means 502 for every request.
+        run: |
+          mkdir -p /tmp/n/conf.d /tmp/n/certs /tmp/n/cache
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=test' \
+            -keyout /tmp/n/certs/privkey.pem -out /tmp/n/certs/fullchain.pem 2>/dev/null
+          DOMAIN=example.com EDGE_CACHE_SIZE=1g \
+            envsubst '$DOMAIN $EDGE_CACHE_SIZE' \
+            < infra/nginx/solo.conf.template > /tmp/n/conf.d/default.conf
+          docker run --rm \
+            -v /tmp/n/conf.d:/etc/nginx/conf.d:ro \
+            -v "$PWD/infra/nginx/snippets:/etc/nginx/snippets:ro" \
+            -v /tmp/n/certs:/etc/nginx/certs:ro \
+            -v /tmp/n/cache:/var/cache/nginx/stream \
+            nginx:stable-alpine3.24 nginx -t
+
       - name: Kubernetes manifests are valid
         run: |
           docker run --rm -v "$PWD:/w" -w /w ghcr.io/yannh/kubeconform:latest             -strict -summary -ignore-missing-schemas infra/k8s/base infra/k8s/edge

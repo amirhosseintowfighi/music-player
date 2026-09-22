@@ -17,16 +17,10 @@ limit_req_zone $binary_remote_addr zone=api_per_ip:20m rate=20r/s;
 limit_req_zone $binary_remote_addr zone=stream_per_ip:20m rate=30r/s;
 limit_req_zone $binary_remote_addr zone=hook_per_ip:10m rate=50r/s;
 
-upstream api_app {
-    least_conn;
-    server api:8000;
-    keepalive 64;
-}
-
-upstream edge_app {
-    server edge:8080;
-    keepalive 64;
-}
+# Docker's embedded DNS, re-checked every 10s. Without this nginx would keep the
+# IP a container had when nginx started, and `compose up -d api` (which is what
+# changing .env forces) would answer 502 until someone reloaded nginx.
+resolver 127.0.0.11 ipv6=off valid=10s;
 
 ssl_protocols TLSv1.2 TLSv1.3;
 ssl_session_cache shared:SSL:20m;
@@ -60,9 +54,11 @@ server {
     # Never exposed publicly, even on one machine.
     location ~ ^/(internal|metrics|docs|openapi.json) { return 404; }
 
+    set $api_upstream api:8000;
+
     location / {
         limit_req zone=api_per_ip burst=60 nodelay;
-        proxy_pass http://api_app;
+        proxy_pass http://$api_upstream;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;
@@ -111,9 +107,11 @@ server {
     # A second gate in front of the panel is cheap; see RUNBOOK.
     # allow 1.2.3.4; deny all;
 
+    set $api_upstream api:8000;
+
     location /admin/ {
         limit_req zone=api_per_ip burst=30 nodelay;
-        proxy_pass http://api_app;
+        proxy_pass http://$api_upstream;
         proxy_http_version 1.1;
         proxy_set_header Connection "";
         proxy_set_header Host $host;
@@ -139,6 +137,7 @@ server {
     ssl_certificate     /etc/nginx/certs/fullchain.pem;
     ssl_certificate_key /etc/nginx/certs/privkey.pem;
     add_header Strict-Transport-Security "max-age=31536000" always;
+    set $edge_upstream edge:8080;
     include /etc/nginx/snippets/stream-cache.conf;
 }
 
@@ -158,7 +157,8 @@ server {
         limit_req zone=hook_per_ip burst=200 nodelay;
         client_max_body_size 1m;
         # One machine: straight to the API, no tunnel in between.
-        proxy_pass http://api_app/tg/webhook;
+        set $api_upstream api:8000;
+        proxy_pass http://$api_upstream/tg/webhook;
         proxy_set_header X-Telegram-Bot-Api-Secret-Token $http_x_telegram_bot_api_secret_token;
         proxy_connect_timeout 5s;
         proxy_read_timeout 30s;
