@@ -33,9 +33,11 @@
 
 ۱. در تلگرام به [@BotFather](https://t.me/BotFather) بگو `/newbot`، اسم و یوزرنیم
    بده، و **توکن** را نگه دار.
-۲. `/setdomain` را بزن و دامنهٔ مینی‌اپ را بده (مثلاً `https://app.example.com`).
-   بدون این، مینی‌اپ باز نمی‌شود.
-۳. اگر می‌خواهی دکمهٔ منو مستقیم مینی‌اپ را باز کند: `/setmenubutton`.
+۲. `/setmenubutton` را بزن و آدرس مینی‌اپ را بده (مثلاً `https://app.example.com`).
+   مینی‌اپ از همین دکمه باز می‌شود و به `/setdomain` نیازی ندارد.
+۳. `/setdomain` را بزن و **دامنهٔ پنل ادمین** را بده (مثلاً `admin.example.com`).
+   این فقط برای Login Widget پنل است؛ هر ربات یک دامنه بیشتر نمی‌پذیرد، پس
+   اگر روی `app.` تنظیمش کنی، ورود به پنل با «something went wrong» رد می‌شود.
 
 ---
 
@@ -151,7 +153,8 @@ $C exec nginx nginx -s reload
 
 تمدید هم همین دو دستور است؛ در cron ماهانه بگذارش.
 
-در BotFather هم `/setdomain` را روی `https://app.<دامنه>` تنظیم کن.
+در BotFather هم `/setmenubutton` را روی `https://app.<دامنه>` و `/setdomain` را روی
+`admin.<دامنه>` تنظیم کن (دومی فقط برای ورود به پنل ادمین است).
 
 **فرق `solo` با استقرار دو سروری**: در `solo` وبهوک مستقیم به API می‌رود (تونلی در
 کار نیست) و کرالر و استریم از همان ماشین بیرون می‌زنند. اگر سرور داخل ایران است،
@@ -308,7 +311,8 @@ cd backend && pytest tests/unit/test_title_corpus.py -s -q
 
 | نشانه | معمولاً یعنی | کجا را ببین |
 |---|---|---|
-| مینی‌اپ سفید می‌ماند | `/setdomain` در BotFather ست نشده، یا `WEBAPP_URL` غلط است | کنسول مرورگر |
+| مینی‌اپ سفید می‌ماند | `WEBAPP_URL` غلط است یا باندل با `VITE_API_URL` اشتباه ساخته شده | کنسول مرورگر |
+| پنل ادمین: «something went wrong» روی دکمهٔ تلگرام | `/setdomain` روی `admin.<دامنه>` تنظیم نشده | [BotFather](https://t.me/BotFather) |
 | «الان قابل پخش نیست» | اکانت resolver لاگین نشده یا FloodWait خورده | [RUNBOOK → resolver مرده](RUNBOOK.md#resolver) |
 | کانال‌ها کرال می‌شوند ولی ترکی اضافه نمی‌شود | تلگرام HTML پیش‌نمایش را عوض کرده | [RUNBOOK → پارسر شکسته](RUNBOOK.md#parser) |
 | کانال در `preview_disabled` | کانال خصوصی است یا preview را بسته | از کاربر بخواه بات را ادمین کند |

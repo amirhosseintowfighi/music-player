@@ -172,7 +172,15 @@ if [ "$PROFILE" = "solo" ]; then
     2. add the first channels to crawl
          printf '%s\\n' @Musicirani_Official @PersianOldies > channels.txt
          \$C exec -T api python -m app.cli seed-channels - < channels.txt
-    3. in @BotFather: /setdomain → https://app.${DOMAIN}, and /setmenubutton
+    3. in @BotFather, two different settings:
+         /setmenubutton → https://app.${DOMAIN}   (opens the Mini App)
+         /setdomain     → admin.${DOMAIN}         (Login Widget for the admin panel)
+       One domain per bot, and it must be the admin one: the Mini App does not
+       need /setdomain, the panel's login button does not work without it.
+
+    The admin panel has no username or password — you sign in at
+    https://admin.${DOMAIN} with the Telegram button, and only Telegram ids
+    added via \`add-admin\` are let in.
 
   Full guide: docs/GETTING-STARTED.md
 TLS
