@@ -116,8 +116,16 @@ curl -fsS http://localhost:8000/healthz && echo
 هر دو فرانت‌اند، همه روی یک ماشین.
 
 ```bash
-cd music-player && PROFILE=solo bash scripts/install.sh
+cd music-player
+git pull                       # اگر از قبل کلون کرده‌ای
+PROFILE=solo bash scripts/install.sh
 ```
+
+> `install.sh` فقط وقتی خودش `git pull` می‌زند که ریپو را تازه کلون کند. اگر از
+> داخل ریپوی موجود اجرایش کنی، عمداً به کدت دست نمی‌زند — پس آپدیت با خودت است.
+
+`.env` موجود دست‌نخورده می‌ماند؛ اگر با پروفایل dev ساخته شده بود، فقط ایمیل
+Let's Encrypt را می‌پرسد و به همان فایل اضافه می‌کند.
 
 این پروفایل خودش:
 

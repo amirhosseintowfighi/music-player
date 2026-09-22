@@ -77,6 +77,17 @@ DOMAIN="$(grep -E '^DOMAIN=' "$ENV_FILE" | cut -d= -f2- | tr -d '"' || true)"
 if [ "$PROFILE" = "solo" ]; then
   [ -n "$DOMAIN" ] || die "DOMAIN is not set in $ENV_FILE."
 
+  # An .env written by an earlier run (or by the dev profile) has no certbot email.
+  if ! grep -q '^CERTBOT_EMAIL=.' "$ENV_FILE"; then
+    printf '\n  Email for Let'"'"'s Encrypt (for expiry warnings): '
+    read -r CERTBOT_EMAIL_INPUT || true
+    if [ -n "${CERTBOT_EMAIL_INPUT:-}" ]; then
+      sed -i.bak '/^CERTBOT_EMAIL=/d' "$ENV_FILE" 2>/dev/null || true
+      printf 'CERTBOT_EMAIL=%s\n' "$CERTBOT_EMAIL_INPUT" >> "$ENV_FILE"
+      rm -f "$ENV_FILE.bak"
+    fi
+  fi
+
   say "Building the Mini App and the admin panel (inside Docker; no Node needed here)"
   "${COMPOSE[@]}" --profile build run --rm frontend
 

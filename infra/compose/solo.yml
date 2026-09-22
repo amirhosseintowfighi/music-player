@@ -145,10 +145,15 @@ services:
     volumes:
       - ../certs:/certs
       - certbotwww:/var/www/certbot
+    # Note the plain ${CERTBOT_EMAIL:-}: compose interpolates the whole file before
+    # it looks at profiles, so a `:?` here would break `up`, `ps` and `logs` for
+    # everyone who has not set it. The check belongs inside the command instead.
     entrypoint: >-
       sh -ec "
+        [ -n '${CERTBOT_EMAIL:-}' ] ||
+          { echo 'set CERTBOT_EMAIL=you@example.com in the env file first'; exit 1; };
         certbot certonly --webroot -w /var/www/certbot
-          --non-interactive --agree-tos --email ${CERTBOT_EMAIL:?set CERTBOT_EMAIL}
+          --non-interactive --agree-tos --email ${CERTBOT_EMAIL:-}
           -d app.${DOMAIN} -d admin.${DOMAIN} -d api.${DOMAIN}
           -d cdn.${DOMAIN} -d hook.${DOMAIN} &&
         cp -L /etc/letsencrypt/live/app.${DOMAIN}/fullchain.pem /certs/fullchain.pem &&
