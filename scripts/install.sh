@@ -99,6 +99,14 @@ if [ -n "${ADMIN_ID:-}" ] && [ "$ADMIN_ID" != "0" ]; then
   "${COMPOSE[@]}" exec -T api python -m app.cli add-admin "$ADMIN_ID" --apply
 fi
 
+# ── 6. the streaming edge the player fetches bytes from ──────────────────────
+# Without this row the API has nowhere to point the player and every play fails
+# with "no streaming edge available". The URL must be reachable by the *browser*,
+# so on a real server pass the public one: CDN_URL=https://cdn.example.com
+CDN="${CDN_URL:-http://localhost:8081}"
+say "Registering the streaming edge ($CDN)"
+"${COMPOSE[@]}" exec -T api python -m app.cli add-edge "$CDN" 100
+
 say "Done."
 cat <<'NEXT'
   Next:
@@ -108,6 +116,21 @@ cat <<'NEXT'
          printf '%s\n' @Musicirani_Official @PersianOldies > channels.txt
          docker compose exec -T api python -m app.cli seed-channels - < channels.txt
     3. open the Mini App from your bot's menu button
+
+  This compose publishes everything on 127.0.0.1 only, so from your laptop use
+  an SSH tunnel to look at it:
+       ssh -L 8000:127.0.0.1:8000 -L 8081:127.0.0.1:8081 user@this-server
+
+  To serve real users from this one server you also need, once:
+    * the two front ends built
+         (cd miniapp && npm ci && npm run build)
+         (cd admin   && npm ci && npm run build)
+    * a reverse proxy with TLS in front — Telegram requires HTTPS for both the
+      Mini App and the webhook — mapping app.<domain> to miniapp/dist,
+      admin.<domain> to admin/dist, api.<domain> to 127.0.0.1:8000 and
+      cdn.<domain> to 127.0.0.1:8081
+    * the edge re-registered with its public URL
+         CDN_URL=https://cdn.<domain> bash scripts/install.sh
 
   Full guide: docs/GETTING-STARTED.md
 NEXT
