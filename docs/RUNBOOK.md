@@ -225,6 +225,12 @@ SELECT id, username, status, crawl_status, crawl_error, fail_count,
 | `error` + `fail_count < 5` | خطای گذرا؛ backoff نمایی فعال است | کاری لازم نیست |
 | `error` + `fail_count >= 5` | کانال کنار گذاشته شده | علت را در `crawl_error` ببین، سپس «کرال مجدد» |
 
+کانال‌های بعدی را قبل از افزودن غربال کن تا همین ردیف‌ها دوباره ساخته نشوند:
+
+```bash
+bash scripts/check-channels.sh < candidates.txt | grep '^ok' | cut -f2 > channels.txt
+```
+
 اگر IP کرالر بلاک شده باشد، لاگ edge پر از `crawl.blocked` است. پراکسی اضافه کن:
 `CRAWL_PROXIES=http://a:1,http://b:2` و edge را ری‌استارت کن.
 

@@ -175,8 +175,10 @@ if [ "$PROFILE" = "solo" ]; then
   Then:
     1. register the bot's webhook
          \$C exec api python -m app.bot.set_webhook
-    2. add the first channels to crawl
-         printf '%s\\n' @Musicirani_Official @PersianOldies > channels.txt
+    2. add the first channels to crawl. Screen them first — the crawler reads the
+       public web preview and plenty of music channels have it switched off:
+         bash scripts/check-channels.sh @Musicirani_Official @RadioJavan
+         printf '%s\\n' @Musicirani_Official @RadioJavan > channels.txt
          \$C exec -T api python -m app.cli seed-channels - < channels.txt
     3. in @BotFather, two different settings:
          /setmenubutton → https://app.${DOMAIN}   (opens the Mini App)
@@ -199,7 +201,7 @@ cat <<'NEXT'
     1. register the bot's webhook
          docker compose exec api python -m app.bot.set_webhook
     2. add the first channels to crawl (one username or t.me link per line)
-         printf '%s\n' @Musicirani_Official @PersianOldies > channels.txt
+         printf '%s\n' @Musicirani_Official @RadioJavan > channels.txt
          docker compose exec -T api python -m app.cli seed-channels - < channels.txt
     3. open the Mini App from your bot's menu button
 
