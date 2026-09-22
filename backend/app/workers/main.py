@@ -95,3 +95,7 @@ class WorkerSettings:
     ]
     max_jobs = 20
     job_timeout = 600
+    # The container healthcheck runs `arq ... --check`, which reads the key arq writes
+    # here. The default is hourly, which would leave a dead worker looking healthy for
+    # up to an hour; a minute costs one Redis write and is worth it.
+    health_check_interval = 60
