@@ -2,6 +2,7 @@ export const fa = {
   'app.loading': 'در حال آماده‌سازی…',
   'app.error': 'مشکلی پیش آمد',
   'app.retry': 'دوباره امتحان کن',
+  'app.signInFailed': 'ورود ناموفق بود — سرور جواب نداد. اگر ادمینی: گواهی TLS و آدرس API را چک کن.',
   'app.outsideTelegram': 'این صفحه را از داخل تلگرام باز کن.',
   'app.offline': 'اینترنت قطع است',
 

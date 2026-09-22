@@ -112,3 +112,13 @@ describe('qs', () => {
     expect(qs({})).toBe('');
   });
 });
+
+describe('opening the Mini App in the wrong place', () => {
+  it('reports "no init data" rather than a network failure', async () => {
+    const { login, ApiError } = await import('@/api/client');
+    vi.stubGlobal('Telegram', undefined);
+
+    await expect(login()).rejects.toMatchObject({ code: 'no_init_data', status: 401 });
+    await expect(login()).rejects.toBeInstanceOf(ApiError);
+  });
+});

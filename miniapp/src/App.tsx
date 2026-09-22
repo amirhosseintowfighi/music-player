@@ -271,7 +271,8 @@ function Shell() {
 /** Authenticates with initData before the first API call. */
 function Gate({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
-  const [state, setState] = useState<'loading' | 'ready' | 'failed'>('loading');
+  const [state, setState] = useState<'loading' | 'ready' | 'outside' | 'failed'>('loading');
+  const [detail, setDetail] = useState('');
   const me = useMe();
   const setLang = useUi((s) => s.setLang);
 
@@ -286,7 +287,15 @@ function Gate({ children }: { children: React.ReactNode }) {
         else if (param.startsWith('tr_')) window.location.hash = `#/track/${param.slice(3)}`;
         setState('ready');
       })
-      .catch(() => !cancelled && setState('failed'));
+      .catch((error: unknown) => {
+        if (cancelled) return;
+        // Two very different failures used to show the same sentence, and the
+        // second one sent operators hunting in the wrong place: "opened in a
+        // browser" is the user's doing, "the API did not answer" is the server's.
+        const noInitData = error instanceof ApiError && error.code === 'no_init_data';
+        setDetail(error instanceof ApiError ? `${error.status} ${error.code}` : 'network');
+        setState(noInitData ? 'outside' : 'failed');
+      });
     return () => {
       cancelled = true;
     };
@@ -304,10 +313,20 @@ function Gate({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
-  if (state === 'failed') {
+  if (state === 'outside') {
     return (
       <div className="grid h-full place-items-center px-8">
         <Glass className="p-6 text-center text-[13.5px] leading-7">{t('app.outsideTelegram')}</Glass>
+      </div>
+    );
+  }
+  if (state === 'failed') {
+    return (
+      <div className="grid h-full place-items-center px-8">
+        <Glass className="p-6 text-center text-[13.5px] leading-7">
+          <p>{t('app.signInFailed')}</p>
+          <p className="mt-2 text-[11.5px] text-[var(--ink-faint)]">{detail}</p>
+        </Glass>
       </div>
     );
   }

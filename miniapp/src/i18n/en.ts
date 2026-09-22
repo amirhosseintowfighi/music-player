@@ -4,6 +4,7 @@ export const en: Record<keyof typeof fa, string> = {
   'app.loading': 'Getting things ready…',
   'app.error': 'Something went wrong',
   'app.retry': 'Try again',
+  'app.signInFailed': 'Sign-in failed — the server did not answer. If you run this: check the TLS certificate and the API URL.',
   'app.outsideTelegram': 'Open this page from inside Telegram.',
   'app.offline': 'You are offline',
 
