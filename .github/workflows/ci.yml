@@ -159,7 +159,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Shell scripts parse
-        run: for f in infra/scripts/*.sh; do bash -n "$f"; done
+        run: for f in infra/scripts/*.sh scripts/*.sh; do bash -n "$f"; done
       - name: Compose files are valid
         run: |
           docker compose -f compose.yaml config -q

@@ -678,3 +678,28 @@ async def test_run_broadcasts_job_picks_up_scheduled_work(
     assert await jobs.run_broadcasts({"sessionmaker": make_sessionmaker(engine)}) == {
         "broadcasts": 0
     }  # nothing left to do
+
+
+async def test_the_cli_can_make_the_first_owner(session: AsyncSession) -> None:
+    """A server bootstrap should not need psql (`add-admin <id> --apply`)."""
+    from sqlalchemy import text as sql
+
+    from app.cli import _ADD_ADMIN_SQL
+
+    await session.execute(sql(_ADD_ADMIN_SQL).bindparams(tg=90501))
+    row = (
+        await session.execute(
+            sql("SELECT role, is_active, permissions FROM admin_users WHERE tg_id = 90501")
+        )
+    ).one()
+    assert (row.role, row.is_active, row.permissions) == ("owner", True, ["*"])
+
+    # Running it twice re-activates rather than failing.
+    await session.execute(
+        sql("UPDATE admin_users SET is_active = false, role = 'support' WHERE tg_id = 90501")
+    )
+    await session.execute(sql(_ADD_ADMIN_SQL).bindparams(tg=90501))
+    again = (
+        await session.execute(sql("SELECT role, is_active FROM admin_users WHERE tg_id = 90501"))
+    ).one()
+    assert (again.role, again.is_active) == ("owner", True)

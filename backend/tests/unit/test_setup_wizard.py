@@ -92,9 +92,13 @@ def test_the_jwt_pair_is_a_real_ed25519_pair_on_one_line() -> None:
     loaded = serialization.load_pem_private_key(
         private.strip('"').replace("\\n", "\n").encode(), password=None
     )
-    assert loaded.public_key().public_bytes(
-        serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
-    ).decode().strip() == public.strip('"').replace("\\n", "\n").strip()
+    assert (
+        loaded.public_key()
+        .public_bytes(serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo)
+        .decode()
+        .strip()
+        == public.strip('"').replace("\\n", "\n").strip()
+    )
 
 
 def test_pem_to_env_is_reversible() -> None:
@@ -168,9 +172,7 @@ def test_the_wizard_writes_a_usable_env_file(
         ]
     )
     # Empty means "the user pressed Enter", which keeps the offered default.
-    monkeypatch.setattr(
-        wizard, "ask", lambda _prompt, default="", **_k: next(answers) or default
-    )
+    monkeypatch.setattr(wizard, "ask", lambda _prompt, default="", **_k: next(answers) or default)
     monkeypatch.setattr(wizard, "ask_yes", lambda *_a, **_k: True)
     monkeypatch.setattr(wizard, "report", lambda _checks: True)
 
@@ -196,9 +198,7 @@ def test_the_wizard_writes_a_usable_env_file(
     assert "add-admin 42424242" in printed
 
 
-def test_check_only_mode_touches_nothing(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_check_only_mode_touches_nothing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(wizard, "report", lambda _checks: True)
     monkeypatch.chdir(tmp_path)
 

@@ -41,9 +41,20 @@
 
 ## ۱. راه‌اندازی محلی (ده دقیقه)
 
+**یک دستور، از صفر تا بالا آمدن:**
+
 ```bash
 git clone https://github.com/amirhosseintowfighi/music-player.git
-cd music-player
+cd music-player && bash scripts/install.sh
+```
+
+`install.sh` پیش‌نیازها را چک می‌کند، ویزارد را اجرا می‌کند، ایمیج‌ها را می‌سازد،
+سرویس‌ها را بالا می‌آورد، منتظر می‌ماند تا API واقعاً جواب بدهد و تو را ادمین
+می‌کند. هر قدمش دستوری است که خودت هم می‌توانستی بزنی؛ چیزی پنهان نیست.
+
+اگر می‌خواهی قدم‌به‌قدم خودت پیش بروی، فقط ویزارد را صدا بزن:
+
+```bash
 python3 scripts/setup.py
 ```
 
@@ -71,16 +82,16 @@ SETUP_LANG=en python3 scripts/setup.py                # انگلیسی
 بعد از ویزارد:
 
 ```bash
-docker compose up -d                                  # همه‌چیز بالا می‌آید
-docker compose exec api alembic upgrade head          # اسکیمای دیتابیس
-docker compose exec api python -m app.cli add-admin <tg-id>   # خودت را ادمین کن
+docker compose up -d --build                                    # همه‌چیز بالا می‌آید
+docker compose exec api python -m app.cli add-admin <tg-id> --apply   # خودت را ادمین کن
 ```
 
-`add-admin` یک خط SQL چاپ می‌کند؛ همان را اجرا کن:
+مهاجرت دیتابیس لازم نیست دستی اجرا شود: سرویس `migrate` قبل از `api` بالا می‌آید و
+`alembic upgrade head` را خودش می‌زند. (اگر خواستی دستی: `docker compose run --rm
+migrate`.)
 
-```bash
-docker compose exec -T db psql -U tmusic -d tmusic <<< "<همان SQL>"
-```
+`add-admin` بدون `--apply` فقط SQL را چاپ می‌کند؛ با `--apply` خودش در دیتابیس
+می‌نویسد.
 
 حالا سلامت را چک کن:
 

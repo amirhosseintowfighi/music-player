@@ -44,7 +44,16 @@ bruno/     کالکشن Bruno برای تست دستی API
 docs/      مستندات
 ```
 
-## شروع سریع — ویزارد نصب
+## شروع سریع
+
+روی یک سرور تازه، همین دو خط کافی است:
+
+```bash
+git clone https://github.com/amirhosseintowfighi/music-player.git
+cd music-player && bash scripts/install.sh
+```
+
+و اگر فقط تنظیمات را می‌خواهی و بقیه را خودت می‌زنی:
 
 ```bash
 python3 scripts/setup.py

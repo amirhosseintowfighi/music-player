@@ -6,7 +6,8 @@ python -m app.cli add-edge <host> [weight]
 python -m app.cli seed-demo           # demo channel + tracks for UI work (dev only)
 python -m app.cli reindex-search
 python -m app.cli fake-initdata <n>   # signed initData for k6 (dev/staging only)
-python -m app.cli add-admin <tg_id>   # prints the SQL for the first owner
+python -m app.cli add-admin <tg_id>           # prints the SQL for the first owner
+python -m app.cli add-admin <tg_id> --apply   # ...or just does it, on the server
 python -m app.cli seed-channels <file>   # batch import channels to crawl (- for stdin)
 """
 
@@ -22,6 +23,7 @@ from pathlib import Path
 
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert
 
 from app.config import get_settings
@@ -77,14 +79,30 @@ def fake_initdata(count: int) -> None:
         print(sign_init_data({"auth_date": now, "user": json.dumps(user)}, token))
 
 
+_ADD_ADMIN_SQL = (
+    "INSERT INTO admin_users (tg_id, role, permissions, is_active)"
+    " VALUES (:tg, 'owner', ARRAY['*'], true)"
+    " ON CONFLICT (tg_id) DO UPDATE SET role = 'owner', is_active = true"
+)
+
+
 def add_admin_sql(tg_id: int) -> None:
-    """Prints the SQL that makes the first owner; deliberately not an API endpoint."""
-    values = f"VALUES ({tg_id}, 'owner', ARRAY['*'], true)"
-    print(
-        "INSERT INTO admin_users (tg_id, role, permissions, is_active) "
-        + values
-        + " ON CONFLICT (tg_id) DO UPDATE SET role = 'owner', is_active = true;"
-    )
+    """Prints the SQL that makes the first owner (there is no API for this)."""
+    print(_ADD_ADMIN_SQL.replace(":tg", str(tg_id)) + ";")
+
+
+async def add_admin(tg_id: int) -> None:
+    """Makes ``tg_id`` an owner, from the server itself.
+
+    Same statement as ``add-admin``, executed here instead of pasted into psql —
+    a server bootstrap should not need a second tool. Deliberately CLI-only: being
+    able to reach a shell on the box is the authorisation.
+    """
+    engine = make_engine(get_settings())
+    async with session_scope(make_sessionmaker(engine)) as session:
+        await session.execute(text(_ADD_ADMIN_SQL).bindparams(tg=tg_id))
+    await engine.dispose()
+    print(f"owner added: {tg_id}")
 
 
 async def add_edge(host: str, weight: int) -> None:
@@ -207,6 +225,8 @@ def main(argv: list[str]) -> None:
             fake_initdata(int(count))
         case ["add-admin", tg_id]:
             add_admin_sql(int(tg_id))
+        case ["add-admin", tg_id, "--apply"]:
+            asyncio.run(add_admin(int(tg_id)))
         case ["seed-demo"]:
             asyncio.run(seed_demo())
         case ["seed-channels", path]:
