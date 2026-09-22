@@ -38,3 +38,14 @@ if (kb > LIMIT_KB) {
   console.error(`✗ over budget by ${(kb - LIMIT_KB).toFixed(1)} KB`);
   process.exit(1);
 }
+
+// A bundle built without VITE_API_URL silently points every request at its own
+// static host, which comes back as index.html and looks like a network error on a
+// phone. Cheap to notice here; expensive to debug on a server.
+if (!process.env.VITE_API_URL) {
+  console.warn(
+    '! VITE_API_URL was not set: this bundle calls its own origin.\n' +
+      '  Fine for local dev; for a deployment build it with\n' +
+      '  VITE_API_URL=https://api.<domain> npm run build',
+  );
+}

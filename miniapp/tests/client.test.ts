@@ -122,3 +122,19 @@ describe('opening the Mini App in the wrong place', () => {
     await expect(login()).rejects.toBeInstanceOf(ApiError);
   });
 });
+
+describe('a response that is not JSON', () => {
+  it('names the problem instead of looking like a network error', async () => {
+    const { login, ApiError } = await import('@/api/client');
+    vi.stubGlobal('Telegram', { WebApp: { initData: 'user=%7B%22id%22%3A1%7D&hash=x' } });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => new Response('<!doctype html><title>app</title>', { status: 200 })),
+    );
+
+    // This is what "built without VITE_API_URL" looks like: the POST reaches the
+    // static host and comes back as the Mini App's own index.html.
+    await expect(login()).rejects.toMatchObject({ code: 'bad_response' });
+    await expect(login()).rejects.toBeInstanceOf(ApiError);
+  });
+});

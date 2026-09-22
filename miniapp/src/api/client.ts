@@ -92,7 +92,19 @@ export function clearTokens(): void {
 async function parse(response: Response): Promise<unknown> {
   if (response.status === 204) return null;
   const text = await response.text();
-  return text ? JSON.parse(text) : null;
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Almost always one thing: the app was built without VITE_API_URL, so the
+    // request went to its own static host and came back as index.html. Saying so
+    // beats "network error" by a mile when you are the one running the server.
+    throw new ApiError(
+      response.status,
+      'bad_response',
+      `Expected JSON from ${response.url || 'the API'}, got ${text.slice(0, 40)}…`,
+    );
+  }
 }
 
 async function raw<T>(path: string, init: RequestInit = {}, token?: string | null): Promise<T> {
