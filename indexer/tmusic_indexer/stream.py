@@ -179,7 +179,7 @@ class Sources:
         return message
 
     async def mtproto(self, ticket: StreamTicket, start: int, end: int) -> AsyncIterator[bytes]:
-        account = self.account.ready()
+        account = await self.account.ready_or_reload()
         if account is None:
             raise LookupError("no healthy account")
         pos = start  # next byte owed to the client; a retry resumes from here
@@ -223,7 +223,7 @@ class Sources:
         is where they come from. Deliberately the same extraction the MTProto indexer
         uses, so a resolved track is indistinguishable from an indexed one.
         """
-        account = self.account.ready()
+        account = await self.account.ready_or_reload()
         if account is None:
             raise LookupError("no healthy account")
         peer = await self.account.resolve(username, channel_id)
@@ -242,7 +242,7 @@ class Sources:
         """
         if ticket.message_id is None:
             return None
-        account = self.account.ready()
+        account = await self.account.ready_or_reload()
         if account is not None:
             message = await self._message(account, ticket, refresh=False)
             data = await account.client.download_media(message, file=bytes, thumb=-1)

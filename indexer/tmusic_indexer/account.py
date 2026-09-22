@@ -44,6 +44,9 @@ ACCOUNT_READY = Gauge("indexer_account_ready", "1 when the resolver account can 
 # or banned, and playback may not go down with it.
 CRAWL_PREFIX = "crawl"
 
+# How often a process with no session looks on disk for one somebody just created.
+RELOAD_INTERVAL_S = 60.0
+
 ClientFactory = Callable[[str], Any]
 
 
@@ -79,6 +82,7 @@ class ResolverAccount:
         self._factory = client_factory or self._telethon_client
         self.role = role
         self.account: Account | None = None
+        self._last_reload = 0.0
 
     def _mine(self, key: str) -> bool:
         crawler = key.lower().startswith(CRAWL_PREFIX)
@@ -170,6 +174,29 @@ class ResolverAccount:
         usable = account if account is not None and account.available() else None
         self._ready(1 if usable else 0)
         return usable
+
+    async def ready_or_reload(self) -> Account | None:
+        """Same as ``ready``, but looks on disk again when there is no session yet.
+
+        Logging an account in writes a file; the process that needs it was started
+        before that file existed. Without this, `login` silently does nothing until
+        somebody also restarts the service — which is exactly the step people miss,
+        and the symptom is "no healthy account" on every play.
+
+        Only the no-session and disabled cases reload, at most once a minute: a
+        cooling account is not a missing one and must be left alone to cool.
+        """
+        account = self.ready()
+        if account is not None:
+            return account
+        if self.account is not None and self.account.status != "disabled":
+            return None
+        now = time.monotonic()
+        if now - self._last_reload < RELOAD_INTERVAL_S:
+            return None
+        self._last_reload = now
+        await self.start()
+        return self.ready()
 
     def on_flood(self, seconds: int) -> AccountReportIn:
         """Cools the account down. Playback of resolved tracks is unaffected."""

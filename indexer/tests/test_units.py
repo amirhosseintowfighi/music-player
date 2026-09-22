@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 from tests.conftest import audio_doc, audio_message
 from tmusic_common.stream_ticket import StreamTicket, TicketError, sign
 from tmusic_indexer import crypto
+from tmusic_indexer.config import Settings
 from tmusic_indexer.extract import audio_document, to_audio_item
 from tmusic_indexer.file_ids import decode_unique_id, document_unique_id, rle_decode, rle_encode
 from tmusic_indexer.stream import RangeNotSatisfiable, parse_range, ticket_for
@@ -108,3 +110,43 @@ def test_ticket_for_checks_path_and_signature() -> None:
         ticket_for("/x/5", token, [b"k1"])
     with pytest.raises(TicketError):
         ticket_for("/s/5", None, [b"k1"])
+
+
+# ── a session logged in after startup ─────────────────────────────────────────
+
+
+async def test_a_session_created_after_startup_is_picked_up(
+    settings: Settings, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`login` writes a file; the service that needs it is already running."""
+    from tests.conftest import FakeClient
+    from tmusic_indexer.account import ResolverAccount
+    from tmusic_indexer.crypto import save_session
+
+    account = ResolverAccount(settings, client_factory=lambda _s: FakeClient())
+    await account.start()
+    assert await account.ready_or_reload() is None  # nothing on disk yet
+
+    save_session(
+        settings.sessions_dir, "acc1", "session-string", settings.session_enc_key.get_secret_value()
+    )
+    # Still rate-limited from the attempt above; the next minute looks again.
+    assert await account.ready_or_reload() is None
+    monkeypatch.setattr("tmusic_indexer.account.RELOAD_INTERVAL_S", 0.0)
+
+    found = await account.ready_or_reload()
+    assert found is not None
+    assert found.key == "acc1"
+
+
+async def test_a_cooling_account_is_not_reloaded(settings: Settings) -> None:
+    """Reloading a cooling account would hand it straight back to Telegram."""
+    from tests.conftest import FakeClient
+    from tmusic_indexer.account import Account, ResolverAccount
+
+    account = ResolverAccount(settings, client_factory=lambda _s: FakeClient())
+    account.account = Account(key="acc1", client=FakeClient(), status="cooling")
+    account.account.cooling_until = time.time() + 300
+
+    assert await account.ready_or_reload() is None
+    assert account.account.status == "cooling"  # untouched
