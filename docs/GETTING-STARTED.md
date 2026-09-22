@@ -329,6 +329,7 @@ cd backend && pytest tests/unit/test_title_corpus.py -s -q
 | نشانه | معمولاً یعنی | کجا را ببین |
 |---|---|---|
 | مینی‌اپ سفید می‌ماند | `WEBAPP_URL` غلط است یا باندل با `VITE_API_URL` اشتباه ساخته شده | کنسول مرورگر |
+| پنل ادمین رمز را قبول نمی‌کند ولی همان رمز با curl کار می‌کند | `CORS_ORIGINS` آدرس `admin.<دامنه>` را ندارد | تب Network مرورگر |
 | پنل ادمین: «something went wrong» روی دکمهٔ تلگرام | `/setdomain` روی `admin.<دامنه>` تنظیم نشده | [BotFather](https://t.me/BotFather) |
 | «الان قابل پخش نیست» | اکانت resolver لاگین نشده یا FloodWait خورده | [RUNBOOK → resolver مرده](RUNBOOK.md#resolver) |
 | کانال در حالت `indexing` می‌ماند و هیچ خطایی نیست | `indexing_source` روی `crawler` نیست — مایگریشن ۰۰۰۹ را اجرا کن | [RUNBOOK](RUNBOOK.md) |

@@ -187,7 +187,8 @@ def test_the_wizard_writes_a_usable_env_file(
     assert env["BOT_USERNAME"] == "my_music_bot"  # the @ was stripped
     assert env["BOT_TOKEN"].startswith("123456789:")
     assert env["WEBAPP_URL"] == "https://app.example.com"
-    assert env["CORS_ORIGINS"] == '["https://app.example.com"]'
+    # Both browsers, or the panel's every request dies in CORS while curl works.
+    assert env["CORS_ORIGINS"] == '["https://app.example.com", "https://admin.example.com"]'
     assert env["ENV"] == "prod"
     assert "replace" not in env["INTERNAL_API_TOKEN"]
     assert env["JWT_PRIVATE_KEY"].startswith('"-----BEGIN')
