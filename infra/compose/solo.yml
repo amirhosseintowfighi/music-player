@@ -131,11 +131,9 @@ services:
       VITE_API_URL: https://api.${DOMAIN}
       VITE_BOT_USERNAME: ${BOT_USERNAME:?}
     volumes: [../..:/src]
-    command: >-
-      sh -ec "
-        cd /src/miniapp && npm ci --no-audit --no-fund && npm run build &&
-        cd /src/admin   && npm ci --no-audit --no-fund && npm run build
-      "
+    # One line on purpose: in a folded scalar an *indented* continuation keeps its
+    # newline, which silently turns one command into several.
+    command: ["sh", "-ec", "cd /src/miniapp && npm ci --no-audit --no-fund && npm run build && cd /src/admin && npm ci --no-audit --no-fund && npm run build"]
     profiles: ["build"]
 
   # Certificates for app/admin/api/cdn/hook.<domain>, via the ACME webroot nginx
@@ -148,17 +146,18 @@ services:
     # Note the plain ${CERTBOT_EMAIL:-}: compose interpolates the whole file before
     # it looks at profiles, so a `:?` here would break `up`, `ps` and `logs` for
     # everyone who has not set it. The check belongs inside the command instead.
+    # Every continuation line sits at the SAME indentation as the first, so the
+    # folded scalar becomes one line. Indent one of them further and YAML keeps the
+    # newline: certbot then runs with no arguments and starts asking questions.
     entrypoint: >-
       sh -ec "
-        [ -n '${CERTBOT_EMAIL:-}' ] ||
-          { echo 'set CERTBOT_EMAIL=you@example.com in the env file first'; exit 1; };
-        certbot certonly --webroot -w /var/www/certbot
-          --non-interactive --agree-tos --email ${CERTBOT_EMAIL:-}
-          -d app.${DOMAIN} -d admin.${DOMAIN} -d api.${DOMAIN}
-          -d cdn.${DOMAIN} -d hook.${DOMAIN} &&
-        cp -L /etc/letsencrypt/live/app.${DOMAIN}/fullchain.pem /certs/fullchain.pem &&
-        cp -L /etc/letsencrypt/live/app.${DOMAIN}/privkey.pem   /certs/privkey.pem &&
-        echo 'certificates written to infra/certs'
+      test -n '${CERTBOT_EMAIL:-}' || { echo 'set CERTBOT_EMAIL=you@example.com in the env file first'; exit 1; };
+      certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos
+      --email '${CERTBOT_EMAIL:-}'
+      -d app.${DOMAIN} -d admin.${DOMAIN} -d api.${DOMAIN} -d cdn.${DOMAIN} -d hook.${DOMAIN} &&
+      cp -L /etc/letsencrypt/live/app.${DOMAIN}/fullchain.pem /certs/fullchain.pem &&
+      cp -L /etc/letsencrypt/live/app.${DOMAIN}/privkey.pem /certs/privkey.pem &&
+      echo 'certificate written to infra/certs — now: nginx -s reload'
       "
     profiles: ["certs"]
 
