@@ -27,7 +27,7 @@ from app.config import Settings
 from app.errors import AppError, Forbidden, InvalidInput, LimitReached
 from app.models import Channel, User
 from app.security.initdata import TelegramUser
-from app.services import channels, users
+from app.services import channels, uploads, users
 from app.services.channels import ChannelRef
 from app.services.ingest import ingest_items
 from tmusic_common.indexer_contract import AudioItem
@@ -155,12 +155,41 @@ async def on_lang_chosen(query: CallbackQuery, session: AsyncSession) -> None:
     await query.answer(t("lang_set", lang))
 
 
+def _item_of(message: Message, message_id: int) -> AudioItem | None:
+    """The music in a message the bot received, with its Bot API file id.
+
+    That file id is the point: a track that arrives this way is playable at once,
+    with no MTProto account anywhere in the picture.
+    """
+    audio = message.audio
+    if audio is None:
+        return None
+    return AudioItem(
+        message_id=message_id,
+        posted_at=message.date,
+        file_unique_id=audio.file_unique_id,
+        duration=audio.duration,
+        file_size=audio.file_size or 0,
+        mime_type=audio.mime_type,
+        title=audio.title,
+        performer=audio.performer,
+        file_name=audio.file_name,
+        caption=message.caption,
+        has_thumb=audio.thumbnail is not None,
+        bot_file_id=audio.file_id,
+    )
+
+
 async def on_forward(message: Message, session: AsyncSession, settings: Settings) -> None:
     if message.from_user is None:
         return
     user = await _user(session, message.from_user)
     origin = message.forward_origin
     if not isinstance(origin, MessageOriginChannel):
+        # Not from a channel, but it may still be music worth keeping.
+        if message.audio is not None:
+            await on_private_audio(message, session, settings)
+            return
         await message.answer(t("not_a_channel", user.lang))
         return
     chat: Chat = origin.chat
@@ -171,6 +200,32 @@ async def on_forward(message: Message, session: AsyncSession, settings: Settings
         username=chat.username, tg_channel_id=mtproto_channel_id(chat.id), title=chat.title
     )
     await _add_and_reply(message, session, user, ref, settings)
+
+    # The forwarded post itself is a track, and the bot just received the file — so
+    # it is playable immediately, unlike the same track found by the crawler.
+    item = _item_of(message, origin.message_id)
+    channel = (
+        await session.scalars(select(Channel).where(Channel.username == chat.username))
+    ).one_or_none()
+    if item is not None and channel is not None and channel.status != "blacklisted":
+        await uploads.ingest_upload(session, channel, item, bot_id=settings.bot_id)
+
+
+async def on_private_audio(message: Message, session: AsyncSession, settings: Settings) -> None:
+    """A music file sent straight to the bot: index it and say what happened."""
+    if message.from_user is None or message.audio is None:
+        return
+    user = await _user(session, message.from_user)
+    item = _item_of(message, uploads.upload_message_id(message.audio.file_unique_id))
+    if item is None:
+        return
+    channel = await uploads.uploads_channel(session)
+    stats = await uploads.ingest_upload(session, channel, item, bot_id=settings.bot_id)
+    key = "upload_added" if stats.inserted else "upload_known"
+    title = item.title or item.file_name or "—"
+    await message.answer(
+        t(key, user.lang, title=title), reply_markup=_player_keyboard(settings, user.lang)
+    )
 
 
 async def on_text(message: Message, session: AsyncSession, settings: Settings) -> None:
@@ -262,6 +317,7 @@ def build_router() -> Router:
     router.message.register(on_lang, Command("lang"))
     router.callback_query.register(on_lang_chosen, F.data.in_({"lang:fa", "lang:en"}))
     router.message.register(on_forward, F.forward_origin)
+    router.message.register(on_private_audio, F.chat.type == ChatType.PRIVATE, F.audio)
     router.message.register(on_text, F.chat.type == ChatType.PRIVATE, F.text)
     router.my_chat_member.register(on_channel_membership, F.chat.type == ChatType.CHANNEL)
     router.channel_post.register(on_channel_audio, F.audio)

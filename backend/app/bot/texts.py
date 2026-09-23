@@ -77,6 +77,14 @@ TEXTS: dict[str, dict[Lang, str]] = {
         "fa": "✅ کانال «{title}» وصل شد. آهنگ‌های جدیدش خودکار اضافه می‌شوند.",
         "en": "✅ «{title}» is connected. New tracks will be added automatically.",
     },
+    "upload_added": {
+        "fa": "🎵 «{title}» اضافه شد. حالا در اپ قابل پخش است.",
+        "en": "🎵 «{title}» has been added. You can play it in the app now.",
+    },
+    "upload_known": {
+        "fa": "🎵 «{title}» از قبل در کتابخانه بود.",
+        "en": "🎵 «{title}» was already in the library.",
+    },
     "choose_lang": {"fa": "زبان را انتخاب کن:", "en": "Choose a language:"},
     "lang_set": {"fa": "زبان روی فارسی تنظیم شد.", "en": "Language set to English."},
     "sub_active": {

@@ -311,3 +311,80 @@ async def test_failing_handler_still_acks(
         client,
         private_message(text="/help", entities=[{"type": "bot_command", "offset": 0, "length": 5}]),
     )
+
+
+# ── music people send to the bot ──────────────────────────────────────────────
+
+
+def audio_field(file_unique_id: str, title: str = "Gole Sangam") -> dict[str, Any]:
+    return {
+        "file_id": f"CQAC-{file_unique_id}",
+        "file_unique_id": file_unique_id,
+        "duration": 245,
+        "performer": "Hayedeh",
+        "title": title,
+        "file_size": 4_000_000,
+        "mime_type": "audio/mpeg",
+    }
+
+
+async def test_a_track_sent_to_the_bot_is_indexed_and_playable_at_once(
+    client: httpx.AsyncClient, tg: RecordingSession, session: AsyncSession
+) -> None:
+    """No MTProto anywhere: the bot received the file, so it has a Bot API file id."""
+    await send(client, private_message(audio=audio_field("AgADupload01")))
+
+    track = (
+        await session.scalars(select(Track).where(Track.file_unique_id == "AgADupload01"))
+    ).one()
+    assert track.bot_file_id == "CQAC-AgADupload01"
+    assert track.resolve_status == "resolved"
+    assert track.playable
+    assert "Gole Sangam" in " ".join(tg.texts())
+
+
+async def test_the_same_file_from_two_people_is_one_track(
+    client: httpx.AsyncClient, tg: RecordingSession, session: AsyncSession
+) -> None:
+    """Uploads share one channel, so their entries are keyed by the file itself."""
+    await send(client, private_message(audio=audio_field("AgADupload02")))
+    await send(client, private_message(audio=audio_field("AgADupload02")))
+
+    tracks = (
+        await session.scalars(select(Track).where(Track.file_unique_id == "AgADupload02"))
+    ).all()
+    assert len(tracks) == 1
+    assert any("قبل" in text or "already" in text for text in tg.texts())
+
+
+async def test_a_forwarded_channel_post_adds_the_channel_and_the_track(
+    client: httpx.AsyncClient, tg: RecordingSession, session: AsyncSession
+) -> None:
+    """One forward does both jobs: discovers the channel, and banks the file id."""
+    await send(
+        client,
+        private_message(
+            audio=audio_field("AgADupload03", title="Pol"),
+            forward_origin={
+                "type": "channel",
+                "date": int(time.time()),
+                "message_id": 771,
+                "chat": {
+                    "id": CHANNEL_CHAT_ID,
+                    "type": "channel",
+                    "title": "Golden Tunes",
+                    "username": "goldentunes",
+                },
+            },
+        ),
+    )
+
+    channel = (
+        await session.scalars(select(Channel).where(Channel.username == "goldentunes"))
+    ).one()
+    track = (
+        await session.scalars(select(Track).where(Track.file_unique_id == "AgADupload03"))
+    ).one()
+    assert track.bot_file_id == "CQAC-AgADupload03"
+    assert track.channels_count >= 1
+    assert channel.title == "Golden Tunes"
