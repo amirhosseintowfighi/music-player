@@ -409,6 +409,7 @@ cd backend && pytest tests/unit/test_title_corpus.py -s -q
 | نشانه | معمولاً یعنی | کجا را ببین |
 |---|---|---|
 | مینی‌اپ سفید می‌ماند | `WEBAPP_URL` غلط است یا باندل با `VITE_API_URL` اشتباه ساخته شده | کنسول مرورگر |
+| بعد از `git pull` همه‌چیز ۵۰۲ می‌دهد | قالب nginx عوض شده و کانتینرش از نو ساخته نشده | [RUNBOOK](RUNBOOK.md#nginx-update) |
 | پنل ادمین رمز را قبول نمی‌کند ولی همان رمز با curl کار می‌کند | `CORS_ORIGINS` آدرس `admin.<دامنه>` را ندارد | تب Network مرورگر |
 | پنل ادمین: «something went wrong» روی دکمهٔ تلگرام | `/setdomain` روی `admin.<دامنه>` تنظیم نشده | [BotFather](https://t.me/BotFather) |
 | «الان قابل پخش نیست» | `TG_API_ID`/`TG_API_HASH` ست نشده، یا اکانت resolver لاگین نشده، یا FloodWait خورده | [RUNBOOK → resolver مرده](RUNBOOK.md#resolver) |
