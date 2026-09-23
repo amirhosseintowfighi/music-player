@@ -175,3 +175,20 @@ class CandidateStatsIn(_Model):
     newest_msg_id: int | None = Field(None, ge=0)
     posts_per_day: float | None = Field(None, ge=0)
     unavailable: bool = False
+
+
+class SearchTermsOut(_Model):
+    """What to ask Telegram about. Empty means the feature is off — not "no ideas"."""
+
+    terms: list[str] = Field(default_factory=list, max_length=100)
+
+
+class SearchFoundIn(_Model):
+    """Channels one search turned up, on their way to the candidate queue."""
+
+    term: str = Field(min_length=1, max_length=100)
+    usernames: list[str] = Field(default_factory=list, max_length=500)
+
+
+class SearchFoundOut(_Model):
+    added: int = 0

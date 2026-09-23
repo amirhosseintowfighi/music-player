@@ -27,6 +27,7 @@ from tmusic_indexer.account import ResolverAccount
 from tmusic_indexer.config import Settings
 from tmusic_indexer.core_client import CoreClient, CoreUnavailable
 from tmusic_indexer.mtcrawl import ChannelUnreadable, MtprotoCrawler
+from tmusic_indexer.tgsearch import TelegramSearch
 from tmusic_indexer.webpreview.crawler import (
     CrawlBlocked,
     Crawler,
@@ -56,6 +57,11 @@ class CrawlWorker:
         # Only built when a crawling session exists; a task for a channel with no
         # preview is reported unreadable otherwise, never silently dropped.
         self.mtproto = MtprotoCrawler(account, settings) if account is not None else None
+        self.search = TelegramSearch(account, settings) if account is not None else None
+        # Round-robin over the core's term list, one term per pass, so a long list
+        # spreads over hours instead of arriving as a burst Telegram will notice.
+        self._search_at = 0.0
+        self._term_index = 0
         # Set while Telegram is refusing this IP; nothing is claimed until it passes.
         self._blocked_until = 0.0
 
@@ -84,6 +90,7 @@ class CrawlWorker:
         for task in tasks:
             await self.run_task(task)
         await self.probe_candidates(claim)
+        await self.search_for_channels()
 
     async def probe_candidates(self, claim: CrawlClaimIn) -> None:
         """Measures suggested channels so the admin queue can be sorted (ADR-002 §3).
@@ -230,6 +237,34 @@ class CrawlWorker:
             items=progress.items,
             finished=progress.finished,
         )
+
+    async def search_for_channels(self) -> None:
+        """One search term per interval, when the core says the feature is on.
+
+        Deliberately slow: this is the only thing here that talks to Telegram without
+        a user waiting, and a burst of searches is exactly what gets an account
+        limited. One term every few minutes finds plenty over a day.
+        """
+        if self.search is None:
+            return
+        loop = asyncio.get_running_loop()
+        if loop.time() < max(self._search_at, self._blocked_until):
+            return
+        self._search_at = loop.time() + self.settings.search_interval_s
+
+        terms = await self.core.search_terms()
+        if not terms:
+            return
+        term = terms[self._term_index % len(terms)]
+        self._term_index += 1
+        try:
+            found = await self.search.run(term)
+        except CrawlBlocked as exc:
+            self._blocked_until = loop.time() + exc.retry_after
+            return
+        if found:
+            added = await self.core.search_found(term, sorted(found))
+            log.info("tgsearch.queued", term=term, found=len(found), added=added)
 
 
 class LeaseLost(Exception):

@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     # long-but-finite run, so one big channel cannot hold the account all day.
     max_crawl_pages_mtproto: int = 50
 
+    # One Telegram search per this many seconds, at most. Discovery is never urgent.
+    search_interval_s: float = 300.0
+
     claim_interval_s: float = 10.0
     # A FloodWait longer than this marks the account "limited" (needs attention).
     limited_after_s: int = 900

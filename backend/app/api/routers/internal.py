@@ -31,6 +31,9 @@ from tmusic_common.indexer_contract import (
     RegisterAccountsIn,
     RegisterAccountsOut,
     ReleaseIn,
+    SearchFoundIn,
+    SearchFoundOut,
+    SearchTermsOut,
 )
 
 
@@ -179,3 +182,22 @@ async def candidate_stats(
         unavailable=body.unavailable,
     )
     return {"score": candidate.score if candidate else 0.0}
+
+
+# ── discovery by search (ADR-002 §3) ─────────────────────────────────────────
+
+
+@router.get("/discover/terms", response_model=SearchTermsOut)
+async def discover_terms(session: SessionDep) -> SearchTermsOut:
+    """What to search Telegram for. Empty list = the feature is off.
+
+    The edge asks rather than being configured, so turning this on or aiming it
+    somewhere else is one flag and one settings row, not a redeploy of every edge.
+    """
+    return SearchTermsOut(terms=await discovery.search_terms(session))
+
+
+@router.post("/discover/search", response_model=SearchFoundOut)
+async def discover_search(body: SearchFoundIn, session: SessionDep) -> SearchFoundOut:
+    added = await discovery.record_search(session, body.usernames)
+    return SearchFoundOut(added=added)

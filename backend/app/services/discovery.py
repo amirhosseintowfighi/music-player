@@ -26,7 +26,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.errors import Forbidden, InvalidInput, NotFound
-from app.models import Blacklist, Channel, ChannelCandidate
+from app.models import Blacklist, Channel, ChannelCandidate, Setting
 from app.services import channels as channels_service
 from app.services import plans
 from tmusic_common.logging import get_logger
@@ -149,6 +149,41 @@ async def record_mentions(
     for name in sorted({u.lower().lstrip("@") for u in usernames}):
         if await submit(session, name, source="crawl_mention", discovered_from=discovered_from):
             added += 1
+    return added
+
+
+DEFAULT_SEARCH_TERMS = ["موزیک", "آهنگ جدید", "music", "remix"]
+
+
+async def search_terms(session: AsyncSession) -> list[str]:
+    """What the crawling account should ask Telegram about, or nothing when off.
+
+    The list lives in ``settings`` so it can be aimed at a genre, a language or one
+    artist without a deploy — and returning [] when the flag is off is what keeps the
+    decision in the core rather than in an edge's environment file.
+    """
+    if not await plans.get_flag(session, "telegram_search", False):
+        return []
+    row = await session.get(Setting, "music_search_terms")
+    value = row.value if row is not None else None
+    if not isinstance(value, list):
+        return DEFAULT_SEARCH_TERMS
+    return [str(term).strip() for term in value if str(term).strip()][:100]
+
+
+async def record_search(session: AsyncSession, usernames: list[str]) -> int:
+    """Channels Telegram's own search turned up. Same queue as everything else.
+
+    Search results are noisier than a mention — a channel can match a music word and
+    post nothing but adverts — so they arrive as candidates to be probed and scored,
+    never as channels.
+    """
+    added = 0
+    for name in sorted({u.lower().lstrip("@") for u in usernames}):
+        if await submit(session, name, source="telegram_search", discovered_from=None):
+            added += 1
+    if added:
+        log.info("discovery.from_search", added=added, seen=len(usernames))
     return added
 
 

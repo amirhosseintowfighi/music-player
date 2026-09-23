@@ -28,6 +28,9 @@ from tmusic_common.indexer_contract import (
     RegisterAccountsIn,
     RegisterAccountsOut,
     ReleaseIn,
+    SearchFoundIn,
+    SearchFoundOut,
+    SearchTermsOut,
 )
 from tmusic_common.logging import get_logger
 
@@ -102,6 +105,27 @@ class CoreClient:
     async def candidate_claim(self, body: CrawlClaimIn) -> list[CandidateTaskOut]:
         result = await self._post("/crawl/candidates/claim", body, CandidateClaimOut)
         return result.tasks if result else []
+
+    async def search_terms(self) -> list[str]:
+        """What to search Telegram for. Empty when the core has the feature off."""
+        try:
+            resp = await self._http.get(
+                f"{self._base}/discover/terms", headers=self._headers, timeout=30.0
+            )
+        except httpx.HTTPError as exc:
+            raise CoreUnavailable(str(exc)) from exc
+        if resp.status_code >= 500:
+            raise CoreUnavailable(f"core returned {resp.status_code}")
+        resp.raise_for_status()
+        return SearchTermsOut.model_validate_json(resp.content).terms
+
+    async def search_found(self, term: str, usernames: list[str]) -> int:
+        result = await self._post(
+            "/discover/search",
+            SearchFoundIn(term=term, usernames=usernames),
+            SearchFoundOut,
+        )
+        return result.added if result else 0
 
     async def candidate_stats(self, candidate_id: int, body: CandidateStatsIn) -> None:
         with contextlib.suppress(CoreUnavailable):  # re-probed on the next pass

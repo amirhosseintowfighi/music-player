@@ -31,6 +31,8 @@ class FakeCore:
         self.candidates: list[CandidateTaskOut] = []
         self.stats: list[tuple[int, CandidateStatsIn]] = []
         self.lease_valid = lease_valid
+        self.terms: list[str] = []
+        self.searches: list[tuple[str, list[str]]] = []
 
     async def crawl_claim(self, _body: Any) -> list[CrawlTaskOut]:
         self.claims += 1
@@ -53,6 +55,13 @@ class FakeCore:
 
     async def crawl_failure(self, channel_id: int, body: Any) -> None:
         self.failures.append((channel_id, body))
+
+    async def search_terms(self) -> list[str]:
+        return self.terms
+
+    async def search_found(self, term: str, usernames: list[str]) -> int:
+        self.searches.append((term, usernames))
+        return len(usernames)
 
 
 def worker(core: FakeCore, client: Any) -> CrawlWorker:
@@ -247,3 +256,54 @@ async def test_without_a_crawl_session_the_channel_is_failed_not_dropped() -> No
 
     assert core.batches == []
     assert [body.reason for _, body in core.failures] == ["no_crawl_account"]
+
+
+async def test_the_worker_searches_at_most_once_per_interval(settings: Settings) -> None:
+    """The one call nobody is waiting for, so it must stay rare."""
+    from tests.test_tgsearch import SearchingClient, channel
+    from tests.test_tgsearch import searcher as make_searcher
+
+    core = FakeCore()
+    core.terms = ["موزیک", "remix"]
+    w = worker(core, FakeTelegram(newest=1, oldest=1).client())
+    settings.search_interval_s = 3600.0
+    w.settings = settings
+    w.search = make_searcher(settings, SearchingClient([channel(1, "found_one")]))
+
+    await w.search_for_channels()
+    await w.search_for_channels()  # same interval: nothing more goes out
+
+    assert core.searches == [("موزیک", ["found_one"])]
+
+
+async def test_search_walks_the_term_list(settings: Settings) -> None:
+    from tests.test_tgsearch import SearchingClient, channel
+    from tests.test_tgsearch import searcher as make_searcher
+
+    core = FakeCore()
+    core.terms = ["one", "two"]
+    w = worker(core, FakeTelegram(newest=1, oldest=1).client())
+    settings.search_interval_s = 0.0
+    w.settings = settings
+    w.search = make_searcher(settings, SearchingClient([channel(1, "c")]))
+
+    await w.search_for_channels()
+    await w.search_for_channels()
+    await w.search_for_channels()
+
+    assert [term for term, _ in core.searches] == ["one", "two", "one"]
+
+
+async def test_no_terms_means_the_feature_is_off(settings: Settings) -> None:
+    from tests.test_tgsearch import SearchingClient, channel
+    from tests.test_tgsearch import searcher as make_searcher
+
+    core = FakeCore()
+    core.terms = []
+    w = worker(core, FakeTelegram(newest=1, oldest=1).client())
+    settings.search_interval_s = 0.0
+    w.settings = settings
+    w.search = make_searcher(settings, SearchingClient([channel(1, "c")]))
+
+    await w.search_for_channels()
+    assert core.searches == []

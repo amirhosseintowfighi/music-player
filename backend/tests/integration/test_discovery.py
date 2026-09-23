@@ -486,3 +486,63 @@ async def test_with_the_fallback_on_a_preview_less_candidate_is_kept(
         )
         await session.commit()
         plans.clear_caches()
+
+
+# ── discovery by searching Telegram (migration 0012) ──────────────────────────
+
+
+async def set_search(session: AsyncSession, on: bool) -> None:
+    await session.execute(
+        text(
+            "UPDATE feature_flags SET value = CAST(:v AS jsonb) WHERE key = 'telegram_search'"
+        ).bindparams(v="true" if on else "false")
+    )
+    await session.commit()
+    plans.clear_caches()
+
+
+async def test_the_edge_is_told_nothing_to_search_while_the_flag_is_off(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """Empty list is the off switch: an edge needs no configuration of its own."""
+    await set_search(session, False)
+    resp = await client.get(
+        "/internal/indexer/discover/terms", headers={"Authorization": "Bearer internal-token"}
+    )
+    assert resp.status_code == 200
+    assert resp.json()["terms"] == []
+
+
+async def test_with_the_flag_on_the_terms_come_from_settings(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    await set_search(session, True)
+    try:
+        resp = await client.get(
+            "/internal/indexer/discover/terms", headers={"Authorization": "Bearer internal-token"}
+        )
+        terms = resp.json()["terms"]
+        assert terms and "موزیک" in terms
+    finally:
+        await set_search(session, False)
+
+
+async def test_search_results_join_the_same_queue_as_everything_else(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """A search result is a lead, not a decision: it is queued, probed and approved."""
+    resp = await client.post(
+        "/internal/indexer/discover/search",
+        json={"term": "remix", "usernames": ["Found_One", "found_one", "found_two"]},
+        headers={"Authorization": "Bearer internal-token"},
+    )
+    assert resp.status_code == 200
+    assert resp.json()["added"] == 2  # the duplicate spelling is one channel
+
+    rows = (
+        await session.scalars(
+            select(ChannelCandidate).where(ChannelCandidate.source == "telegram_search")
+        )
+    ).all()
+    assert {r.username for r in rows} == {"found_one", "found_two"}
+    assert all(r.status == "pending" for r in rows)
