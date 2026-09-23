@@ -28,6 +28,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.errors import Forbidden, InvalidInput, NotFound
 from app.models import Blacklist, Channel, ChannelCandidate
 from app.services import channels as channels_service
+from app.services import plans
 from tmusic_common.logging import get_logger
 
 log = get_logger(__name__)
@@ -444,10 +445,25 @@ async def apply_probe(
         return None
     candidate.probed_at = datetime.now(UTC)
     if unavailable:
-        # No public preview: it cannot be crawled, so it is not a candidate.
-        candidate.status = "rejected"
-        candidate.reject_reason = "preview_disabled"
-        candidate.score = 0
+        # No public preview. That used to be the end of it — but since the MTProto
+        # fallback exists, "the web cannot read it" no longer means "nobody can", and
+        # rejecting these was throwing away most of what discovery found.
+        if not await plans.get_flag(session, "mtproto_fallback", False):
+            candidate.status = "rejected"
+            candidate.reject_reason = "preview_disabled"
+            candidate.score = 0
+            await session.flush()
+            return candidate
+        # Kept, but honestly: with no page there are no statistics, so it is scored on
+        # demand alone and sits below anything that could actually be measured.
+        candidate.reject_reason = None
+        candidate.score = score_of(
+            tracks_estimate=0,
+            audio_ratio=0.0,
+            posts_per_day=None,
+            requesters=len(candidate.requested_by_user_ids),
+            mentions=candidate.mention_count,
+        )
         await session.flush()
         return candidate
 

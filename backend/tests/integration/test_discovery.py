@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.errors import Forbidden
 from app.models import Blacklist, Channel, ChannelCandidate, UserChannel
-from app.services import discovery
+from app.services import discovery, plans
 from tests.conftest import bearer, login
 from tests.integration.helpers import make_channel
 from tests.integration.test_admin import admin_token, make_admin
@@ -434,3 +434,55 @@ async def test_an_import_stops_at_the_batch_ceiling(session: AsyncSession) -> No
     raw = "\n".join(f"chan_{i:05d}" for i in range(discovery.MAX_IMPORT + 50))
     result = await discovery.import_usernames(session, raw)
     assert result.created == discovery.MAX_IMPORT
+
+
+async def test_with_the_fallback_on_a_preview_less_candidate_is_kept(
+    session: AsyncSession,
+) -> None:
+    """ "The web cannot read it" stopped meaning "nobody can" (migration 0010).
+
+    Rejecting these outright was throwing away most of what discovery finds: the
+    channels people mention are exactly the ones with the preview switched off.
+    """
+    await session.execute(
+        text(
+            "UPDATE feature_flags SET value = CAST('true' AS jsonb) WHERE key = 'mtproto_fallback'"
+        )
+    )
+    await session.commit()
+    plans.clear_caches()
+    try:
+        source = await make_channel(session, "src2")
+        await discovery.record_mentions(session, ["no_preview_one"], discovered_from=source.id)
+        candidate = (
+            await session.scalars(
+                select(ChannelCandidate).where(ChannelCandidate.username == "no_preview_one")
+            )
+        ).one()
+
+        probed = await discovery.apply_probe(
+            session,
+            candidate.id,
+            title=None,
+            subscribers=None,
+            messages=0,
+            audio=0,
+            newest_msg_id=None,
+            posts_per_day=None,
+            unavailable=True,
+        )
+        assert probed is not None
+        assert probed.status == "pending"
+        assert probed.reject_reason is None
+        # Scored on demand alone: with no page there is nothing else to measure, so it
+        # ranks below every candidate that could be.
+        assert probed.score < 50
+    finally:
+        await session.execute(
+            text(
+                "UPDATE feature_flags SET value = CAST('false' AS jsonb)"
+                " WHERE key = 'mtproto_fallback'"
+            )
+        )
+        await session.commit()
+        plans.clear_caches()
