@@ -70,6 +70,25 @@ async def claim(
     if not await enabled(session):
         return []
 
+    # A worker that dies mid-crawl leaves its channel marked "running", and nothing
+    # ever looked at it again: the claim below only considers idle and error, so an
+    # edge restart quietly froze every channel it happened to hold. Leases exist
+    # precisely so that a dead worker's work returns — this is where it returns.
+    reclaimed = await session.execute(
+        text(
+            """
+        UPDATE channels
+           SET crawl_status = 'idle', lease_owner = NULL, lease_until = NULL
+         WHERE crawl_status = 'running'
+           AND (lease_until IS NULL OR lease_until < now())
+        RETURNING id
+        """
+        )
+    )
+    orphans = [row[0] for row in reclaimed]
+    if orphans:
+        log.info("crawl.leases_reclaimed", channels=orphans)
+
     # Channels whose preview is off are only handed out once an operator has turned
     # the account-based fallback on; until then they stay parked, not retried.
     readable = ["web_preview"]

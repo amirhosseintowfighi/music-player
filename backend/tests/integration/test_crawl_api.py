@@ -563,3 +563,42 @@ async def test_a_bot_administered_channel_is_never_queued_for_the_web_crawler(
     await session.commit()
 
     assert await claim(client) == []  # the crawler leaves it alone
+
+
+async def test_a_channel_left_running_by_a_dead_worker_comes_back(
+    session: AsyncSession,
+) -> None:
+    """An edge restart used to freeze every channel it was holding, permanently.
+
+    Nothing reset crawl_status, and the claim only ever looked at idle and error —
+    so the lease expired, no one noticed, and the channel was never crawled again.
+    """
+    channel = await crawl_channel(session, "orphaned")
+    channel.crawl_status = "running"
+    channel.lease_owner = "dead-worker:tok"
+    channel.lease_until = datetime.now(UTC) - timedelta(minutes=1)
+    await session.commit()
+
+    tasks = await crawling.claim(session, "fresh-worker", limit=10)
+    await session.commit()
+
+    assert channel.id in [t.channel_id for t in tasks]
+    await session.refresh(channel)
+    assert channel.lease_owner is not None
+    assert channel.lease_owner.startswith("fresh-worker:")
+
+
+async def test_a_live_lease_is_left_alone(session: AsyncSession) -> None:
+    """Reclaiming must not steal a channel from a worker that is still on it."""
+    channel = await crawl_channel(session, "busy")
+    channel.crawl_status = "running"
+    channel.lease_owner = "worker-a:tok"
+    channel.lease_until = datetime.now(UTC) + timedelta(minutes=10)
+    await session.commit()
+
+    tasks = await crawling.claim(session, "worker-b", limit=10)
+    await session.commit()
+
+    assert channel.id not in [t.channel_id for t in tasks]
+    await session.refresh(channel)
+    assert channel.lease_owner == "worker-a:tok"
