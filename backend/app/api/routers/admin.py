@@ -459,6 +459,16 @@ async def audit(
     return [AuditEntryOut(**row) for row in rows]
 
 
+@router.get("/plans")
+async def plans_with_limits(claims: Claims, session: SessionDep) -> list[dict[str, Any]]:
+    return await admin_service.plan_limits(session, claims)
+
+
+@router.get("/settings/{key}")
+async def read_setting(key: str, claims: Claims, session: SessionDep) -> dict[str, Any]:
+    return {"key": key, "value": await admin_service.get_setting(session, claims, key)}
+
+
 @router.patch("/plans/{plan_code}")
 async def patch_plan(
     plan_code: str, body: PlanPatchIn, claims: Claims, session: SessionDep

@@ -52,6 +52,17 @@ class MeOut(ApiModel):
     public_profile: bool = True
 
 
+class GateChannelOut(ApiModel):
+    username: str
+    url: str
+
+
+class GateOut(ApiModel):
+    """Channels this listener still has to join. Empty list = the app opens."""
+
+    missing: list[GateChannelOut] = []
+
+
 class TokenOut(ApiModel):
     access_token: str
     access_expires_at: int

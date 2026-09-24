@@ -9,7 +9,7 @@ import {
 
 import { useI18n } from '@/i18n';
 import { coverColors } from '@/lib/format';
-import { haptic } from '@/lib/telegram';
+import { haptic, openExternalLink } from '@/lib/telegram';
 import { useUi } from '@/store/ui';
 
 export const spring = { type: 'spring', stiffness: 380, damping: 34, mass: 0.9 } as const;
@@ -281,5 +281,22 @@ export function ErrorNote({ onRetry }: { onRetry?: () => void }) {
         </button>
       )}
     </div>
+  );
+}
+
+/** Who made this. Shown at the bottom of Settings and on the join screen. */
+export function Credit() {
+  const { t } = useI18n();
+  return (
+    <p className="py-4 text-center text-[11.5px] text-[var(--ink-faint)]">
+      {t('credit.by')}{' '}
+      <button
+        type="button"
+        className="font-bold text-[var(--accent)] underline-offset-2 hover:underline"
+        onClick={() => openExternalLink('https://virgule.studio')}
+      >
+        {t('credit.virgule')}
+      </button>
+    </p>
   );
 }

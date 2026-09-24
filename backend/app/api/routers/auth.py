@@ -5,11 +5,27 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Header
 from sqlalchemy import update
 
-from app.api.deps import Claims, SessionDep, SettingsDep, WritableClaims, rate_limit_ip
+from app.api.deps import (
+    Claims,
+    HttpDep,
+    RedisDep,
+    SessionDep,
+    SettingsDep,
+    WritableClaims,
+    rate_limit_ip,
+)
 from app.errors import NotFound
 from app.models import User
-from app.schemas import LangIn, MeOut, RefreshIn, TelegramLoginIn, TokenOut
-from app.services import auth, plans, users
+from app.schemas import (
+    GateChannelOut,
+    GateOut,
+    LangIn,
+    MeOut,
+    RefreshIn,
+    TelegramLoginIn,
+    TokenOut,
+)
+from app.services import auth, gate, plans, users
 
 router = APIRouter(prefix="/v1", tags=["auth"])
 
@@ -83,3 +99,34 @@ async def set_lang(body: LangIn, claims: WritableClaims, session: SessionDep) ->
         raise NotFound("user not found")
     await session.refresh(user)
     return await _me(session, user)
+
+
+@router.get("/gate", response_model=GateOut)
+async def join_gate(
+    claims: Claims,
+    session: SessionDep,
+    settings: SettingsDep,
+    redis: RedisDep,
+    http: HttpDep,
+) -> GateOut:
+    """Asked once when the app opens: is this listener in the required channels?
+
+    Cached for a few minutes per user, and open by default — no required channels
+    configured, or Telegram not answering, both mean "let them in".
+    """
+    absent = await gate.missing(session, redis, http, settings, claims.tg_id)
+    return GateOut(missing=[GateChannelOut(username=c.username, url=c.url) for c in absent])
+
+
+@router.post("/gate/recheck", response_model=GateOut)
+async def join_gate_recheck(
+    claims: Claims,
+    session: SessionDep,
+    settings: SettingsDep,
+    redis: RedisDep,
+    http: HttpDep,
+) -> GateOut:
+    """ "I joined" — ask Telegram again now instead of waiting for the cache."""
+    await gate.forget(redis, claims.tg_id)
+    absent = await gate.missing(session, redis, http, settings, claims.tg_id)
+    return GateOut(missing=[GateChannelOut(username=c.username, url=c.url) for c in absent])

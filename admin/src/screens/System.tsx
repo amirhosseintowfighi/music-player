@@ -6,10 +6,12 @@ import {
   useHealth,
   usePatchPlan,
   usePatchProvider,
+  usePlanLimits,
   useReports,
   useResolveReport,
   useSetFlag,
   useSetSetting,
+  useSetting,
 } from '@/api/hooks';
 import { Badge, Button, Card, Empty, Input, Spinner, Stat } from '@/components/ui';
 import { formatDate } from '@/lib/format';
@@ -213,10 +215,19 @@ export function Settings({ me }: { me: AdminMe | null }) {
         </div>
       </Card>
 
+      <LimitsCard onDone={setDone} />
+      <RequiredChannelsCard onDone={setDone} />
+
       <Card className="space-y-2">
         <h2 className="text-[14px] font-bold">فلگ‌ها</h2>
         <div className="flex flex-wrap gap-2">
-          {['maintenance_mode', 'ai_search'].map((key) => (
+          {[
+            'maintenance_mode',
+            'ai_search',
+            'crawler_enabled',
+            'mtproto_fallback',
+            'telegram_search',
+          ].map((key) => (
             <span key={key} className="flex items-center gap-1">
               <Button
                 onClick={() =>
@@ -287,6 +298,150 @@ export function Audit() {
           </table>
         </div>
       )}
+    </Card>
+  );
+}
+
+
+/** The free plan's ceilings. Premium is unlimited and has nothing to edit. */
+const LIMIT_LABELS: [string, string][] = [
+  ['daily_plays', 'پخش در روز'],
+  ['playlists', 'پلی‌لیست'],
+  ['channels', 'کانال'],
+  ['library', 'ترک ذخیره‌شده'],
+];
+
+function LimitsCard({ onDone }: { onDone: (text: string) => void }) {
+  const plans = usePlanLimits();
+  const patchPlan = usePatchPlan();
+  const [draft, setDraft] = useState<Record<string, string>>({});
+
+  const free = plans.data?.find((plan) => plan.code === 'free');
+  const value = (key: string) =>
+    draft[key] ?? String(free?.limits[key] ?? '');
+
+  return (
+    <Card className="space-y-3">
+      <h2 className="text-[14px] font-bold">محدودیت‌های پلن رایگان</h2>
+      <p className="text-[12px] text-[var(--color-muted)]">
+        ۱- یعنی بدون محدودیت. پلن‌های پرمیوم هیچ سقفی ندارند.
+      </p>
+      {!free && <Spinner />}
+      {free && (
+        <div className="space-y-2">
+          {LIMIT_LABELS.map(([key, label]) => (
+            <div key={key} className="flex items-center gap-2">
+              <span className="w-32 text-[13px]">{label}</span>
+              <Input
+                aria-label={key}
+                value={value(key)}
+                onChange={(event) =>
+                  setDraft((d) => ({ ...d, [key]: event.target.value.replace(/[^\d-]/g, '') }))
+                }
+              />
+            </div>
+          ))}
+          <div className="flex items-center gap-2">
+            <span className="w-32 text-[13px]">دانلود آفلاین</span>
+            <Badge tone={free.limits.download ? 'ok' : 'warn'}>
+              {free.limits.download ? 'مجاز' : 'فقط پرمیوم'}
+            </Badge>
+            <Button
+              onClick={() =>
+                patchPlan.mutate(
+                  {
+                    code: 'free',
+                    changes: { limits: { ...free.limits, download: !free.limits.download } },
+                  },
+                  {
+                    onSuccess: () => {
+                      onDone('ذخیره شد');
+                      void plans.refetch();
+                    },
+                  },
+                )
+              }
+            >
+              تغییر
+            </Button>
+          </div>
+          <Button
+            tone="primary"
+            disabled={patchPlan.isPending}
+            onClick={() => {
+              const limits: Record<string, number | boolean> = { ...free.limits };
+              for (const [key] of LIMIT_LABELS) {
+                const raw = draft[key];
+                if (raw !== undefined && raw !== '') limits[key] = Number(raw);
+              }
+              patchPlan.mutate(
+                { code: 'free', changes: { limits } },
+                {
+                  onSuccess: () => {
+                    onDone('محدودیت‌ها ذخیره شد');
+                    setDraft({});
+                    void plans.refetch();
+                  },
+                },
+              );
+            }}
+          >
+            ذخیره
+          </Button>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+/** Channels every listener must join before the Mini App opens. */
+function RequiredChannelsCard({ onDone }: { onDone: (text: string) => void }) {
+  const setting = useSetting('required_channels');
+  const setSetting = useSetSetting();
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const current = Array.isArray(setting.data?.value) ? (setting.data.value as string[]) : [];
+  const text = draft ?? current.join('\n');
+
+  return (
+    <Card className="space-y-2">
+      <h2 className="text-[14px] font-bold">کانال‌های جوین اجباری</h2>
+      <p className="text-[12px] text-[var(--color-muted)]">
+        هر خط یک یوزرنیم، بدون @. ربات باید در هر کدام ادمین باشد، وگرنه تلگرام جواب
+        نمی‌دهد و آن کانال نادیده گرفته می‌شود (کسی پشت در نمی‌ماند). خالی یعنی بدون جوین اجباری.
+      </p>
+      <textarea
+        aria-label="required-channels"
+        rows={4}
+        value={text}
+        onChange={(event) => setDraft(event.target.value)}
+        className="w-full rounded-lg border border-[var(--color-line)] bg-transparent p-2 font-mono text-[12px]"
+        dir="ltr"
+      />
+      <Button
+        tone="primary"
+        disabled={setSetting.isPending}
+        onClick={() =>
+          setSetting.mutate(
+            {
+              key: 'required_channels',
+              value: text
+                .split(/[\n,]/)
+                .map((name) => name.trim().replace(/^@/, ''))
+                .filter(Boolean),
+            },
+            {
+              onSuccess: () => {
+                onDone('کانال‌ها ذخیره شد');
+                setDraft(null);
+                void setting.refetch();
+              },
+            },
+          )
+        }
+      >
+        ذخیره
+      </Button>
     </Card>
   );
 }

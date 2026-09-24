@@ -200,6 +200,25 @@ export function useHealth() {
   });
 }
 
+export interface PlanLimits {
+  code: string;
+  limits: Record<string, number | boolean>;
+}
+
+export function usePlanLimits() {
+  return useQuery({
+    queryKey: ['plan-limits'],
+    queryFn: () => get<PlanLimits[]>('/admin/plans'),
+  });
+}
+
+export function useSetting(key: string) {
+  return useQuery({
+    queryKey: ['setting', key],
+    queryFn: () => get<{ key: string; value: unknown }>(`/admin/settings/${key}`),
+  });
+}
+
 export function useSetFlag() {
   return useMutation({
     mutationFn: (input: { key: string; value: unknown }) =>

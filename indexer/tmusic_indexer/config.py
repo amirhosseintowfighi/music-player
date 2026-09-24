@@ -28,10 +28,18 @@ class Settings(BaseSettings):
     device_model: str = "tmusic-indexer"
 
     # web-preview crawler (ADR-002)
-    crawl_min_delay_s: float = 1.5
-    crawl_max_delay_s: float = 4.0
+    # The pause between page requests, jittered. Telegram answers 429 when this is
+    # too small for the current IP; the crawler then backs off and releases the
+    # channel, so the cost of being slightly too fast is a pause, not a ban.
+    crawl_min_delay_s: float = 0.8
+    crawl_max_delay_s: float = 2.0
     crawl_max_pages: int = 500
     crawl_claim_limit: int = 3
+    # How many channels one edge walks at the same time. Together with the delays
+    # above this is the whole throughput knob: 3 channels at ~1.4s a page is roughly
+    # 40 messages a second. Lower it (or raise the delays) the moment the log starts
+    # showing crawl.blocked.
+    crawl_parallel: int = 3
     # Comma-separated http(s) proxies. One burned IP is cheaper than one burned
     # account, but rotating is cheaper still.
     crawl_proxies: str = ""

@@ -6,7 +6,7 @@ import {
   useSetNotificationPrefs,
   useSetPublicProfile,
 } from '@/api/social';
-import { Glass, cx } from '@/components/ui';
+import { Credit, Glass, cx } from '@/components/ui';
 import { useI18n } from '@/i18n';
 import { useUi } from '@/store/ui';
 
@@ -199,6 +199,7 @@ export function Settings() {
           </Row>
         )}
       </Glass>
+      <Credit />
     </div>
   );
 }

@@ -2,16 +2,16 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
 
-import { ApiError, login, put, setUnauthorizedHandler } from '@/api/client';
+import { ApiError, get, login, post, put, setUnauthorizedHandler } from '@/api/client';
 import { useRecordPlay, useSavePlayback, useStoredPlayback } from '@/api/playlists';
 import { useMe } from '@/api/hooks';
 import { MiniPlayer } from '@/components/MiniPlayer';
 import { TabBar } from '@/components/TabBar';
-import { Aurora, EmptyState, Glass, Sheet, Spinner, Toasts } from '@/components/ui';
+import { Aurora, Credit, EmptyState, Glass, Sheet, Spinner, Toasts } from '@/components/ui';
 import { I18nProvider, useI18n } from '@/i18n';
 import { applyPalette, DEFAULT_PALETTE, paletteFromUrl, parsePalette } from '@/lib/color';
 import { applyPerf, watchFrameRate } from '@/lib/perf';
-import { initTelegram } from '@/lib/telegram';
+import { initTelegram, openTelegramLink } from '@/lib/telegram';
 import { useThumbs } from '@/player/thumbs';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
@@ -271,8 +271,11 @@ function Shell() {
 /** Authenticates with initData before the first API call. */
 function Gate({ children }: { children: React.ReactNode }) {
   const { t } = useI18n();
-  const [state, setState] = useState<'loading' | 'ready' | 'outside' | 'failed'>('loading');
+  const [state, setState] = useState<'loading' | 'ready' | 'outside' | 'failed' | 'join'>(
+    'loading',
+  );
   const [detail, setDetail] = useState('');
+  const [missing, setMissing] = useState<JoinChannel[]>([]);
   const me = useMe();
   const setLang = useUi((s) => s.setLang);
 
@@ -285,7 +288,18 @@ function Gate({ children }: { children: React.ReactNode }) {
         if (param.startsWith('pl_')) window.location.hash = `#/shared/${param.slice(3)}`;
         // A shared track: open the app on it and start playing (ADR-003 phase 12).
         else if (param.startsWith('tr_')) window.location.hash = `#/track/${param.slice(3)}`;
-        setState('ready');
+        // The forced-join gate. It is deliberately not on the playback path: it runs
+        // once here, and an unreachable check lets the listener in (the server
+        // decides that, not this screen).
+        return get<{ missing: JoinChannel[] }>('/v1/gate')
+          .then((gate) => {
+            if (cancelled) return;
+            setMissing(gate.missing);
+            setState(gate.missing.length ? 'join' : 'ready');
+          })
+          .catch(() => {
+            if (!cancelled) setState('ready');
+          });
       })
       .catch((error: unknown) => {
         if (cancelled) return;
@@ -320,6 +334,15 @@ function Gate({ children }: { children: React.ReactNode }) {
       </div>
     );
   }
+  if (state === 'join') {
+    return (
+      <JoinScreen
+        channels={missing}
+        onPassed={() => setState('ready')}
+        onStillMissing={setMissing}
+      />
+    );
+  }
   if (state === 'failed') {
     return (
       <div className="grid h-full place-items-center px-8">
@@ -331,6 +354,70 @@ function Gate({ children }: { children: React.ReactNode }) {
     );
   }
   return <>{children}</>;
+}
+
+interface JoinChannel {
+  username: string;
+  url: string;
+}
+
+/** Shown when the owner requires channel membership. One tap per channel, then recheck. */
+function JoinScreen({
+  channels,
+  onPassed,
+  onStillMissing,
+}: {
+  channels: JoinChannel[];
+  onPassed: () => void;
+  onStillMissing: (channels: JoinChannel[]) => void;
+}) {
+  const { t } = useI18n();
+  const [checking, setChecking] = useState(false);
+  const [stillMissing, setStillMissing] = useState(false);
+
+  return (
+    <div className="grid h-full place-items-center px-6">
+      <Glass className="w-full max-w-sm space-y-4 p-6 text-center">
+        <h1 className="text-[16px] font-bold">{t('gate.title')}</h1>
+        <p className="text-[13px] leading-7 text-[var(--ink-dim)]">{t('gate.body')}</p>
+        <div className="space-y-2">
+          {channels.map((channel) => (
+            <button
+              key={channel.username}
+              type="button"
+              className="w-full rounded-xl bg-[var(--accent)] px-4 py-2.5 text-[14px] font-bold text-[var(--accent-ink)]"
+              onClick={() => openTelegramLink(channel.url)}
+            >
+              {t('gate.join', { channel: `@${channel.username}` })}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          disabled={checking}
+          className="w-full rounded-xl border border-white/15 px-4 py-2.5 text-[14px] disabled:opacity-50"
+          onClick={() => {
+            setChecking(true);
+            setStillMissing(false);
+            post<{ missing: JoinChannel[] }>('/v1/gate/recheck', {})
+              .then((gate) => {
+                if (gate.missing.length === 0) onPassed();
+                else {
+                  onStillMissing(gate.missing);
+                  setStillMissing(true);
+                }
+              })
+              .catch(() => setStillMissing(true))
+              .finally(() => setChecking(false));
+          }}
+        >
+          {checking ? '…' : t('gate.done')}
+        </button>
+        {stillMissing && <p className="text-[12px] text-red-400">{t('gate.still')}</p>}
+        <Credit />
+      </Glass>
+    </div>
+  );
 }
 
 export function App() {

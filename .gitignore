@@ -17,3 +17,6 @@ infra/certs/
 *.session.enc
 *.peers.json
 *.sqlite3
+
+# TypeScript incremental build state — a build artifact, not source.
+*.tsbuildinfo

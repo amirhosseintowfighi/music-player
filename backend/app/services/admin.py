@@ -873,6 +873,22 @@ async def import_channels(
     return result
 
 
+async def plan_limits(session: AsyncSession, claims: AdminClaims) -> list[dict[str, Any]]:
+    """Every plan's limits, so the panel can show what it is about to change."""
+    require(claims, "system.view")
+    rows = (await session.execute(text("SELECT code, limits FROM plans ORDER BY position"))).all()
+    return [{"code": r.code, "limits": dict(r.limits or {})} for r in rows]
+
+
+async def get_setting(session: AsyncSession, claims: AdminClaims, key: str) -> Any:
+    require(claims, "system.view")
+    row = await session.execute(
+        text("SELECT value FROM settings WHERE key = :k").bindparams(k=key)
+    )
+    found = row.first()
+    return found[0] if found else None
+
+
 async def crawler_health(session: AsyncSession, claims: AdminClaims) -> dict[str, Any]:
     require(claims, "system.view")
     return await crawling.health(session)

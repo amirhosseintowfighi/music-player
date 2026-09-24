@@ -87,8 +87,19 @@ class CrawlWorker:
             worker_id=self.settings.worker_id, limit=self.settings.crawl_claim_limit
         )
         tasks = await self.core.crawl_claim(claim)
-        for task in tasks:
-            await self.run_task(task)
+        # Channels are independent — separate leases, separate cursors — so walking
+        # them one after another was leaving the whole backlog behind a single slow
+        # channel. One failure must not take the others down with it, hence
+        # return_exceptions: run() logs, the scheduler hands the channel out again.
+        limit = max(1, self.settings.crawl_parallel)
+        for start in range(0, len(tasks), limit):
+            done = await asyncio.gather(
+                *(self.run_task(task) for task in tasks[start : start + limit]),
+                return_exceptions=True,
+            )
+            for outcome in done:
+                if isinstance(outcome, BaseException):
+                    log.warning("crawl.task_failed", error=str(outcome))
         await self.probe_candidates(claim)
         await self.search_for_channels()
 

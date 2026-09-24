@@ -10,8 +10,9 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import metrics
-from app.errors import NotFound
+from app.errors import LimitReached, NotFound
 from app.models import Like, PlaybackState, Track
+from app.services import plans, users
 from app.services.pagination import cursor_datetime, cursor_int, decode_cursor, encode_cursor
 
 MIN_PLAY_SECONDS = 5
@@ -46,8 +47,24 @@ async def likes_count(session: AsyncSession, track_id: int) -> int:
 
 
 async def like(session: AsyncSession, user_id: int, track_id: int) -> bool:
-    """Returns True when a like was added, False when it already existed."""
+    """Returns True when a like was added, False when it already existed.
+
+    The free plan caps how much of the library a listener keeps. Counting only when
+    the like is new would still need the count, so it is checked up front — and only
+    for plans that actually have a ceiling.
+    """
     root = await canonical_id(session, track_id)
+    user = await users.get_user(session, user_id)
+    plan = await plans.get_plan(session, users.effective_plan(user)) if user else None
+    if plan is not None and plan.limit("library") != plans.UNLIMITED:
+        kept = await session.scalar(
+            select(func.count()).select_from(Like).where(Like.user_id == user_id)
+        )
+        already = await session.scalar(
+            select(Like.track_id).where(Like.user_id == user_id, Like.track_id == root)
+        )
+        if already is None and not plan.allows("library", int(kept or 0)):
+            raise LimitReached("library limit reached", kind="library", limit=plan.limit("library"))
     result = await session.execute(
         insert(Like)
         .values(user_id=user_id, track_id=root)

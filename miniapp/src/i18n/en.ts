@@ -1,6 +1,13 @@
 import type { fa } from './fa';
 
 export const en: Record<keyof typeof fa, string> = {
+  'gate.title': 'Join first',
+  'gate.body': 'Membership in these channels is required. Join, then tap the button below.',
+  'gate.join': 'Join {channel}',
+  'gate.done': "I've joined",
+  'gate.still': 'You are not in all of them yet.',
+  'credit.by': 'Designed and built by',
+  'credit.virgule': 'Virgule',
   'app.loading': 'Getting things ready…',
   'app.error': 'Something went wrong',
   'app.retry': 'Try again',

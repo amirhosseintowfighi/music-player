@@ -80,14 +80,13 @@ def worker(core: FakeCore, client: Any) -> CrawlWorker:
     return w
 
 
-def task(**extra: Any) -> CrawlTaskOut:
+def task(channel_id: int = 7, **extra: Any) -> CrawlTaskOut:
     return CrawlTaskOut(
-        channel_id=7,
+        channel_id=channel_id,
         username="ch",
-        lease_token="tok",
         mode="backfill",
         needs_meta=True,
-        **extra,
+        **{"lease_token": "tok", **extra},
     )
 
 
@@ -307,3 +306,47 @@ async def test_no_terms_means_the_feature_is_off(settings: Settings) -> None:
 
     await w.search_for_channels()
     assert core.searches == []
+
+
+async def test_channels_are_crawled_side_by_side(settings: Settings) -> None:
+    """One slow channel used to hold up the whole backlog behind it."""
+    core = FakeCore()
+    telegram = FakeTelegram(newest=20, oldest=1)
+    w = worker(core, telegram.client())
+    settings.crawl_parallel = 3
+    w.settings = settings
+    core.tasks = [task(channel_id=i, lease_token=f"tok{i}") for i in (1, 2, 3)]
+
+    started: list[int] = []
+    original = w.run_task
+
+    async def watched(t: Any) -> None:
+        started.append(t.channel_id)
+        await asyncio.sleep(0)  # let the others start before this one finishes
+        await original(t)
+
+    w.run_task = watched  # type: ignore[method-assign]
+    await w.tick()
+
+    assert started == [1, 2, 3]
+    assert {batch.channel_id for batch in core.batches} == {1, 2, 3}
+
+
+async def test_one_failing_channel_does_not_stop_the_others(settings: Settings) -> None:
+    core = FakeCore()
+    w = worker(core, FakeTelegram(newest=20, oldest=1).client())
+    settings.crawl_parallel = 3
+    w.settings = settings
+    core.tasks = [task(channel_id=i, lease_token=f"tok{i}") for i in (1, 2)]
+
+    original = w.run_task
+
+    async def explode(t: Any) -> None:
+        if t.channel_id == 1:
+            raise RuntimeError("boom")
+        await original(t)
+
+    w.run_task = explode  # type: ignore[method-assign]
+    await w.tick()  # must not raise
+
+    assert {batch.channel_id for batch in core.batches} == {2}

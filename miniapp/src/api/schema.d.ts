@@ -123,6 +123,49 @@ export interface paths {
         patch: operations["set_lang_v1_me_lang_patch"];
         trace?: never;
     };
+    "/v1/gate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Join Gate
+         * @description Asked once when the app opens: is this listener in the required channels?
+         *
+         *     Cached for a few minutes per user, and open by default — no required channels
+         *     configured, or Telegram not answering, both mean "let them in".
+         */
+        get: operations["join_gate_v1_gate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/gate/recheck": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Join Gate Recheck
+         * @description "I joined" — ask Telegram again now instead of waiting for the cache.
+         */
+        post: operations["join_gate_recheck_v1_gate_recheck_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/login": {
         parameters: {
             query?: never;
@@ -612,6 +655,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/plans": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Plans With Limits */
+        get: operations["plans_with_limits_admin_plans_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/settings/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Read Setting */
+        get: operations["read_setting_admin_settings__key__get"];
+        /** Put Setting */
+        put: operations["put_setting_admin_settings__key__put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/plans/{plan_code}": {
         parameters: {
             query?: never;
@@ -627,23 +705,6 @@ export interface paths {
         head?: never;
         /** Patch Plan */
         patch: operations["patch_plan_admin_plans__plan_code__patch"];
-        trace?: never;
-    };
-    "/admin/settings/{key}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Put Setting */
-        put: operations["put_setting_admin_settings__key__put"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
         trace?: never;
     };
     "/admin/flags/{key}": {
@@ -2405,6 +2466,24 @@ export interface components {
             played_at: string;
             track: components["schemas"]["TrackOut"];
         };
+        /** GateChannelOut */
+        GateChannelOut: {
+            /** Username */
+            username: string;
+            /** Url */
+            url: string;
+        };
+        /**
+         * GateOut
+         * @description Channels this listener still has to join. Empty list = the app opens.
+         */
+        GateOut: {
+            /**
+             * Missing
+             * @default []
+             */
+            missing: components["schemas"]["GateChannelOut"][];
+        };
         /** HTTPValidationError */
         HTTPValidationError: {
             /** Detail */
@@ -3658,6 +3737,46 @@ export interface operations {
             };
         };
     };
+    join_gate_v1_gate_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateOut"];
+                };
+            };
+        };
+    };
+    join_gate_recheck_v1_gate_recheck_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateOut"];
+                };
+            };
+        };
+    };
     login_admin_login_post: {
         parameters: {
             query?: never;
@@ -4561,20 +4680,38 @@ export interface operations {
             };
         };
     };
-    patch_plan_admin_plans__plan_code__patch: {
+    plans_with_limits_admin_plans_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    read_setting_admin_settings__key__get: {
         parameters: {
             query?: never;
             header?: never;
             path: {
-                plan_code: string;
+                key: string;
             };
             cookie?: never;
         };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["PlanPatchIn"];
-            };
-        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
@@ -4610,6 +4747,43 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["SettingIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    patch_plan_admin_plans__plan_code__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                plan_code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PlanPatchIn"];
             };
         };
         responses: {

@@ -279,6 +279,60 @@
         ]
       }
     },
+    "/v1/gate": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Join Gate",
+        "description": "Asked once when the app opens: is this listener in the required channels?\n\nCached for a few minutes per user, and open by default — no required channels\nconfigured, or Telegram not answering, both mean \"let them in\".",
+        "operationId": "join_gate_v1_gate_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/gate/recheck": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Join Gate Recheck",
+        "description": "\"I joined\" — ask Telegram again now instead of waiting for the cache.",
+        "operationId": "join_gate_recheck_v1_gate_recheck_post",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GateOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/admin/login": {
       "post": {
         "tags": [
@@ -1892,6 +1946,143 @@
         }
       }
     },
+    "/admin/plans": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Plans With Limits",
+        "operationId": "plans_with_limits_admin_plans_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Plans With Limits Admin Plans Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/admin/settings/{key}": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Read Setting",
+        "operationId": "read_setting_admin_settings__key__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Read Setting Admin Settings  Key  Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Put Setting",
+        "operationId": "put_setting_admin_settings__key__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Key"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SettingIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": true,
+                  "title": "Response Put Setting Admin Settings  Key  Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/admin/plans/{plan_code}": {
       "patch": {
         "tags": [
@@ -1934,65 +2125,6 @@
                   "type": "object",
                   "additionalProperties": true,
                   "title": "Response Patch Plan Admin Plans  Plan Code  Patch"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "Validation Error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/HTTPValidationError"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/admin/settings/{key}": {
-      "put": {
-        "tags": [
-          "admin"
-        ],
-        "summary": "Put Setting",
-        "operationId": "put_setting_admin_settings__key__put",
-        "security": [
-          {
-            "HTTPBearer": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "key",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "title": "Key"
-            }
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SettingIn"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Successful Response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "additionalProperties": true,
-                  "title": "Response Put Setting Admin Settings  Key  Put"
                 }
               }
             }
@@ -7556,6 +7688,41 @@
           "track"
         ],
         "title": "FriendActivityOut"
+      },
+      "GateChannelOut": {
+        "properties": {
+          "username": {
+            "type": "string",
+            "title": "Username"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "username",
+          "url"
+        ],
+        "title": "GateChannelOut"
+      },
+      "GateOut": {
+        "properties": {
+          "missing": {
+            "items": {
+              "$ref": "#/components/schemas/GateChannelOut"
+            },
+            "type": "array",
+            "title": "Missing",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "GateOut",
+        "description": "Channels this listener still has to join. Empty list = the app opens."
       },
       "HTTPValidationError": {
         "properties": {
