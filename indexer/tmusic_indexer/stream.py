@@ -440,7 +440,12 @@ def create_app(
         if request.method == "HEAD":
             return Response(status_code=status, headers=headers)
         try:
-            source_name, source = sources.open(ticket)
+            # A cache-warming fetch is nobody's playback: it reads on the crawling
+            # account so filling the cache never slows down the person listening.
+            # nginx keys the cache on the track and the slice, so this header changes
+            # who fetches the bytes without splitting the cache entry.
+            reader = background or sources if request.headers.get("X-Warm") else sources
+            source_name, source = reader.open(ticket)
             body = source(start, end)
             first = await anext(body)  # fail before headers are sent
         except (LookupError, StopAsyncIteration) as exc:

@@ -66,6 +66,7 @@ class WorkerSettings:
         jobs.prewarm_resolver,
         jobs.crawler_healthcheck,
         jobs.enrich_artists,
+        jobs.warm_cache,
     ]
     cron_jobs: ClassVar[list[Any]] = [
         cron(jobs.sync_search, second={0, 15, 30, 45}, run_at_startup=True, unique=True),
@@ -91,6 +92,10 @@ class WorkerSettings:
         # deployment it is also the only thing standing between a crawled catalogue
         # and a playable one — so it runs every five minutes until it runs dry.
         cron(jobs.prewarm_resolver, minute=set(range(3, 60, 5)), unique=True),
+        # The opening of what people are most likely to play, in the cache before
+        # they play it. Every ten minutes: enough to stay ahead of a small audience,
+        # slow enough that it is never the reason the network is busy.
+        cron(jobs.warm_cache, minute=set(range(2, 60, 10)), unique=True),
         # Artist photos: small, external, and nobody is waiting for it.
         cron(jobs.enrich_artists, minute={8, 28, 48}, unique=True),
         # Daily, after a full day of crawling has been recorded.

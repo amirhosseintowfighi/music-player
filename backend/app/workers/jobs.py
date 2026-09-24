@@ -31,6 +31,7 @@ from app.services import (
     search,
     social,
     subscriptions,
+    warming,
 )
 from app.services.meili import MeiliClient
 from app.services.stream import edge_base_url
@@ -355,6 +356,17 @@ async def probe_metadata(ctx: Ctx) -> dict[str, int]:
 # one metadata call, no bytes. FloodWait still cools the account and the circuit
 # breaker still stops the job, so the ceiling is enforced by Telegram, not by this
 # number being cautious.
+async def warm_cache(ctx: Ctx) -> dict[str, int]:
+    """Puts the opening of popular tracks into the edge cache (ADR-003).
+
+    Reads on the crawling account, so filling the cache never slows down the person
+    listening — the mistake that made this job necessary in the first place.
+    """
+    settings = get_settings()
+    async with session_scope(_maker(ctx)) as session:
+        return await warming.warm_batch(session, ctx["redis_app"], ctx["http"], settings)
+
+
 async def enrich_artists(ctx: Ctx) -> dict[str, int]:
     """Gives artists a photo, a few at a time (0014).
 

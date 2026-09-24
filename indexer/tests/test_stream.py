@@ -395,3 +395,37 @@ async def test_background_work_reads_from_the_crawling_account(
     # One call each: the background one went to the crawler, the play to the resolver.
     assert any(call[0] == "get_message" for call in crawler_client.calls)
     assert any(call[0] == "get_message" for call in listener_client.calls)
+
+
+async def test_a_warming_fetch_reads_on_the_crawling_account(
+    settings: Settings, client_fake: FakeClient
+) -> None:
+    """Filling the cache must not slow down the person the cache is for."""
+    from tmusic_indexer.account import Account, ResolverAccount
+    from tmusic_indexer.stream import Sources, create_app
+
+    crawler_client = FakeClient([audio_message(1, audio_doc(10, size=SIZE))])
+    crawler_client.file_bytes = DATA
+
+    def account_for(client: FakeClient, role: str) -> ResolverAccount:
+        account = ResolverAccount(settings, role=role)
+        account.account = Account(key="acc1" if role == "resolver" else "crawl1", client=client)
+        return account
+
+    async with httpx.AsyncClient(transport=bot_api_transport([])) as tg:
+        app = create_app(
+            settings,
+            Sources(settings, account_for(client_fake, "resolver"), tg),
+            Sources(settings, account_for(crawler_client, "crawler"), tg),
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://edge"
+        ) as http:
+            warm = await http.get(
+                f"/s/9?t={sign(mt_ticket(), b'k1')}",
+                headers={"Range": "bytes=0-1023", "X-Warm": "1"},
+            )
+
+    assert warm.status_code == 206
+    assert any(call[0] == "download" for call in crawler_client.calls)
+    assert not any(call[0] == "download" for call in client_fake.calls)
