@@ -327,6 +327,7 @@ async def report_failure(
     reason: str,
     detail: str = "",
     preview_disabled: bool = False,
+    permanent: bool = False,
 ) -> bool:
     """A channel that cannot be crawled. Never silently empty — always a status."""
     channel = await _locked(session, channel_id)
@@ -338,7 +339,18 @@ async def report_failure(
     channel.crawl_error = detail[:500] or reason
     channel.fail_count += 1
 
-    if preview_disabled:
+    if permanent:
+        # A username nobody owns, or one that belongs to a person or a bot. It will
+        # not start existing, so five retries with growing backoff spend the account's
+        # attention on nothing — and fill the crawler page with noise that hides the
+        # failures worth reading.
+        channel.crawl_status = "error"
+        channel.status = "failed"
+        channel.status_reason = reason
+        channel.fail_count = MAX_FAILURES
+        channel.next_crawl_at = datetime.now(UTC) + timedelta(days=365)
+        log.info("crawl.permanent_failure", channel_id=channel_id, username=channel.username)
+    elif preview_disabled:
         channel.preview_available = False
         channel.status_reason = "preview_disabled"
         if await plans.get_flag(session, "mtproto_fallback", False):

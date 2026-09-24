@@ -27,6 +27,17 @@ def account_with(settings: Settings, client: FakeClient) -> ResolverAccount:
     return account
 
 
+class SearchingFailure(FakeClient):
+    """A client whose peer resolution fails the way Telethon fails on a dead name."""
+
+    def __init__(self, error: Exception) -> None:
+        super().__init__()
+        self.error = error
+
+    async def get_input_entity(self, username: str) -> Any:
+        raise self.error
+
+
 def crawler(settings: Settings, client: FakeClient) -> MtprotoCrawler:
     settings.crawl_min_delay_s = 0.0
     settings.crawl_max_delay_s = 0.0
@@ -139,3 +150,20 @@ async def test_a_cooling_account_says_so_instead_of_no_account(settings: Setting
     account.account.cooling_until = _time.time() + 300
     with pytest.raises(ChannelUnreadable, match="cooling"):
         await MtprotoCrawler(account, settings).crawl(7, "music")
+
+
+async def test_a_username_nobody_owns_is_reported_as_permanent(settings: Settings) -> None:
+    """Mention discovery turns up bots, people and typos; none of them become channels."""
+    client = SearchingFailure(ValueError('No user has "typo_name" as username'))
+    with pytest.raises(ChannelUnreadable) as caught:
+        await crawler(settings, client).crawl(7, "typo_name")
+    assert caught.value.permanent is True
+
+
+async def test_a_private_channel_is_not_permanent(settings: Settings) -> None:
+    """It could be opened tomorrow, so it keeps its place in the retry schedule."""
+    client = FakeClient([audio_message(1)])
+    client.fail_with["iter"] = ChannelPrivateError(request=None)
+    with pytest.raises(ChannelUnreadable) as caught:
+        await crawler(settings, client).crawl(7, "shy")
+    assert caught.value.permanent is False

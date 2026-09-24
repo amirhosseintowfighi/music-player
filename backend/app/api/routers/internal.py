@@ -151,6 +151,7 @@ async def crawl_failure(
         reason=body.reason,
         detail=body.detail,
         preview_disabled=body.preview_disabled,
+        permanent=body.permanent,
     )
     return {"recorded": ok}
 

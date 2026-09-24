@@ -29,7 +29,12 @@ from typing import Any
 
 from prometheus_client import Counter
 from telethon import types
-from telethon.errors import FloodWaitError, RPCError
+from telethon.errors import (
+    FloodWaitError,
+    RPCError,
+    UsernameInvalidError,
+    UsernameNotOccupiedError,
+)
 
 from tmusic_common.indexer_contract import AudioItem, ChannelMeta
 from tmusic_common.logging import get_logger
@@ -50,7 +55,21 @@ _AT_MENTION = re.compile(r"@([A-Za-z][A-Za-z0-9_]{3,31})")
 
 
 class ChannelUnreadable(Exception):
-    """The account cannot see this channel: private, restricted, or gone."""
+    """The account cannot see this channel: private, restricted, or gone.
+
+    ``permanent`` separates "not today" from "not ever". A private channel might be
+    opened tomorrow; a username nobody owns will not start existing, and retrying it
+    five times with exponential backoff spends the account's attention on nothing.
+    """
+
+    def __init__(self, message: str, *, permanent: bool = False) -> None:
+        super().__init__(message)
+        self.permanent = permanent
+
+
+# Telegram's way of saying the name is not a channel anybody owns. Telethon raises
+# ValueError/TypeError for the same thing when it resolves the peer itself.
+PERMANENT_ERRORS = (UsernameInvalidError, UsernameNotOccupiedError, ValueError, TypeError)
 
 
 def audio_of(message: Any) -> tuple[Any, Any] | None:
@@ -165,7 +184,10 @@ class MtprotoCrawler:
             self.account.on_flood(int(exc.seconds))
             raise CrawlBlocked(float(exc.seconds)) from exc
         except (RPCError, ValueError, TypeError) as exc:
-            raise ChannelUnreadable(f"{username}: {type(exc).__name__}: {exc}") from exc
+            raise ChannelUnreadable(
+                f"{username}: {type(exc).__name__}: {exc}",
+                permanent=isinstance(exc, PERMANENT_ERRORS),
+            ) from exc
 
         progress.meta = meta_of(entity, username)
         cursor = before or 0
@@ -181,7 +203,10 @@ class MtprotoCrawler:
                 self.account.on_flood(int(exc.seconds))
                 raise CrawlBlocked(float(exc.seconds)) from exc
             except RPCError as exc:
-                raise ChannelUnreadable(f"{username}: {type(exc).__name__}: {exc}") from exc
+                raise ChannelUnreadable(
+                    f"{username}: {type(exc).__name__}: {exc}",
+                    permanent=isinstance(exc, PERMANENT_ERRORS),
+                ) from exc
 
             if not messages:
                 progress.finished = True

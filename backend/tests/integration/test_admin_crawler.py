@@ -309,9 +309,7 @@ async def test_a_channel_being_crawled_right_now_is_at_the_top(
     await crawl_channel(
         session, "also_broken", status="indexing", crawl_status="error", fail_count=2
     )
-    await crawl_channel(
-        session, "finished", status="active", crawl_status="idle", progress_pct=100
-    )
+    await crawl_channel(session, "finished", status="active", crawl_status="idle", progress_pct=100)
     await session.commit()
     headers = await owner(client, session)
 

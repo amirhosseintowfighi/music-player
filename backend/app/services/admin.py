@@ -882,9 +882,7 @@ async def plan_limits(session: AsyncSession, claims: AdminClaims) -> list[dict[s
 
 async def get_setting(session: AsyncSession, claims: AdminClaims, key: str) -> Any:
     require(claims, "system.view")
-    row = await session.execute(
-        text("SELECT value FROM settings WHERE key = :k").bindparams(k=key)
-    )
+    row = await session.execute(text("SELECT value FROM settings WHERE key = :k").bindparams(k=key))
     found = row.first()
     return found[0] if found else None
 

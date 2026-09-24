@@ -203,6 +203,7 @@ class CrawlWorker:
                     lease_token=task.lease_token,
                     reason="mtproto_unreadable",
                     detail=str(exc),
+                    permanent=exc.permanent,
                 ),
             )
             return

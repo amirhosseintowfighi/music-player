@@ -149,6 +149,9 @@ class CrawlFailureIn(_Model):
     reason: str = Field(max_length=100)
     detail: str = Field("", max_length=500)
     preview_disabled: bool = False
+    # "Not ever", as opposed to "not today": a username nobody owns, or a name that
+    # belongs to a user or a bot. Retrying those is pure waste.
+    permanent: bool = False
     retry_after_s: int | None = Field(None, ge=0, le=86_400)
 
 

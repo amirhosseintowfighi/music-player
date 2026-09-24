@@ -117,3 +117,48 @@ async def test_web_channels_keep_their_own_source(session: AsyncSession) -> None
 
     task = next(t for t in await claim_one(session) if t.channel_id == channel.id)
     assert task.source == "web_preview"
+
+
+async def test_a_username_nobody_owns_is_given_up_on_at_once(
+    session: AsyncSession,
+) -> None:
+    """Mention discovery finds bots, typos and people. Those never become channels.
+
+    Retrying them five times each, with growing backoff, spends the account's
+    attention on nothing and buries the failures worth reading.
+    """
+    channel = await make_channel(session, "typo_name", status="indexing")
+    tasks = await claim_one(session)
+    token = next(t.lease_token for t in tasks if t.channel_id == channel.id)
+
+    assert await crawling.report_failure(
+        session,
+        channel.id,
+        token,
+        reason="mtproto_unreadable",
+        detail="typo_name: UsernameInvalidError",
+        permanent=True,
+    )
+    await session.commit()
+    await session.refresh(channel)
+
+    assert channel.status == "failed"
+    assert channel.fail_count == crawling.MAX_FAILURES
+    assert channel.id not in [t.channel_id for t in await claim_one(session)]
+
+
+async def test_a_channel_that_is_merely_private_is_retried(session: AsyncSession) -> None:
+    """ "Not today" and "not ever" must not share a code path: a private channel can
+    be opened tomorrow."""
+    channel = await make_channel(session, "shy_channel", status="indexing")
+    tasks = await claim_one(session)
+    token = next(t.lease_token for t in tasks if t.channel_id == channel.id)
+
+    await crawling.report_failure(
+        session, channel.id, token, reason="mtproto_unreadable", detail="ChannelPrivateError"
+    )
+    await session.commit()
+    await session.refresh(channel)
+
+    assert channel.status != "failed"
+    assert channel.fail_count == 1
