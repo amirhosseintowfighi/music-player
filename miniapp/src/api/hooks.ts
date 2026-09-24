@@ -170,6 +170,14 @@ export function useArtist(id: number) {
   return useQuery({ queryKey: keys.artist(id), queryFn: () => get<Artist>(`/v1/artists/${id}`) });
 }
 
+export function useAlbumSearch(query: string) {
+  return useQuery({
+    queryKey: ['search-albums', query],
+    queryFn: () => get<Album[]>(`/v1/search/albums${qs({ q: query })}`),
+    enabled: query.length > 0,
+  });
+}
+
 export function useAlbum(artistId: number, name: string) {
   return useQuery({
     queryKey: ['album', artistId, name],

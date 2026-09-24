@@ -336,3 +336,52 @@ async def test_an_album_nobody_released_is_a_404(
         f"/v1/albums/{artist_id}", params={"name": "No Such Record"}, headers=auth
     )
     assert resp.status_code == 404
+
+
+async def test_searching_an_album_name_finds_the_record(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """A record is something people know by name, so the search box should know it."""
+    channel = await make_channel(session, "albumsearch")
+    await ingest_items(
+        session,
+        channel,
+        [
+            item("Sattar - Tanhatarin", msg=41, fuid="AgADasr1"),
+            item("Sattar - Bade Sarkesh", msg=42, fuid="AgADasr2"),
+        ],
+    )
+    await session.commit()
+    ids = [
+        row[0]
+        for row in (
+            await session.execute(
+                text("SELECT id FROM tracks WHERE file_unique_id LIKE 'AgADasr%' ORDER BY id")
+            )
+        ).all()
+    ]
+    await session.execute(
+        text(
+            "UPDATE tracks SET album = 'Shab Neshini', normalized_album = 'shab neshini'"
+            " WHERE id = ANY(:ids)"
+        ).bindparams(ids=ids)
+    )
+    # Only the second one has artwork, so it is the one the cover comes from.
+    await session.execute(
+        text("UPDATE tracks SET has_thumb = true WHERE id = :id").bindparams(id=ids[1])
+    )
+    await session.commit()
+
+    auth = bearer(await login(client, 8816))
+    rows = (
+        await client.get("/v1/search/albums", params={"q": "Shab Neshini"}, headers=auth)
+    ).json()
+    hit = next(row for row in rows if row["album"] == "Shab Neshini")
+
+    assert hit["tracks_count"] == 2
+    assert hit["artist_name"]
+    assert hit["cover_track_id"] == ids[1]
+
+    # A misspelling still lands on it.
+    near = (await client.get("/v1/search/albums", params={"q": "Shab Nshini"}, headers=auth)).json()
+    assert any(row["album"] == "Shab Neshini" for row in near)

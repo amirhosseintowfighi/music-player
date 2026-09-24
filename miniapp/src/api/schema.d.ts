@@ -1769,6 +1769,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/search/albums": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Albums
+         * @description Albums matching what was typed, so a record name is a way in as well.
+         */
+        get: operations["search_albums_v1_search_albums_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/search/suggest": {
         parameters: {
             query?: never;
@@ -2184,6 +2204,8 @@ export interface components {
             artist_name: string | null;
             /** Tracks Count */
             tracks_count: number;
+            /** Cover Track Id */
+            cover_track_id?: number | null;
         };
         /**
          * AlbumPageOut
@@ -2207,6 +2229,8 @@ export interface components {
             year?: number | null;
             /** Tracks */
             tracks: number;
+            /** Cover Track Id */
+            cover_track_id?: number | null;
         };
         /** ArtistCountOut */
         ArtistCountOut: {
@@ -6893,6 +6917,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArtistOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_albums_v1_search_albums_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlbumOut"][];
                 };
             };
             /** @description Validation Error */

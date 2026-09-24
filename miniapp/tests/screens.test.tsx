@@ -82,7 +82,9 @@ describe('Search', () => {
     expect(await screen.findByText('پل')).toBeInTheDocument();
     const searchCalls = calls.filter((call) => call.url.startsWith('/v1/search?'));
     expect(searchCalls).toHaveLength(1); // one request for eight keystrokes
-    expect(searchCalls[0]?.url).toContain('scope=library');
+    // Everything by default: a search for a song should find the song, not the
+    // part of it that happens to sit in a channel the listener already added.
+    expect(searchCalls[0]?.url).toContain('scope=global');
   });
 
   it('switches scope and shows the degraded banner', async () => {

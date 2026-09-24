@@ -266,7 +266,8 @@ async def library_albums(
                 SELECT r.album, min(a.id) AS artist_id,
                        min(CASE WHEN :lang = 'en' THEN COALESCE(a.latin_name, a.name)
                                 ELSE a.name END) AS artist_name,
-                       count(*) AS n
+                       count(*) AS n,
+                       (array_agg(r.id ORDER BY r.has_thumb DESC, r.id))[1] AS cover_track_id
                 FROM lib JOIN tracks r ON r.id = lib.tid AND NOT r.hidden
                 LEFT JOIN track_artists ta ON ta.track_id = r.id AND ta.role = 'primary'
                      AND ta.position = 0
@@ -280,7 +281,13 @@ async def library_albums(
         )
     ).all()
     return [
-        AlbumOut(album=r.album, artist_id=r.artist_id, artist_name=r.artist_name, tracks_count=r.n)
+        AlbumOut(
+            album=r.album,
+            artist_id=r.artist_id,
+            artist_name=r.artist_name,
+            tracks_count=r.n,
+            cover_track_id=r.cover_track_id,
+        )
         for r in rows
     ]
 
@@ -349,6 +356,56 @@ async def artist_tracks(
     return await hydrate_tracks(session, [r.id for r in rows], lang, viewer_id), next_cursor
 
 
+async def search_albums(
+    session: AsyncSession, query: str, lang: Lang, limit: int = 8
+) -> list[AlbumOut]:
+    """Albums whose name matches what was typed, biggest first.
+
+    Same reasoning as artists: far fewer albums than tracks, and the normalised name
+    is already stored, so this is one indexed query rather than a second search
+    engine to keep in sync.
+    """
+    key = normalize_key(query)
+    if not key:
+        return []
+    rows = (
+        await session.execute(
+            text(
+                """
+        SELECT t.album,
+               min(a.id) AS artist_id,
+               min(CASE WHEN :lang = 'en' THEN COALESCE(a.latin_name, a.name)
+                        ELSE a.name END) AS artist_name,
+               count(*) AS tracks_count,
+               (array_agg(t.id ORDER BY t.has_thumb DESC, t.id))[1] AS cover_track_id
+          FROM tracks t
+          LEFT JOIN track_artists ta ON ta.track_id = t.id AND ta.role = 'primary'
+               AND ta.position = 0
+          LEFT JOIN artists a ON a.id = ta.artist_id
+         WHERE t.canonical_track_id IS NULL AND NOT t.hidden
+           AND t.normalized_album IS NOT NULL AND t.normalized_album <> ''
+           AND (t.normalized_album = :key OR t.normalized_album % :key)
+         GROUP BY t.normalized_album, t.album
+         ORDER BY (t.normalized_album = :key) DESC,
+                  similarity(t.normalized_album, :key) DESC,
+                  count(*) DESC
+         LIMIT :lim
+        """
+            ).bindparams(key=key, lang=lang, lim=limit)
+        )
+    ).mappings()
+    return [
+        AlbumOut(
+            album=row["album"],
+            artist_id=row["artist_id"],
+            artist_name=row["artist_name"],
+            tracks_count=row["tracks_count"],
+            cover_track_id=row["cover_track_id"],
+        )
+        for row in rows
+    ]
+
+
 async def album_page(
     session: AsyncSession,
     artist_id: int,
@@ -377,7 +434,7 @@ async def album_page(
         await session.execute(
             text(
                 """
-        SELECT t.id, t.album, t.year
+        SELECT t.id, t.album, t.year, t.has_thumb
           FROM track_artists ta
           JOIN tracks t ON t.id = ta.track_id
          WHERE ta.artist_id = :aid AND t.canonical_track_id IS NULL AND NOT t.hidden
@@ -400,6 +457,7 @@ async def album_page(
             artist_id=artist.id,
             artist_name=artist.name,
             tracks_count=len(rows),
+            cover_track_id=next((r.id for r in rows if r.has_thumb), rows[0].id),
         ),
         year,
         tracks,
@@ -496,7 +554,9 @@ async def artist_overview(
         await session.execute(
             text(
                 """
-        SELECT t.album AS name, min(t.year) AS year, count(*) AS tracks
+        SELECT t.album AS name, min(t.year) AS year, count(*) AS tracks,
+               -- A track that actually has artwork, if the record has one at all.
+               (array_agg(t.id ORDER BY t.has_thumb DESC, t.id))[1] AS cover_track_id
           FROM track_artists ta
           JOIN tracks t ON t.id = ta.track_id
          WHERE ta.artist_id = :aid AND t.canonical_track_id IS NULL AND NOT t.hidden

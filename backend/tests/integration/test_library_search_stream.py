@@ -139,6 +139,8 @@ async def test_library_artists_albums_and_detail_pages(
             "artist_id": albums[0]["artist_id"],
             "artist_name": "گوگوش",
             "tracks_count": 1,
+            # An album borrows a cover from one of its own tracks.
+            "cover_track_id": lib["ids"]["AgADpol"],
         }
     ]
     by_album = (

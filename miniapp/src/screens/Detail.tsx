@@ -236,6 +236,9 @@ export function AlbumScreen() {
           .join(' · ')}
         seed={album.data.album.album}
         glyph="💿"
+        {...(album.data.album.cover_track_id && thumbs[album.data.album.cover_track_id]
+          ? { thumb: thumbs[album.data.album.cover_track_id] as string }
+          : {})}
       />
       <TrackList tracks={tracks} thumbs={thumbs} source="library" sourceId={artistId} />
     </div>

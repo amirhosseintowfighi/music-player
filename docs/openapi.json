@@ -5641,6 +5641,60 @@
         }
       }
     },
+    "/v1/search/albums": {
+      "get": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Search Albums",
+        "description": "Albums matching what was typed, so a record name is a way in as well.",
+        "operationId": "search_albums_v1_search_albums_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AlbumOut"
+                  },
+                  "title": "Response Search Albums V1 Search Albums Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/search/suggest": {
       "get": {
         "tags": [
@@ -6765,6 +6819,17 @@
           "tracks_count": {
             "type": "integer",
             "title": "Tracks Count"
+          },
+          "cover_track_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Track Id"
           }
         },
         "additionalProperties": false,
@@ -6830,6 +6895,17 @@
           "tracks": {
             "type": "integer",
             "title": "Tracks"
+          },
+          "cover_track_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cover Track Id"
           }
         },
         "additionalProperties": false,

@@ -10,6 +10,7 @@ export const fa = {
   'artist.albums': 'آلبوم‌ها',
   'artist.allTracks': 'همهٔ آهنگ‌ها',
   'search.artists': 'خواننده‌ها',
+  'search.albums': 'آلبوم‌ها',
   'app.loading': 'در حال آماده‌سازی…',
   'app.error': 'مشکلی پیش آمد',
   'app.retry': 'دوباره امتحان کن',

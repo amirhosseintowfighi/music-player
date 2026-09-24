@@ -12,6 +12,7 @@ export const en: Record<keyof typeof fa, string> = {
   'artist.albums': 'Albums',
   'artist.allTracks': 'All tracks',
   'search.artists': 'Artists',
+  'search.albums': 'Albums',
   'app.loading': 'Getting things ready…',
   'app.error': 'Something went wrong',
   'app.retry': 'Try again',

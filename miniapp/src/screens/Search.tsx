@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import {
+  useAlbumSearch,
   useArtistSearch,
   useClearSearchHistory,
   useSearch,
@@ -20,7 +21,9 @@ export function Search() {
   const { t } = useI18n();
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
-  const [scope, setScope] = useState<'library' | 'global'>('library');
+  // Everything by default: someone searching for a song usually wants the song,
+  // not the subset of it that happens to be in a channel they already added.
+  const [scope, setScope] = useState<'library' | 'global'>('global');
   const play = usePlayer((s) => s.play);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -34,10 +37,15 @@ export function Search() {
   // Artists are searched separately: a name typed into this box is usually a way to
   // reach the artist, not a track whose title happens to contain it.
   const artists = useArtistSearch(query);
+  const albums = useAlbumSearch(query);
   const suggestions = useSuggestions(input.trim());
   const clearHistory = useClearSearchHistory();
   const tracks = useMemo(() => results.data?.items ?? [], [results.data]);
-  const thumbs = useThumbs(tracks.map((track) => track.id));
+  const albumCoverIds = useMemo(
+    () => (albums.data ?? []).map((album) => album.cover_track_id).filter((id): id is number => id != null),
+    [albums.data],
+  );
+  const thumbs = useThumbs([...tracks.map((track) => track.id), ...albumCoverIds]);
 
   return (
     <div className="px-4 pt-4">
@@ -127,6 +135,38 @@ export function Search() {
                 <p className="mt-1 truncate text-[12px] font-medium">{artist.name}</p>
                 <p className="truncate text-[10.5px] text-[var(--ink-dim)]">
                   {t('library.count', { count: artist.tracks_count })}
+                </p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {query && (albums.data?.length ?? 0) > 0 && (
+        <section className="mt-5">
+          <h2 className="mb-2 px-1 text-[14px] font-bold">{t('search.albums')}</h2>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {albums.data?.map((album) => (
+              <button
+                key={`${album.artist_id}-${album.album}`}
+                type="button"
+                className="w-24 shrink-0 text-start"
+                disabled={album.artist_id == null}
+                onClick={() =>
+                  navigate(`/album/${album.artist_id}/${encodeURIComponent(album.album)}`)
+                }
+              >
+                <Cover
+                  {...(album.cover_track_id && thumbs[album.cover_track_id]
+                    ? { src: thumbs[album.cover_track_id] as string }
+                    : {})}
+                  seed={album.album}
+                  size={96}
+                  glyph="💿"
+                />
+                <p className="mt-1 truncate text-[12px] font-medium">{album.album}</p>
+                <p className="truncate text-[10.5px] text-[var(--ink-dim)]">
+                  {album.artist_name ?? ''}
                 </p>
               </button>
             ))}

@@ -173,6 +173,7 @@ class AlbumRef(ApiModel):
     name: str
     year: int | None = None
     tracks: int
+    cover_track_id: int | None = None
 
 
 class ArtistPageOut(ApiModel):
@@ -188,6 +189,8 @@ class AlbumOut(ApiModel):
     artist_id: int | None
     artist_name: str | None
     tracks_count: int
+    # A record has no artwork of its own here; one of its tracks lends its cover.
+    cover_track_id: int | None = None
 
 
 class AlbumPageOut(ApiModel):

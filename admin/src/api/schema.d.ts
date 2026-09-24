@@ -1254,6 +1254,47 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/albums/{artist_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Album Page
+         * @description An album's own page. The name travels as a query parameter because album
+         *     names contain slashes, dots and everything else a path segment dislikes.
+         */
+        get: operations["album_page_v1_albums__artist_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/artists/{artist_id}/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Artist Page
+         * @description The artist page's header: who they are, their best-liked songs, their albums.
+         */
+        get: operations["artist_page_v1_artists__artist_id__page_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/artists/{artist_id}/tracks": {
         parameters: {
             query?: never;
@@ -1708,6 +1749,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/search/artists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Artists
+         * @description Artists matching what was typed, so a name in the search box is a way in.
+         */
+        get: operations["search_artists_v1_search_artists_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/search/albums": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search Albums
+         * @description Albums matching what was typed, so a record name is a way in as well.
+         */
+        get: operations["search_albums_v1_search_albums_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/search/suggest": {
         parameters: {
             query?: never;
@@ -2123,6 +2204,33 @@ export interface components {
             artist_name: string | null;
             /** Tracks Count */
             tracks_count: number;
+            /** Cover Track Id */
+            cover_track_id?: number | null;
+        };
+        /**
+         * AlbumPageOut
+         * @description An album with its tracks — the same shape the artist page links into.
+         */
+        AlbumPageOut: {
+            album: components["schemas"]["AlbumOut"];
+            /** Year */
+            year?: number | null;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["TrackOut"][];
+        };
+        /** AlbumRef */
+        AlbumRef: {
+            /** Name */
+            name: string;
+            /** Year */
+            year?: number | null;
+            /** Tracks */
+            tracks: number;
+            /** Cover Track Id */
+            cover_track_id?: number | null;
         };
         /** ArtistCountOut */
         ArtistCountOut: {
@@ -2143,6 +2251,25 @@ export interface components {
             latin_name: string | null;
             /** Tracks Count */
             tracks_count: number;
+            /** Image Url */
+            image_url?: string | null;
+        };
+        /**
+         * ArtistPageOut
+         * @description Everything an artist page shows above its full track list.
+         */
+        ArtistPageOut: {
+            artist: components["schemas"]["ArtistOut"];
+            /**
+             * Top Tracks
+             * @default []
+             */
+            top_tracks: components["schemas"]["TrackOut"][];
+            /**
+             * Albums
+             * @default []
+             */
+            albums: components["schemas"]["AlbumRef"][];
         };
         /** ArtistRef */
         ArtistRef: {
@@ -5813,6 +5940,70 @@ export interface operations {
             };
         };
     };
+    album_page_v1_albums__artist_id__get: {
+        parameters: {
+            query: {
+                name: string;
+            };
+            header?: never;
+            path: {
+                artist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlbumPageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    artist_page_v1_artists__artist_id__page_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistPageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     artist_tracks_v1_artists__artist_id__tracks_get: {
         parameters: {
             query?: {
@@ -6695,6 +6886,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_artists_v1_search_artists_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    search_albums_v1_search_albums_get: {
+        parameters: {
+            query: {
+                q: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlbumOut"][];
                 };
             };
             /** @description Validation Error */
