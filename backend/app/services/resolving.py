@@ -92,6 +92,7 @@ async def resolve_track(
     track_id: int,
     *,
     http_timeout: float = INLINE_TIMEOUT_S,
+    background: bool = False,
 ) -> Track | None:
     """Fills in a track's file identity. Returns the track when it is playable.
 
@@ -128,6 +129,9 @@ async def resolve_track(
                 "channel_username": row.username,
                 "channel_id": row.tg_channel_id,
                 "message_id": row.message_id,
+                # Nobody is waiting for a pre-warm, so the edge reads it on the
+                # crawling account and leaves playback's account alone.
+                "background": background,
             },
             headers={"Authorization": f"Bearer {settings.internal_api_token.get_secret_value()}"},
             timeout=http_timeout,
@@ -253,7 +257,7 @@ async def prewarm(
         if breaker.open():
             break
         track = await resolve_track(
-            session, http, settings, track_id, http_timeout=BACKGROUND_TIMEOUT_S
+            session, http, settings, track_id, http_timeout=BACKGROUND_TIMEOUT_S, background=True
         )
         if track is not None and track.resolve_status == "resolved":
             resolved += 1

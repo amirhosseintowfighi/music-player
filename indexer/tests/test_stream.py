@@ -351,3 +351,47 @@ async def test_probe_reports_a_cover_the_file_carries_itself(
 
     assert resp.status_code == 200
     assert resp.json()["has_artwork"] is True
+
+
+async def test_background_work_reads_from_the_crawling_account(
+    settings: Settings, client_fake: FakeClient
+) -> None:
+    """A catalogue being backfilled must not compete with somebody pressing play.
+
+    Probing tags and pre-warming a track are downloads nobody is waiting for; they
+    belong on the crawler's account, not on the one serving playback.
+    """
+    from tmusic_indexer.account import Account, ResolverAccount
+    from tmusic_indexer.stream import Sources, create_app
+
+    listener_client = client_fake
+    crawler_client = FakeClient([audio_message(1, audio_doc(10, size=SIZE))])
+    crawler_client.file_bytes = DATA
+
+    def account_for(client: FakeClient, role: str) -> ResolverAccount:
+        account = ResolverAccount(settings, role=role)
+        account.account = Account(key="acc1" if role == "resolver" else "crawl1", client=client)
+        return account
+
+    async with httpx.AsyncClient(transport=bot_api_transport([])) as tg:
+        app = create_app(
+            settings,
+            Sources(settings, account_for(listener_client, "resolver"), tg),
+            Sources(settings, account_for(crawler_client, "crawler"), tg),
+        )
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://edge") as http:
+            await http.post(
+                "/internal/resolve",
+                json={"channel_username": "music", "message_id": 1, "background": True},
+                headers={"Authorization": "Bearer internal-token"},
+            )
+            await http.post(
+                "/internal/resolve",
+                json={"channel_username": "music", "message_id": 1},
+                headers={"Authorization": "Bearer internal-token"},
+            )
+
+    # One call each: the background one went to the crawler, the play to the resolver.
+    assert any(call[0] == "get_message" for call in crawler_client.calls)
+    assert any(call[0] == "get_message" for call in listener_client.calls)

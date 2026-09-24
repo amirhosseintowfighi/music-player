@@ -372,10 +372,19 @@ def _headers(ticket: StreamTicket, length: int) -> dict[str, str]:
     }
 
 
-def create_app(settings: Settings, sources: Sources) -> Starlette:
+def create_app(
+    settings: Settings, sources: Sources, background: Sources | None = None
+) -> Starlette:
+    """``background`` is where work nobody is waiting for reads from.
+
+    Probing a file's tags and pre-warming a track are both downloads, and until now
+    they came off the same account a listener's playback does — so a catalogue being
+    backfilled competed with the person pressing play. When a crawling session
+    exists, background reads go there instead and the two stop fighting.
+    """
     keys = settings.signing_keys
     sender = Sender(settings, sources)
-    prober = Prober(sources)
+    prober = Prober(background or sources)
 
     def _ticket(request: Request) -> StreamTicket:
         return ticket_for(request.url.path, request.query_params.get("t"), keys)
@@ -521,8 +530,11 @@ def create_app(settings: Settings, sources: Sources) -> Starlette:
         if not hmac.compare_digest(request.headers.get("authorization", ""), expected):
             return Response(status_code=401)
         body = await request.json()
+        # The core says whether somebody is waiting: a play resolves on the account
+        # that serves playback, a pre-warm resolves on the crawler's.
+        reader = background or sources if body.get("background") else sources
         try:
-            item = await sources.resolve_message(
+            item = await reader.resolve_message(
                 str(body["channel_username"]),
                 int(body["channel_id"]) if body.get("channel_id") else None,
                 int(body["message_id"]),

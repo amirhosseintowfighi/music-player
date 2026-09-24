@@ -14,6 +14,10 @@ limit_req_zone $binary_remote_addr zone=hook_per_ip:10m rate=50r/s;
 # and an upstream block would hold the old one until nginx is reloaded.
 resolver 127.0.0.11 ipv6=off valid=10s;
 
+# Required by snippets/stream-cache.conf.
+log_format stream_cache '$time_iso8601 $upstream_cache_status $request_uri '
+                        '$status $body_bytes_sent $request_time';
+
 upstream core_internal {
     server ${WG_CORE_IP}:8080;
     keepalive 16;

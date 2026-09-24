@@ -51,7 +51,11 @@ async def main() -> None:
         with contextlib.suppress(CoreUnavailable):  # the panel can wait; work cannot
             resolver.assign_ids(await core.register(settings.worker_id, resolver.registration()))
         crawler = CrawlWorker(settings, core, crawl_account)
-        app = create_app(settings, Sources(settings, resolver, tg_http))
+        app = create_app(
+            settings,
+            Sources(settings, resolver, tg_http),
+            Sources(settings, crawl_account, tg_http),
+        )
         server = uvicorn.Server(
             uvicorn.Config(
                 app,

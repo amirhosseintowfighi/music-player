@@ -171,20 +171,25 @@ jobs:
             docker compose -f infra/compose/solo.yml config -q
       - name: nginx templates load in a real nginx
         # `nginx -t` is the only thing that knows whether a directive is allowed where
-        # it is written. A template that does not load means 502 for every request.
+        # it is written. A template that does not load means 502 for every request —
+        # and both templates are checked, because they share the streaming snippet and
+        # a directive it needs can easily be defined in only one of them.
         run: |
           mkdir -p /tmp/n/conf.d /tmp/n/certs /tmp/n/cache
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj '/CN=test' \
             -keyout /tmp/n/certs/privkey.pem -out /tmp/n/certs/fullchain.pem 2>/dev/null
-          DOMAIN=example.com EDGE_CACHE_SIZE=1g \
-            envsubst '$DOMAIN $EDGE_CACHE_SIZE' \
-            < infra/nginx/solo.conf.template > /tmp/n/conf.d/default.conf
-          docker run --rm \
-            -v /tmp/n/conf.d:/etc/nginx/conf.d:ro \
-            -v "$PWD/infra/nginx/snippets:/etc/nginx/snippets:ro" \
-            -v /tmp/n/certs:/etc/nginx/certs:ro \
-            -v /tmp/n/cache:/var/cache/nginx/stream \
-            nginx:stable-alpine3.24 nginx -t
+          for template in solo edge; do
+            rm -f /tmp/n/conf.d/*.conf
+            DOMAIN=example.com EDGE_CACHE_SIZE=1g WG_CORE_IP=10.8.0.1 WG_EDGE_IP=10.8.0.2 \
+              envsubst '$DOMAIN $EDGE_CACHE_SIZE $WG_CORE_IP $WG_EDGE_IP' \
+              < "infra/nginx/$template.conf.template" > /tmp/n/conf.d/default.conf
+            docker run --rm \
+              -v /tmp/n/conf.d:/etc/nginx/conf.d:ro \
+              -v "$PWD/infra/nginx/snippets:/etc/nginx/snippets:ro" \
+              -v /tmp/n/certs:/etc/nginx/certs:ro \
+              -v /tmp/n/cache:/var/cache/nginx/stream \
+              nginx:stable-alpine3.24 nginx -t
+          done
 
       - name: Kubernetes manifests are valid
         run: |
