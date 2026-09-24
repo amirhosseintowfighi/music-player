@@ -9,6 +9,7 @@ export const fa = {
   'artist.popular': 'محبوب‌ترین‌ها',
   'artist.albums': 'آلبوم‌ها',
   'artist.allTracks': 'همهٔ آهنگ‌ها',
+  'search.artists': 'خواننده‌ها',
   'app.loading': 'در حال آماده‌سازی…',
   'app.error': 'مشکلی پیش آمد',
   'app.retry': 'دوباره امتحان کن',

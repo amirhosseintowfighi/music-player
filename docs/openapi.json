@@ -5528,6 +5528,60 @@
         }
       }
     },
+    "/v1/search/artists": {
+      "get": {
+        "tags": [
+          "search"
+        ],
+        "summary": "Search Artists",
+        "description": "Artists matching what was typed, so a name in the search box is a way in.",
+        "operationId": "search_artists_v1_search_artists_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100,
+              "title": "Q"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ArtistOut"
+                  },
+                  "title": "Response Search Artists V1 Search Artists Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/search/suggest": {
       "get": {
         "tags": [

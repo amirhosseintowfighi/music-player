@@ -169,6 +169,14 @@ export function useArtist(id: number) {
   return useQuery({ queryKey: keys.artist(id), queryFn: () => get<Artist>(`/v1/artists/${id}`) });
 }
 
+export function useArtistSearch(query: string) {
+  return useQuery({
+    queryKey: ['search-artists', query],
+    queryFn: () => get<Artist[]>(`/v1/search/artists${qs({ q: query })}`),
+    enabled: query.length > 0,
+  });
+}
+
 export function useArtistPage(id: number) {
   return useQuery({
     queryKey: [...keys.artist(id), 'page'],

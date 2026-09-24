@@ -349,6 +349,56 @@ async def artist_tracks(
     return await hydrate_tracks(session, [r.id for r in rows], lang, viewer_id), next_cursor
 
 
+async def search_artists(
+    session: AsyncSession, query: str, lang: Lang, limit: int = 8
+) -> list[ArtistOut]:
+    """Artists whose name matches what was typed, best known first.
+
+    Postgres, not the search index: there are orders of magnitude fewer artists than
+    tracks, they already have a trigram index, and a name is matched three ways —
+    exactly, by trigram similarity, and by the Latin skeleton, so "moein", "Moein"
+    and "معین" all find the same person.
+    """
+    key = normalize_key(query)
+    if not key:
+        return []
+    rows = (
+        await session.execute(
+            text(
+                """
+        SELECT id, name, latin_name, tracks_count, image_url
+          FROM artists
+         WHERE merged_into_id IS NULL AND NOT hidden
+           AND (normalized_name = :key
+                OR normalized_name % :key
+                OR lower(coalesce(latin_name, '')) LIKE :prefix
+                -- A misspelling reaches a Persian name only through the Latin one:
+                -- "Gogoosh" has no trigrams in common with "گوگوش".
+                OR lower(coalesce(latin_name, '')) % :key
+                OR :key = ANY(aliases))
+         ORDER BY (normalized_name = :key) DESC,
+                  greatest(
+                      similarity(normalized_name, :key),
+                      similarity(lower(coalesce(latin_name, '')), :key)
+                  ) DESC,
+                  tracks_count DESC
+         LIMIT :lim
+        """
+            ).bindparams(key=key, prefix=f"{key.lower()}%", lim=limit)
+        )
+    ).mappings()
+    return [
+        ArtistOut(
+            id=row["id"],
+            name=(row["latin_name"] if (lang == "en" and row["latin_name"]) else row["name"]),
+            latin_name=row["latin_name"],
+            tracks_count=row["tracks_count"],
+            image_url=row["image_url"],
+        )
+        for row in rows
+    ]
+
+
 async def artist_overview(
     session: AsyncSession,
     artist_id: int,

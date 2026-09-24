@@ -214,3 +214,57 @@ async def test_the_page_shows_the_best_liked_songs_and_the_albums(
     assert [album["name"] for album in page["albums"]] == ["Boodan"]
     assert page["albums"][0]["year"] == 1993
     assert page["albums"][0]["tracks"] == 1
+
+
+# ── finding an artist by typing their name ────────────────────────────────────
+
+
+async def test_searching_a_name_finds_the_artist_in_every_spelling(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """The search box is how people look for a singer, not just for a song title.
+
+    The name it comes back under is the catalogue's, not the one typed: "Googoosh"
+    and "گوگوش" are one artist, and the seeded aliases are what make that true.
+    """
+    channel = await make_channel(session, "searchchan")
+    await ingest_items(session, channel, [item("Googoosh - Pol", msg=11, fuid="AgADsr1")])
+    await session.commit()
+    artist_id = await session.scalar(
+        text(
+            "SELECT ta.artist_id FROM track_artists ta JOIN tracks t ON t.id = ta.track_id"
+            " WHERE t.file_unique_id = 'AgADsr1'"
+        )
+    )
+    auth = bearer(await login(client, 8812))
+
+    async def ids(query: str) -> list[int]:
+        resp = await client.get("/v1/search/artists", params={"q": query}, headers=auth)
+        assert resp.status_code == 200
+        return [row["id"] for row in resp.json()]
+
+    assert artist_id in await ids("Googoosh")
+    assert artist_id in await ids("googoosh")  # case is not a different artist
+    assert artist_id in await ids("گوگوش")  # neither is the other script
+    assert artist_id in await ids("Gogoosh")  # a near miss still finds them
+    assert await ids("zzzzznobody") == []
+
+
+async def test_artist_results_carry_what_the_chip_needs(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    channel = await make_channel(session, "chipchan")
+    await ingest_items(session, channel, [item("Hayedeh - Soghati", msg=12, fuid="AgADsr2")])
+    await session.commit()
+    artist_id = await session.scalar(
+        text(
+            "SELECT ta.artist_id FROM track_artists ta JOIN tracks t ON t.id = ta.track_id"
+            " WHERE t.file_unique_id = 'AgADsr2'"
+        )
+    )
+    auth = bearer(await login(client, 8813))
+
+    rows = (await client.get("/v1/search/artists", params={"q": "Hayedeh"}, headers=auth)).json()
+    hit = next(row for row in rows if row["id"] == artist_id)
+    assert hit["tracks_count"] >= 1
+    assert "image_url" in hit  # null until enrichment; the chip falls back to a glyph

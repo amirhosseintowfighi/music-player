@@ -1,8 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
-import { useClearSearchHistory, useSearch, useSuggestions } from '@/api/hooks';
+import {
+  useArtistSearch,
+  useClearSearchHistory,
+  useSearch,
+  useSuggestions,
+} from '@/api/hooks';
 import { TrackRow } from '@/components/TrackRow';
-import { EmptyState, Glass, Spinner, cx } from '@/components/ui';
+import { Cover, EmptyState, Glass, Spinner, cx } from '@/components/ui';
 import { CloseIcon, SearchIcon } from '@/components/icons';
 import { useI18n } from '@/i18n';
 import { useThumbs } from '@/player/thumbs';
@@ -23,7 +29,11 @@ export function Search() {
     return () => clearTimeout(timer);
   }, [input]);
 
+  const navigate = useNavigate();
   const results = useSearch(query, scope);
+  // Artists are searched separately: a name typed into this box is usually a way to
+  // reach the artist, not a track whose title happens to contain it.
+  const artists = useArtistSearch(query);
   const suggestions = useSuggestions(input.trim());
   const clearHistory = useClearSearchHistory();
   const tracks = useMemo(() => results.data?.items ?? [], [results.data]);
@@ -94,6 +104,34 @@ export function Search() {
         <div className="grid place-items-center py-14">
           <Spinner />
         </div>
+      )}
+
+      {query && (artists.data?.length ?? 0) > 0 && (
+        <section className="mt-5">
+          <h2 className="mb-2 px-1 text-[14px] font-bold">{t('search.artists')}</h2>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {artists.data?.map((artist) => (
+              <button
+                key={artist.id}
+                type="button"
+                className="w-20 shrink-0 text-center"
+                onClick={() => navigate(`/artist/${artist.id}`)}
+              >
+                <Cover
+                  {...(artist.image_url ? { src: artist.image_url } : {})}
+                  seed={artist.name}
+                  size={72}
+                  radius={999}
+                  glyph="🎤"
+                />
+                <p className="mt-1 truncate text-[12px] font-medium">{artist.name}</p>
+                <p className="truncate text-[10.5px] text-[var(--ink-dim)]">
+                  {t('library.count', { count: artist.tracks_count })}
+                </p>
+              </button>
+            ))}
+          </div>
+        </section>
       )}
 
       {query && results.data && (

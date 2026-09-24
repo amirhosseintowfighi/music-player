@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query
 from app import metrics
 from app.api.deps import Claims, MeiliDep, SessionDep
 from app.api.routers.library import Filters
-from app.schemas import SearchOut, SuggestOut
+from app.schemas import ArtistOut, SearchOut, SuggestOut
 from app.services import channels, library, search
 from app.services.library import TrackFilters
 
@@ -42,6 +42,12 @@ async def search_tracks(
     return SearchOut(
         items=items, total=hit.total, offset=offset, limit=limit, degraded=hit.degraded
     )
+
+
+@router.get("/artists", response_model=list[ArtistOut])
+async def search_artists(claims: Claims, session: SessionDep, q: Q) -> list[ArtistOut]:
+    """Artists matching what was typed, so a name in the search box is a way in."""
+    return await library.search_artists(session, q, claims.lang)
 
 
 @router.get("/suggest", response_model=SuggestOut)
