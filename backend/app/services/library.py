@@ -349,6 +349,63 @@ async def artist_tracks(
     return await hydrate_tracks(session, [r.id for r in rows], lang, viewer_id), next_cursor
 
 
+async def album_page(
+    session: AsyncSession,
+    artist_id: int,
+    album: str,
+    lang: Lang,
+    viewer_id: int | None = None,
+) -> tuple[AlbumOut, int | None, list[TrackOut]]:
+    """One album: its tracks in the order they belong in, and who made it.
+
+    Matched on the normalised album name, so the same record posted as "Boodan" and
+    "بودن " is one page. Ordered by year then title, because a crawled catalogue
+    rarely carries track numbers — and a stable order beats a random one.
+    """
+    key = (album or "").strip().lower()
+    if not key:
+        raise NotFound("album not found")
+    root = await session.scalar(
+        text("SELECT COALESCE(merged_into_id, id) FROM artists WHERE id = :aid").bindparams(
+            aid=artist_id
+        )
+    )
+    if root is None:
+        raise NotFound("artist not found")
+
+    rows = (
+        await session.execute(
+            text(
+                """
+        SELECT t.id, t.album, t.year
+          FROM track_artists ta
+          JOIN tracks t ON t.id = ta.track_id
+         WHERE ta.artist_id = :aid AND t.canonical_track_id IS NULL AND NOT t.hidden
+           AND t.normalized_album = :key
+         ORDER BY t.year NULLS LAST, t.title, t.id
+         LIMIT 500
+        """
+            ).bindparams(aid=root, key=key)
+        )
+    ).all()
+    if not rows:
+        raise NotFound("album not found")
+
+    artist = await get_artist(session, root, lang)
+    tracks = await hydrate_tracks(session, [r.id for r in rows], lang, viewer_id)
+    year = next((r.year for r in rows if r.year is not None), None)
+    return (
+        AlbumOut(
+            album=rows[0].album,
+            artist_id=artist.id,
+            artist_name=artist.name,
+            tracks_count=len(rows),
+        ),
+        year,
+        tracks,
+    )
+
+
 async def search_artists(
     session: AsyncSession, query: str, lang: Lang, limit: int = 8
 ) -> list[ArtistOut]:

@@ -190,6 +190,14 @@ class AlbumOut(ApiModel):
     tracks_count: int
 
 
+class AlbumPageOut(ApiModel):
+    """An album with its tracks — the same shape the artist page links into."""
+
+    album: AlbumOut
+    year: int | None = None
+    items: list[TrackOut] = []
+
+
 class SearchOut(ApiModel):
     items: list[TrackOut]
     total: int

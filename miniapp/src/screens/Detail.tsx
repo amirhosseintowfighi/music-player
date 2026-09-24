@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import {
   flatten,
   useArtist,
+  useAlbum,
   useArtistPage,
   useArtistTracks,
   useChannel,
@@ -135,6 +136,7 @@ export function ChannelScreen() {
 
 export function ArtistScreen() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const id = Number(useParams().id);
   const artist = useArtist(id);
   const page = useArtistPage(id);
@@ -185,7 +187,9 @@ export function ArtistScreen() {
                 key={album.name}
                 type="button"
                 className="w-28 shrink-0 text-start"
-                onClick={() => navigateToAlbum(album.name)}
+                onClick={() =>
+                  navigate(`/album/${id}/${encodeURIComponent(album.name)}`)
+                }
               >
                 <Cover seed={album.name} size={112} glyph="💿" />
                 <p className="mt-1 truncate text-[12.5px] font-medium">{album.name}</p>
@@ -206,9 +210,36 @@ export function ArtistScreen() {
   );
 }
 
-/** Albums have no page of their own yet; the library filters by one. */
-function navigateToAlbum(album: string): void {
-  window.location.hash = `#/library?album=${encodeURIComponent(album)}`;
+export function AlbumScreen() {
+  const { t } = useI18n();
+  const params = useParams();
+  const artistId = Number(params.artistId);
+  const name = decodeURIComponent(params.name ?? '');
+  const album = useAlbum(artistId, name);
+  const tracks = useMemo(() => album.data?.items ?? [], [album.data]);
+  const thumbs = useThumbs(tracks.map((track) => track.id));
+
+  if (album.isError) return <ErrorNote onRetry={() => void album.refetch()} />;
+  if (!album.data) return <div className="grid place-items-center py-20"><Spinner /></div>;
+
+  const year = album.data.year;
+  return (
+    <div className="px-4">
+      <Header
+        title={album.data.album.album}
+        subtitle={[
+          album.data.album.artist_name,
+          year ? String(year) : '',
+          t('library.count', { count: album.data.album.tracks_count }),
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        seed={album.data.album.album}
+        glyph="💿"
+      />
+      <TrackList tracks={tracks} thumbs={thumbs} source="library" sourceId={artistId} />
+    </div>
+  );
 }
 
 /**

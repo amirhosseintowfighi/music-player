@@ -23,7 +23,7 @@ import { FriendsFeedScreen, Profile } from '@/screens/Profile';
 import { Plans } from '@/screens/Plans';
 import { Settings } from '@/screens/Settings';
 import { Wrapped } from '@/screens/Wrapped';
-import { ArtistScreen, ChannelScreen, TrackScreen } from '@/screens/Detail';
+import { AlbumScreen, ArtistScreen, ChannelScreen, TrackScreen } from '@/screens/Detail';
 import { LikedScreen, PlaylistScreen, Playlists, SharedPlaylistScreen } from '@/screens/Playlists';
 import { TrackActions } from '@/components/TrackActions';
 
@@ -237,6 +237,7 @@ function Shell() {
           <Route path="/settings" element={<Settings />} />
           <Route path="/channel/:id" element={<ChannelScreen />} />
           <Route path="/artist/:id" element={<ArtistScreen />} />
+          <Route path="/album/:artistId/:name" element={<AlbumScreen />} />
           <Route path="/track/:id" element={<TrackScreen />} />
           <Route path="/playlists" element={<Playlists />} />
           <Route path="/playlist/:id" element={<PlaylistScreen />} />

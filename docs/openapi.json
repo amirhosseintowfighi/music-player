@@ -3966,6 +3966,65 @@
         }
       }
     },
+    "/v1/albums/{artist_id}": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Album Page",
+        "description": "An album's own page. The name travels as a query parameter because album\nnames contain slashes, dots and everything else a path segment dislikes.",
+        "operationId": "album_page_v1_albums__artist_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "artist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Artist Id"
+            }
+          },
+          {
+            "name": "name",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300,
+              "title": "Name"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlbumPageOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/artists/{artist_id}/page": {
       "get": {
         "tags": [
@@ -6717,6 +6776,39 @@
           "tracks_count"
         ],
         "title": "AlbumOut"
+      },
+      "AlbumPageOut": {
+        "properties": {
+          "album": {
+            "$ref": "#/components/schemas/AlbumOut"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackOut"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "album"
+        ],
+        "title": "AlbumPageOut",
+        "description": "An album with its tracks — the same shape the artist page links into."
       },
       "AlbumRef": {
         "properties": {

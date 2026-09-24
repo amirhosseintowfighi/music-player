@@ -8,6 +8,7 @@ from app.api.deps import Claims, SessionDep, WritableClaims
 from app.errors import LimitReached
 from app.schemas import (
     AlbumOut,
+    AlbumPageOut,
     AlbumRef,
     ArtistOut,
     ArtistPageOut,
@@ -91,6 +92,21 @@ async def channel_tracks(
 @router.get("/artists/{artist_id}", response_model=ArtistOut)
 async def artist_detail(artist_id: int, claims: Claims, session: SessionDep) -> ArtistOut:
     return await library.get_artist(session, artist_id, claims.lang)
+
+
+@router.get("/albums/{artist_id}", response_model=AlbumPageOut)
+async def album_page(
+    artist_id: int,
+    claims: Claims,
+    session: SessionDep,
+    name: Annotated[str, Query(min_length=1, max_length=300)],
+) -> AlbumPageOut:
+    """An album's own page. The name travels as a query parameter because album
+    names contain slashes, dots and everything else a path segment dislikes."""
+    album, year, items = await library.album_page(
+        session, artist_id, name, claims.lang, viewer_id=claims.user_id
+    )
+    return AlbumPageOut(album=album, year=year, items=items)
 
 
 @router.get("/artists/{artist_id}/page", response_model=ArtistPageOut)

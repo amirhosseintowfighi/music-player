@@ -268,3 +268,71 @@ async def test_artist_results_carry_what_the_chip_needs(
     hit = next(row for row in rows if row["id"] == artist_id)
     assert hit["tracks_count"] >= 1
     assert "image_url" in hit  # null until enrichment; the chip falls back to a glyph
+
+
+# ── the album's own page ──────────────────────────────────────────────────────
+
+
+async def test_an_album_has_a_page_of_its_own(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    channel = await make_channel(session, "albumchan")
+    await ingest_items(
+        session,
+        channel,
+        [
+            item("Sattar - Gol Vazheh", msg=21, fuid="AgADalb1"),
+            item("Sattar - Kavir", msg=22, fuid="AgADalb2"),
+            item("Sattar - Single", msg=23, fuid="AgADalb3"),
+        ],
+    )
+    await session.commit()
+    ids = [
+        row[0]
+        for row in (
+            await session.execute(
+                text("SELECT id FROM tracks WHERE file_unique_id LIKE 'AgADalb%' ORDER BY id")
+            )
+        ).all()
+    ]
+    # Two of them are one record; the third is a single and must not appear.
+    await session.execute(
+        text(
+            "UPDATE tracks SET album = 'Gol Vazheh', normalized_album = 'gol vazheh', year = 1977"
+            " WHERE id = ANY(:ids)"
+        ).bindparams(ids=ids[:2])
+    )
+    artist_id = await session.scalar(
+        text("SELECT artist_id FROM track_artists WHERE track_id = :id").bindparams(id=ids[0])
+    )
+    await session.commit()
+
+    auth = bearer(await login(client, 8814))
+    page = (
+        await client.get(f"/v1/albums/{artist_id}", params={"name": "Gol Vazheh"}, headers=auth)
+    ).json()
+
+    assert page["album"]["album"] == "Gol Vazheh"
+    assert page["album"]["tracks_count"] == 2
+    assert page["year"] == 1977
+    assert {track["id"] for track in page["items"]} == set(ids[:2])
+
+
+async def test_an_album_nobody_released_is_a_404(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    channel = await make_channel(session, "albumchan404")
+    await ingest_items(session, channel, [item("Sattar - Kavir", msg=31, fuid="AgADalb9")])
+    await session.commit()
+    artist_id = await session.scalar(
+        text(
+            "SELECT ta.artist_id FROM track_artists ta JOIN tracks t ON t.id = ta.track_id"
+            " WHERE t.file_unique_id = 'AgADalb9'"
+        )
+    )
+    auth = bearer(await login(client, 8815))
+
+    resp = await client.get(
+        f"/v1/albums/{artist_id}", params={"name": "No Such Record"}, headers=auth
+    )
+    assert resp.status_code == 404

@@ -13,6 +13,7 @@ import {
   post,
   qs,
   type Album,
+  type AlbumPage,
   type Artist,
   type ArtistPage,
   type Category,
@@ -167,6 +168,14 @@ export function useReportTrack(id: number) {
 
 export function useArtist(id: number) {
   return useQuery({ queryKey: keys.artist(id), queryFn: () => get<Artist>(`/v1/artists/${id}`) });
+}
+
+export function useAlbum(artistId: number, name: string) {
+  return useQuery({
+    queryKey: ['album', artistId, name],
+    queryFn: () => get<AlbumPage>(`/v1/albums/${artistId}${qs({ name })}`),
+    enabled: Number.isFinite(artistId) && name.length > 0,
+  });
 }
 
 export function useArtistSearch(query: string) {

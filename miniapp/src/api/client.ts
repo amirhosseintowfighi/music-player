@@ -16,6 +16,7 @@ export type Channel = components['schemas']['ChannelOut'];
 export type UserChannel = components['schemas']['UserChannelOut'];
 export type Artist = components['schemas']['ArtistOut'];
 export type ArtistPage = components['schemas']['ArtistPageOut'];
+export type AlbumPage = components['schemas']['AlbumPageOut'];
 export type Album = components['schemas']['AlbumOut'];
 export type Category = components['schemas']['CategoryOut'];
 export type Me = components['schemas']['MeOut'];
