@@ -910,7 +910,11 @@ async def crawler_channels(
                crawl_error, extraction_rate, preview_available
           FROM channels
           {clause}
-         ORDER BY (crawl_status = 'error') DESC, last_crawl_at DESC NULLS LAST
+         -- What is happening right now belongs at the top: a channel mid-crawl has an
+         -- old last_crawl_at, so it used to fall past the 50-row cap and look gone.
+         ORDER BY (crawl_status = 'running') DESC,
+                  (crawl_status = 'error') DESC,
+                  last_crawl_at DESC NULLS LAST
          LIMIT :limit
         """
             ).bindparams(limit=limit, **({"status": status} if status else {}))

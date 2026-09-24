@@ -296,3 +296,26 @@ async def test_importing_channels_from_the_panel(
     assert resp.json() == {"created": 2, "existing": 0, "blocked": 0, "invalid": ["broken!!"]}
     names = set(await session.scalars(select(Channel.username)))
     assert {"one_chan", "two_chan"} <= names
+
+
+async def test_a_channel_being_crawled_right_now_is_at_the_top(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """A channel mid-crawl has an old last_crawl_at, so it used to sort below the
+    fold of a 50-row page and look as if it had vanished from the list."""
+    await crawl_channel(
+        session, "in_flight", status="indexing", crawl_status="running", progress_pct=12
+    )
+    await crawl_channel(
+        session, "also_broken", status="indexing", crawl_status="error", fail_count=2
+    )
+    await crawl_channel(
+        session, "finished", status="active", crawl_status="idle", progress_pct=100
+    )
+    await session.commit()
+    headers = await owner(client, session)
+
+    rows = (await client.get("/admin/crawler/channels", headers=headers)).json()
+    order = [row["username"] for row in rows]
+    assert order[0] == "in_flight"
+    assert order.index("in_flight") < order.index("also_broken")
