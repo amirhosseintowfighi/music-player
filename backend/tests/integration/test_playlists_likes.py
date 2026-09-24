@@ -179,13 +179,13 @@ async def test_move_rebalances_when_positions_collapse(
 
 
 async def test_free_plan_playlist_limit(client: httpx.AsyncClient, lib: dict[str, Any]) -> None:
-    for i in range(5):
+    for i in range(2):
         assert (
             await client.post("/v1/playlists", json={"name": f"p{i}"}, headers=lib["auth"])
         ).status_code == 201
     over = await client.post("/v1/playlists", json={"name": "p6"}, headers=lib["auth"])
     assert over.status_code == 402
-    assert over.json()["error"]["details"] == {"kind": "playlists", "limit": 5}
+    assert over.json()["error"]["details"] == {"kind": "playlists", "limit": 2}
 
 
 async def test_sharing_requires_pro_and_produces_a_link(

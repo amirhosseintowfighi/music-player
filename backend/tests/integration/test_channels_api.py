@@ -83,13 +83,12 @@ async def test_add_list_remove_channel(client: httpx.AsyncClient, session: Async
 
 async def test_free_plan_channel_limit(client: httpx.AsyncClient, session: AsyncSession) -> None:
     auth = bearer(await login(client, 703))
-    for name in ("chanone", "chantwo", "chanthree"):
-        assert (
-            await client.post("/v1/library/channels", json={"ref": name}, headers=auth)
-        ).status_code == 201
-    over = await client.post("/v1/library/channels", json={"ref": "chanfour"}, headers=auth)
+    assert (
+        await client.post("/v1/library/channels", json={"ref": "chanone"}, headers=auth)
+    ).status_code == 201
+    over = await client.post("/v1/library/channels", json={"ref": "chantwo"}, headers=auth)
     assert over.status_code == 402
-    assert over.json()["error"]["details"] == {"kind": "channels", "limit": 3}
+    assert over.json()["error"]["details"] == {"kind": "channels", "limit": 1}
 
     await session.execute(
         update(User)

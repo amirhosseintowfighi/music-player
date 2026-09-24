@@ -15,7 +15,7 @@ async def test_login_creates_user_and_returns_tokens(client: httpx.AsyncClient) 
     assert me["tg_id"] == 555
     assert me["plan"] == "free"
     assert me["lang"] == "fa"
-    assert me["limits"]["channels"] == 3
+    assert me["limits"]["channels"] == 1
     assert "discover_weekly" in me["features"]
 
     resp = await client.get("/v1/me", headers=bearer(body))

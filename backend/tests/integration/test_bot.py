@@ -147,9 +147,9 @@ async def test_add_channel_by_text(
 
 
 async def test_channel_limit_message(client: httpx.AsyncClient, tg: RecordingSession) -> None:
-    for name in ("limitone", "limittwo", "limitthree", "limitfour"):
+    for name in ("limitone", "limittwo"):
         await send(client, private_message(text=f"@{name}"))
-    assert tg.texts()[-1] == t("limit_channels", "fa", limit=3)
+    assert tg.texts()[-1] == t("limit_channels", "fa", limit=1)
 
 
 async def test_add_channel_by_forward(

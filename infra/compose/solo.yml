@@ -110,6 +110,32 @@ services:
     restart: always
     logging: *logging
 
+  # A second Telegram account, for crawling only. Its own volume means its own
+  # session, and leases in the core keep the two from walking the same channel.
+  #
+  # Deliberately not behind nginx: playback keeps going to `edge`, so this account
+  # never touches a listener's request. If Telegram limits it, crawling slows down
+  # and nothing else notices — which is the whole point of a separate account.
+  #
+  #   C="docker compose -f infra/compose/solo.yml --env-file .env"
+  #   $C --profile edge2 run --rm edge2 python -m tmusic_indexer.login crawl2
+  #   $C --profile edge2 up -d edge2
+  edge2:
+    build:
+      context: ../..
+      dockerfile: indexer/Dockerfile
+    image: tmusic-edge:solo
+    env_file: ../../.env
+    environment:
+      CORE_URL: http://api:8000
+      # Leases are handed out per worker; two workers with one name would fight.
+      WORKER_ID: edge2
+    volumes: [edge2data:/data]
+    depends_on: [api]
+    restart: always
+    profiles: ["edge2"]
+    logging: *logging
+
   nginx:
     image: nginx:stable-alpine3.24
     environment:
@@ -172,6 +198,7 @@ services:
 
 volumes:
   pgdata:
+  edge2data:
   redisdata:
   meilidata:
   edgedata:
