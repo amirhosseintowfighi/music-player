@@ -349,6 +349,63 @@ async def artist_tracks(
     return await hydrate_tracks(session, [r.id for r in rows], lang, viewer_id), next_cursor
 
 
+async def artist_overview(
+    session: AsyncSession,
+    artist_id: int,
+    lang: Lang,
+    viewer_id: int | None = None,
+    top: int = 10,
+) -> tuple[list[TrackOut], list[dict[str, object]]]:
+    """An artist page: the songs people actually like, then the albums.
+
+    Popularity here is likes, not plays: a play can be an accident or a queue that
+    kept going, a like is somebody saying so. Tracks with no album still belong in the
+    top list — most of this catalogue arrives as singles.
+    """
+    root = await session.scalar(
+        text("SELECT COALESCE(merged_into_id, id) FROM artists WHERE id = :aid").bindparams(
+            aid=artist_id
+        )
+    )
+    if root is None:
+        raise NotFound("artist not found")
+
+    popular = (
+        await session.execute(
+            text(
+                """
+        SELECT t.id
+          FROM track_artists ta
+          JOIN tracks t ON t.id = ta.track_id
+         WHERE ta.artist_id = :aid AND t.canonical_track_id IS NULL AND NOT t.hidden
+         ORDER BY t.likes_count DESC, t.channels_count DESC, t.id
+         LIMIT :lim
+        """
+            ).bindparams(aid=root, lim=top)
+        )
+    ).all()
+
+    albums = (
+        await session.execute(
+            text(
+                """
+        SELECT t.album AS name, min(t.year) AS year, count(*) AS tracks
+          FROM track_artists ta
+          JOIN tracks t ON t.id = ta.track_id
+         WHERE ta.artist_id = :aid AND t.canonical_track_id IS NULL AND NOT t.hidden
+           AND t.album IS NOT NULL AND t.album <> ''
+         GROUP BY t.album
+         ORDER BY year DESC NULLS LAST, tracks DESC
+         LIMIT 50
+        """
+            ).bindparams(aid=root)
+        )
+    ).mappings()
+
+    tracks = await hydrate_tracks(session, [r.id for r in popular], lang, viewer_id)
+    return tracks, [dict(row) for row in albums]
+
+
 async def get_artist(session: AsyncSession, artist_id: int, lang: Lang) -> ArtistOut:
     artist = await session.get(Artist, artist_id)
     if artist is not None and artist.merged_into_id is not None:
@@ -360,6 +417,7 @@ async def get_artist(session: AsyncSession, artist_id: int, lang: Lang) -> Artis
         name=artist.latin_name if (lang == "en" and artist.latin_name) else artist.name,
         latin_name=artist.latin_name,
         tracks_count=artist.tracks_count,
+        image_url=artist.image_url,
     )
 
 

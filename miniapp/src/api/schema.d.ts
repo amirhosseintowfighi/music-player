@@ -1254,6 +1254,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/artists/{artist_id}/page": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Artist Page
+         * @description The artist page's header: who they are, their best-liked songs, their albums.
+         */
+        get: operations["artist_page_v1_artists__artist_id__page_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/artists/{artist_id}/tracks": {
         parameters: {
             query?: never;
@@ -2124,6 +2144,15 @@ export interface components {
             /** Tracks Count */
             tracks_count: number;
         };
+        /** AlbumRef */
+        AlbumRef: {
+            /** Name */
+            name: string;
+            /** Year */
+            year?: number | null;
+            /** Tracks */
+            tracks: number;
+        };
         /** ArtistCountOut */
         ArtistCountOut: {
             /** Id */
@@ -2143,6 +2172,25 @@ export interface components {
             latin_name: string | null;
             /** Tracks Count */
             tracks_count: number;
+            /** Image Url */
+            image_url?: string | null;
+        };
+        /**
+         * ArtistPageOut
+         * @description Everything an artist page shows above its full track list.
+         */
+        ArtistPageOut: {
+            artist: components["schemas"]["ArtistOut"];
+            /**
+             * Top Tracks
+             * @default []
+             */
+            top_tracks: components["schemas"]["TrackOut"][];
+            /**
+             * Albums
+             * @default []
+             */
+            albums: components["schemas"]["AlbumRef"][];
         };
         /** ArtistRef */
         ArtistRef: {
@@ -5800,6 +5848,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArtistOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    artist_page_v1_artists__artist_id__page_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistPageOut"];
                 };
             };
             /** @description Validation Error */

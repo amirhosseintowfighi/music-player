@@ -1,7 +1,15 @@
 import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { flatten, useArtist, useArtistTracks, useChannel, useChannelTracks, useTrack } from '@/api/hooks';
+import {
+  flatten,
+  useArtist,
+  useArtistPage,
+  useArtistTracks,
+  useChannel,
+  useChannelTracks,
+  useTrack,
+} from '@/api/hooks';
 import { TrackRow } from '@/components/TrackRow';
 import { Cover, ErrorNote, Glass, LoadMore, Spinner } from '@/components/ui';
 import { ChevronIcon, PlayIcon, ShuffleIcon } from '@/components/icons';
@@ -129,9 +137,12 @@ export function ArtistScreen() {
   const { t } = useI18n();
   const id = Number(useParams().id);
   const artist = useArtist(id);
+  const page = useArtistPage(id);
   const tracksQuery = useArtistTracks(id);
   const tracks = useMemo(() => flatten(tracksQuery.data), [tracksQuery.data]);
-  const thumbs = useThumbs(tracks.map((track) => track.id));
+  const top = page.data?.top_tracks ?? [];
+  const albums = page.data?.albums ?? [];
+  const thumbs = useThumbs([...top, ...tracks].map((track) => track.id));
 
   if (artist.isError) return <ErrorNote onRetry={() => void artist.refetch()} />;
   if (!artist.data) return <div className="grid place-items-center py-20"><Spinner /></div>;
@@ -143,11 +154,61 @@ export function ArtistScreen() {
         subtitle={t('library.count', { count: artist.data.tracks_count })}
         seed={artist.data.name}
         glyph="🎤"
+        thumb={artist.data.image_url ?? undefined}
       />
+
+      {top.length > 0 && (
+        <section className="mt-5">
+          <h2 className="mb-2 text-[14px] font-bold">{t('artist.popular')}</h2>
+          {top.map((track, index) => (
+            <TrackRow
+              key={track.id}
+              track={track}
+              thumb={thumbs[track.id]}
+              trailing={String(index + 1)}
+              onPlay={() =>
+                void usePlayer
+                  .getState()
+                  .play({ queue: top, index, source: 'library', sourceId: id })
+              }
+            />
+          ))}
+        </section>
+      )}
+
+      {albums.length > 0 && (
+        <section className="mt-5">
+          <h2 className="mb-2 text-[14px] font-bold">{t('artist.albums')}</h2>
+          <div className="flex gap-3 overflow-x-auto pb-1">
+            {albums.map((album) => (
+              <button
+                key={album.name}
+                type="button"
+                className="w-28 shrink-0 text-start"
+                onClick={() => navigateToAlbum(album.name)}
+              >
+                <Cover seed={album.name} size={112} glyph="💿" />
+                <p className="mt-1 truncate text-[12.5px] font-medium">{album.name}</p>
+                <p className="truncate text-[11px] text-[var(--ink-dim)]">
+                  {album.year ? `${album.year} · ` : ''}
+                  {t('library.count', { count: album.tracks })}
+                </p>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <h2 className="mt-5 text-[14px] font-bold">{t('artist.allTracks')}</h2>
       <TrackList tracks={tracks} thumbs={thumbs} source="library" sourceId={id} />
       <LoadMore enabled={Boolean(tracksQuery.hasNextPage)} onVisible={() => void tracksQuery.fetchNextPage()} />
     </div>
   );
+}
+
+/** Albums have no page of their own yet; the library filters by one. */
+function navigateToAlbum(album: string): void {
+  window.location.hash = `#/library?album=${encodeURIComponent(album)}`;
 }
 
 /**

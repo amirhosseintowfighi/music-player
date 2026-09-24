@@ -78,7 +78,7 @@ server {
     root /srv/miniapp;
 
     add_header Strict-Transport-Security "max-age=31536000" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.${DOMAIN}; media-src https://cdn.${DOMAIN}; connect-src 'self' https://api.${DOMAIN}; font-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.${DOMAIN} https://i.scdn.co; media-src https://cdn.${DOMAIN}; connect-src 'self' https://api.${DOMAIN}; font-src 'self'; frame-ancestors https://web.telegram.org https://*.telegram.org" always;
 
     location /assets/ {
         expires 1y;

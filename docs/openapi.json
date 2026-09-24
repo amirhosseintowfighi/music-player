@@ -3966,6 +3966,54 @@
         }
       }
     },
+    "/v1/artists/{artist_id}/page": {
+      "get": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Artist Page",
+        "description": "The artist page's header: who they are, their best-liked songs, their albums.",
+        "operationId": "artist_page_v1_artists__artist_id__page_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "artist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Artist Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArtistPageOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/artists/{artist_id}/tracks": {
       "get": {
         "tags": [
@@ -6616,6 +6664,36 @@
         ],
         "title": "AlbumOut"
       },
+      "AlbumRef": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year"
+          },
+          "tracks": {
+            "type": "integer",
+            "title": "Tracks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "tracks"
+        ],
+        "title": "AlbumRef"
+      },
       "ArtistCountOut": {
         "properties": {
           "id": {
@@ -6664,6 +6742,17 @@
           "tracks_count": {
             "type": "integer",
             "title": "Tracks Count"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
           }
         },
         "additionalProperties": false,
@@ -6675,6 +6764,36 @@
           "tracks_count"
         ],
         "title": "ArtistOut"
+      },
+      "ArtistPageOut": {
+        "properties": {
+          "artist": {
+            "$ref": "#/components/schemas/ArtistOut"
+          },
+          "top_tracks": {
+            "items": {
+              "$ref": "#/components/schemas/TrackOut"
+            },
+            "type": "array",
+            "title": "Top Tracks",
+            "default": []
+          },
+          "albums": {
+            "items": {
+              "$ref": "#/components/schemas/AlbumRef"
+            },
+            "type": "array",
+            "title": "Albums",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "artist"
+        ],
+        "title": "ArtistPageOut",
+        "description": "Everything an artist page shows above its full track list."
       },
       "ArtistRef": {
         "properties": {

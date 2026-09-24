@@ -164,6 +164,23 @@ class ArtistOut(ApiModel):
     name: str
     latin_name: str | None
     tracks_count: int
+    # From Spotify (0014); null until the enrichment job has looked, or when it
+    # looked and found nothing.
+    image_url: str | None = None
+
+
+class AlbumRef(ApiModel):
+    name: str
+    year: int | None = None
+    tracks: int
+
+
+class ArtistPageOut(ApiModel):
+    """Everything an artist page shows above its full track list."""
+
+    artist: ArtistOut
+    top_tracks: list[TrackOut] = []
+    albums: list[AlbumRef] = []
 
 
 class AlbumOut(ApiModel):

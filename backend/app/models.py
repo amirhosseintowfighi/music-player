@@ -214,6 +214,12 @@ class Artist(Base):
     tracks_count: Mapped[int] = mapped_column(Integer, server_default="0")
     hidden: Mapped[bool] = mapped_column(Boolean, server_default="false")
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    # Filled from Spotify, once (0014). enriched_at is set whether or not a match was
+    # found, so a name nobody released under is not looked up forever.
+    image_url: Mapped[str | None] = mapped_column(Text)
+    spotify_id: Mapped[str | None] = mapped_column(Text)
+    popularity: Mapped[int | None] = mapped_column(Integer)
+    enriched_at: Mapped[datetime | None] = mapped_column(TS)
 
 
 class Track(Base):

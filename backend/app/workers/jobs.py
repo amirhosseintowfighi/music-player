@@ -21,6 +21,7 @@ from app.db import session_scope
 from app.models import EdgeNode, User
 from app.redis_util import resolve
 from app.services import (
+    artistinfo,
     broadcast,
     crawling,
     metadata,
@@ -354,6 +355,17 @@ async def probe_metadata(ctx: Ctx) -> dict[str, int]:
 # one metadata call, no bytes. FloodWait still cools the account and the circuit
 # breaker still stops the job, so the ceiling is enforced by Telegram, not by this
 # number being cautious.
+async def enrich_artists(ctx: Ctx) -> dict[str, int]:
+    """Gives artists a photo, a few at a time (0014).
+
+    Does nothing at all without Spotify credentials, which is why it is safe to have
+    on by default: an installation that never configures them never notices it.
+    """
+    settings = get_settings()
+    async with session_scope(_maker(ctx)) as session:
+        return await artistinfo.enrich_batch(session, ctx["http"], settings)
+
+
 PREWARM_BATCH = 120
 
 

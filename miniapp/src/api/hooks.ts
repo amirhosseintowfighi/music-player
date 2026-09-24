@@ -14,6 +14,7 @@ import {
   qs,
   type Album,
   type Artist,
+  type ArtistPage,
   type Category,
   type Channel,
   type Me,
@@ -166,6 +167,13 @@ export function useReportTrack(id: number) {
 
 export function useArtist(id: number) {
   return useQuery({ queryKey: keys.artist(id), queryFn: () => get<Artist>(`/v1/artists/${id}`) });
+}
+
+export function useArtistPage(id: number) {
+  return useQuery({
+    queryKey: [...keys.artist(id), 'page'],
+    queryFn: () => get<ArtistPage>(`/v1/artists/${id}/page`),
+  });
 }
 
 export function useArtistTracks(id: number) {

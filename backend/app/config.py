@@ -57,6 +57,12 @@ class Settings(BaseSettings):
     # Public base URL of this API; payment gateways call back to it.
     public_api_url: str = ""
 
+    # ── artist pages ──
+    # Spotify, for artist photos only (client-credentials, no user data involved).
+    # Empty means the enrichment job does nothing and artists simply have no photo.
+    spotify_client_id: str = ""
+    spotify_client_secret: SecretStr = SecretStr("")
+
     # ── payment gateway credentials (phase 6) ──
     zarinpal_merchant_id: SecretStr = SecretStr("")
     idpay_api_key: SecretStr = SecretStr("")

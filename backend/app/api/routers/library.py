@@ -8,7 +8,9 @@ from app.api.deps import Claims, SessionDep, WritableClaims
 from app.errors import LimitReached
 from app.schemas import (
     AlbumOut,
+    AlbumRef,
     ArtistOut,
+    ArtistPageOut,
     Page,
     PaletteIn,
     ReportTrackIn,
@@ -89,6 +91,20 @@ async def channel_tracks(
 @router.get("/artists/{artist_id}", response_model=ArtistOut)
 async def artist_detail(artist_id: int, claims: Claims, session: SessionDep) -> ArtistOut:
     return await library.get_artist(session, artist_id, claims.lang)
+
+
+@router.get("/artists/{artist_id}/page", response_model=ArtistPageOut)
+async def artist_page(artist_id: int, claims: Claims, session: SessionDep) -> ArtistPageOut:
+    """The artist page's header: who they are, their best-liked songs, their albums."""
+    artist = await library.get_artist(session, artist_id, claims.lang)
+    top, albums = await library.artist_overview(
+        session, artist_id, claims.lang, viewer_id=claims.user_id
+    )
+    return ArtistPageOut(
+        artist=artist,
+        top_tracks=top,
+        albums=[AlbumRef(**album) for album in albums],
+    )
 
 
 @router.get("/artists/{artist_id}/tracks", response_model=Page[TrackOut])

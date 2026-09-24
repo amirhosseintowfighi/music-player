@@ -65,6 +65,7 @@ class WorkerSettings:
         jobs.probe_metadata,
         jobs.prewarm_resolver,
         jobs.crawler_healthcheck,
+        jobs.enrich_artists,
     ]
     cron_jobs: ClassVar[list[Any]] = [
         cron(jobs.sync_search, second={0, 15, 30, 45}, run_at_startup=True, unique=True),
@@ -90,6 +91,8 @@ class WorkerSettings:
         # deployment it is also the only thing standing between a crawled catalogue
         # and a playable one — so it runs every five minutes until it runs dry.
         cron(jobs.prewarm_resolver, minute=set(range(3, 60, 5)), unique=True),
+        # Artist photos: small, external, and nobody is waiting for it.
+        cron(jobs.enrich_artists, minute={8, 28, 48}, unique=True),
         # Daily, after a full day of crawling has been recorded.
         cron(jobs.crawler_healthcheck, hour={7}, minute={0}, unique=True),
         # Wrapped is rebuilt in the first days of January.
