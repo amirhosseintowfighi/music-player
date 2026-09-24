@@ -137,7 +137,7 @@ server {
     ssl_certificate     /etc/nginx/certs/fullchain.pem;
     ssl_certificate_key /etc/nginx/certs/privkey.pem;
     add_header Strict-Transport-Security "max-age=31536000" always;
-    set $edge_upstream edge:8080;
+    set $edge_upstream edges:8080;
     include /etc/nginx/snippets/stream-cache.conf;
 }
 

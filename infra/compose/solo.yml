@@ -22,6 +22,11 @@ x-backend: &backend
     REDIS_URL: redis://redis:6379/0
     MEILI_URL: http://meilisearch:7700
     DB_BEHIND_PGBOUNCER: "false"
+    # Resolve, probe and send go to whichever edge answers; with two of them that is
+    # two Telegram accounts sharing the work instead of one carrying it.
+    # Set here, not from .env: in this deployment the edges are these containers, and
+    # an .env written before edge2 existed would otherwise pin everything to one.
+    EDGE_INTERNAL_URL: http://edges:8080
   restart: always
   logging: &logging
     driver: json-file
@@ -106,6 +111,12 @@ services:
     environment:
       CORE_URL: http://api:8000
     volumes: [edgedata:/data]
+    # One name for every edge. Docker returns an address per container behind it and
+    # rotates them, so adding edge2 spreads playback over both accounts with no list
+    # to keep in sync — and with edge2 stopped, the name is simply this container.
+    networks:
+      default:
+        aliases: [edges]
     depends_on: [api]
     restart: always
     logging: *logging
@@ -131,6 +142,9 @@ services:
       # Leases are handed out per worker; two workers with one name would fight.
       WORKER_ID: edge2
     volumes: [edge2data:/data]
+    networks:
+      default:
+        aliases: [edges]
     depends_on: [api]
     restart: always
     profiles: ["edge2"]
