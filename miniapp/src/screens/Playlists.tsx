@@ -48,7 +48,7 @@ export function CreatePlaylistSheet({
           onChange={(event) => setName(event.target.value)}
           placeholder={t('playlist.namePlaceholder')}
           aria-label={t('playlist.name')}
-          className="min-w-0 flex-1 rounded-xl bg-white/8 px-3.5 py-2.5 text-[14px] outline-none"
+          className="min-w-0 flex-1 rounded-xl bg-[var(--fill)] px-3.5 py-2.5 text-[14px] outline-none"
         />
         <button
           type="button"
@@ -195,7 +195,7 @@ function PlaylistHeader({
               sourceId,
             });
           }}
-          className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-[13.5px] disabled:opacity-50"
+          className="flex items-center gap-2 rounded-xl bg-[var(--fill)] px-4 py-2.5 text-[13.5px] disabled:opacity-50"
         >
           <ShuffleIcon size={16} />
           {t('player.shuffle')}
@@ -328,7 +328,7 @@ export function PlaylistScreen() {
           <>
             <button
               type="button"
-              className="w-full rounded-xl bg-white/8 px-4 py-3 text-start text-[13.5px]"
+              className="w-full rounded-xl bg-[var(--fill)] px-4 py-3 text-start text-[13.5px]"
               onClick={() =>
                 update.mutate(
                   { is_public: !playlist.is_public },
@@ -354,7 +354,7 @@ export function PlaylistScreen() {
             {playlist.share_url && (
               <button
                 type="button"
-                className="mt-2 w-full rounded-xl bg-white/8 px-4 py-3 text-start text-[13.5px]"
+                className="mt-2 w-full rounded-xl bg-[var(--fill)] px-4 py-3 text-start text-[13.5px]"
                 onClick={() =>
                   openTelegramLink(
                     `https://t.me/share/url?url=${encodeURIComponent(playlist.share_url ?? '')}`,
@@ -366,7 +366,7 @@ export function PlaylistScreen() {
             )}
             <button
               type="button"
-              className="mt-2 w-full rounded-xl bg-white/8 px-4 py-3 text-start text-[13.5px]"
+              className="mt-2 w-full rounded-xl bg-[var(--fill)] px-4 py-3 text-start text-[13.5px]"
               onClick={() =>
                 update.mutate(
                   { is_collaborative: !playlist.is_collaborative },
@@ -385,7 +385,7 @@ export function PlaylistScreen() {
             </button>
             <button
               type="button"
-              className="mt-2 w-full rounded-xl bg-white/8 px-4 py-3 text-start text-[13.5px] text-[#ff9a9a]"
+              className="mt-2 w-full rounded-xl bg-[var(--fill)] px-4 py-3 text-start text-[13.5px] text-[#ff9a9a]"
               onClick={() =>
                 remove.mutate(playlist.id, {
                   onSuccess: () => {

@@ -36,7 +36,7 @@ export function ChannelCard({
           <p className="truncate text-[13.5px] font-semibold">{channel.title ?? `@${channel.username ?? ''}`}</p>
           <p className="truncate text-[11.5px] text-[var(--ink-faint)]">{statusText(channel, t)}</p>
           {busy && (
-            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-white/12">
+            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--fill-strong)]">
               <div
                 className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-500"
                 style={{ width: `${Math.max(3, channel.progress_pct)}%` }}

@@ -14,7 +14,7 @@ import {
   ShuffleIcon,
   SpeedIcon,
 } from '@/components/icons';
-import { Cover, Glass, LoadMore, Sheet, Spinner, cx, spring } from '@/components/ui';
+import { Aurora, Cover, Glass, LoadMore, Sheet, Spinner, cx, spring } from '@/components/ui';
 import { useI18n } from '@/i18n';
 import { artistNames, duration } from '@/lib/format';
 import { backButton, haptic, openTelegramLink } from '@/lib/telegram';
@@ -74,9 +74,9 @@ function Scrubber() {
           if (event.key === 'ArrowLeft') seek(position - 10);
         }}
       >
-        <div className="absolute inset-x-0 top-2.5 h-1 rounded-full bg-white/14">
+        <div className="absolute inset-x-0 top-2.5 h-1 rounded-full bg-[var(--fill-strong)]">
           <div
-            className="absolute inset-y-0 start-0 rounded-full bg-white/18"
+            className="absolute inset-y-0 start-0 rounded-full bg-[var(--fill-strong)]"
             style={{ width: total > 0 ? `${Math.min(100, (buffered / total) * 100)}%` : 0 }}
           />
           <div
@@ -84,7 +84,7 @@ function Scrubber() {
             style={{ width: `${ratio * 100}%` }}
           />
           <div
-            className="absolute -top-1.5 h-4 w-4 -translate-x-1/2 rounded-full bg-white shadow-lg rtl:translate-x-1/2"
+            className="absolute -top-1.5 h-4 w-4 -translate-x-1/2 rounded-full bg-[var(--ink)] shadow-[0_1px_3px_rgba(0,0,0,0.3)] rtl:translate-x-1/2"
             style={{ insetInlineStart: `${ratio * 100}%` }}
           />
         </div>
@@ -300,8 +300,11 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          style={{ background: 'color-mix(in oklab, var(--bg-0) 88%, transparent)', backdropFilter: 'blur(30px)' }}
+          style={{ background: 'var(--bg-0)' }}
         >
+          {/* The one screen Music lets the artwork colour: a soft wash of the cover's
+              own palette behind the art, and a solid page everywhere else. */}
+          <Aurora />
           <motion.div
             className="mx-auto flex min-h-full max-w-lg flex-col px-5"
             style={{ paddingTop: 'calc(18px + var(--safe-top))', paddingBottom: 'calc(24px + var(--safe-bottom))' }}
@@ -338,6 +341,8 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
 
             <Scrubber />
 
+            {/* Music's transport is plain glyphs, not filled discs: the artwork is
+                the colour on this screen and the controls stay out of its way. */}
             <div className="mt-2 flex items-center justify-center gap-7">
               <button
                 type="button"
@@ -348,19 +353,29 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
               >
                 <ShuffleIcon size={20} />
               </button>
-              <button type="button" aria-label="previous" onClick={() => void usePlayer.getState().previous()} className="p-2">
-                <PrevIcon size={28} />
+              <button
+                type="button"
+                aria-label="previous"
+                onClick={() => void usePlayer.getState().previous()}
+                className="p-2 text-[var(--ink)]"
+              >
+                <PrevIcon size={30} />
               </button>
               <button
                 type="button"
                 aria-label={isPlaying ? t('common.pause') : t('common.play')}
                 onClick={() => void usePlayer.getState().toggle()}
-                className="grid h-16 w-16 place-items-center rounded-full bg-[var(--ink)] text-[#0b0d12] shadow-[0_16px_34px_-16px_rgba(255,255,255,.55)]"
+                className="grid h-16 w-16 place-items-center rounded-full text-[var(--ink)] active:bg-[var(--fill)]"
               >
-                {isLoading ? <Spinner size={22} /> : isPlaying ? <PauseIcon size={24} /> : <PlayIcon size={24} />}
+                {isLoading ? <Spinner size={26} /> : isPlaying ? <PauseIcon size={40} /> : <PlayIcon size={40} />}
               </button>
-              <button type="button" aria-label="next" onClick={() => void usePlayer.getState().next()} className="p-2">
-                <NextIcon size={28} />
+              <button
+                type="button"
+                aria-label="next"
+                onClick={() => void usePlayer.getState().next()}
+                className="p-2 text-[var(--ink)]"
+              >
+                <NextIcon size={30} />
               </button>
               <button
                 type="button"
@@ -404,7 +419,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                   onClick={() => usePlayer.getState().setSpeed(value)}
                   className={cx(
                     'flex-1 rounded-xl py-2 text-[13px]',
-                    speed === value ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-white/8',
+                    speed === value ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)]',
                   )}
                 >
                   {value}×
@@ -417,7 +432,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
               onClick={() => usePlayer.getState().setAutoplay(!autoplay)}
               className={cx(
                 'mb-5 w-full rounded-xl py-2 text-[13px]',
-                autoplay ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-white/8',
+                autoplay ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)]',
               )}
             >
               {autoplay ? t('player.autoplay.on') : t('player.autoplay.off')}
@@ -432,8 +447,8 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                   className={cx(
                     'rounded-xl px-4 py-2 text-[13px]',
                     (minutes === null && !sleepAt) || (minutes !== null && sleepAt)
-                      ? 'bg-white/12'
-                      : 'bg-white/8',
+                      ? 'bg-[var(--fill-strong)]'
+                      : 'bg-[var(--fill)]',
                   )}
                 >
                   {minutes === null ? t('player.sleep.off') : t('player.sleep.minutes', { count: minutes })}
@@ -442,7 +457,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
               <button
                 type="button"
                 onClick={() => usePlayer.getState().setSleep(0, true)}
-                className="rounded-xl bg-white/8 px-4 py-2 text-[13px]"
+                className="rounded-xl bg-[var(--fill)] px-4 py-2 text-[13px]"
               >
                 {t('player.sleep.endOfTrack')}
               </button>

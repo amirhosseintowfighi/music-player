@@ -1,8 +1,7 @@
-import { motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 
 import { HomeIcon, LibraryIcon, MoreIcon, RadioIcon, SearchIcon } from '@/components/icons';
-import { cx, spring } from '@/components/ui';
+import { cx } from '@/components/ui';
 import { useI18n, type Key } from '@/i18n';
 import { haptic } from '@/lib/telegram';
 
@@ -18,8 +17,10 @@ export function TabBar() {
   const { t } = useI18n();
   return (
     <nav
-      className="glass glass-edge glass-spec glass-strong flex justify-around rounded-[var(--radius-glass-lg)] px-2 pt-2.5"
-      style={{ paddingBottom: 'calc(10px + var(--safe-bottom))', ['--spec' as string]: 0.4 }}
+      // Music's tab bar is a material with a hairline on top, edge to edge — not a
+      // floating pill. The hairline is what separates it from the list behind it.
+      className="glass glass-strong flex justify-around border-t border-[var(--separator)] px-2 pt-2"
+      style={{ paddingBottom: 'calc(8px + var(--safe-bottom))' }}
     >
       {TABS.map(({ to, key, Icon }) => (
         <NavLink
@@ -29,24 +30,16 @@ export function TabBar() {
           onClick={() => haptic('select')}
           className={({ isActive }) =>
             cx(
-              'relative grid min-w-14 justify-items-center gap-1 rounded-2xl px-3 py-1.5 text-[10.5px]',
-              isActive ? 'text-[var(--accent)]' : 'text-[var(--ink-faint)]',
+              'relative grid min-w-14 justify-items-center gap-1 px-3 py-1 text-[10px] font-medium',
+              // The label is the tint, not a pill behind it.
+              isActive ? 'text-[var(--accent)]' : 'text-[var(--ink-dim)]',
             )
           }
         >
-          {({ isActive }) => (
-            <>
-              {isActive && (
-                <motion.span
-                  layoutId="tab-pill"
-                  transition={spring}
-                  className="absolute inset-0 -z-10 rounded-2xl bg-[color-mix(in_oklab,var(--accent)_14%,transparent)]"
-                />
-              )}
-              <Icon size={21} />
-              {t(key)}
-            </>
-          )}
+          <>
+            <Icon size={24} />
+            {t(key)}
+          </>
         </NavLink>
       ))}
     </nav>

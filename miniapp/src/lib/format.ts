@@ -29,18 +29,17 @@ export function relativeTime(iso: string | null | undefined, lang: Lang, now = D
   return translate(lang, 'common.daysAgo', { count: days });
 }
 
+// Music never invents colour for a track it has no artwork for: the placeholder is
+// a neutral tile with a glyph, and the only colour on the screen belongs to real
+// covers. These are the same grey in both themes, at the two ends of a soft gradient
+// so a wall of placeholders still reads as separate tiles.
 const COVER_PALETTE = [
-  ['#ff8a5c', '#ff3d77'],
-  ['#2bd9c4', '#1a7dff'],
-  ['#a78bfa', '#ec4899'],
-  ['#34d399', '#0ea5e9'],
-  ['#fbbf24', '#f43f5e'],
-  ['#60a5fa', '#a78bfa'],
-  ['#f472b6', '#8b5cf6'],
-  ['#22d3ee', '#3b82f6'],
+  ['rgba(120,120,128,0.22)', 'rgba(120,120,128,0.13)'],
+  ['rgba(120,120,128,0.26)', 'rgba(120,120,128,0.16)'],
+  ['rgba(120,120,128,0.19)', 'rgba(120,120,128,0.11)'],
 ] as const;
 
-/** Stable placeholder gradient for tracks without artwork. */
+/** Stable placeholder tint for tracks without artwork. */
 export function coverColors(seed: number | string): readonly [string, string] {
   const key = typeof seed === 'number' ? seed : [...seed].reduce((a, c) => a + c.charCodeAt(0), 0);
   return COVER_PALETTE[Math.abs(key) % COVER_PALETTE.length] as readonly [string, string];

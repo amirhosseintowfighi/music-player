@@ -79,7 +79,7 @@ function TrackList({
             setShuffle(true);
             void play({ queue: tracks, index: Math.floor(Math.random() * Math.max(1, tracks.length)), source, sourceId });
           }}
-          className="flex items-center gap-2 rounded-xl bg-white/8 px-4 py-2.5 text-[13.5px]"
+          className="flex items-center gap-2 rounded-xl bg-[var(--fill)] px-4 py-2.5 text-[13.5px]"
         >
           <ShuffleIcon size={16} />
           {t('player.shuffle')}

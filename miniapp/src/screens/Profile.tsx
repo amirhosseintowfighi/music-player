@@ -137,7 +137,7 @@ export function Profile() {
             className={cx(
               'shrink-0 rounded-full px-4 py-2 text-[12.5px] font-bold',
               data.is_following
-                ? 'bg-white/10 text-[var(--ink-dim)]'
+                ? 'bg-[var(--fill)] text-[var(--ink-dim)]'
                 : 'bg-[var(--accent)] text-[var(--accent-ink)]',
             )}
           >

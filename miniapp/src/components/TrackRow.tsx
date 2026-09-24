@@ -26,14 +26,18 @@ export const TrackRow = memo(function TrackRow({ track, thumb, trailing, onPlay,
   const isPlaying = usePlayer((s) => s.isPlaying && s.current?.id === track.id);
 
   return (
+    // Music's row: artwork, two lines, controls at the trailing edge, and a
+    // hairline that starts where the text starts — never under the artwork.
     <div
       className={cx(
-        'flex items-center gap-3 rounded-[12px] px-2 py-2 transition-colors',
-        isCurrent && 'bg-white/6',
+        'group relative flex items-center gap-3 px-3 py-2 transition-colors',
+        "after:pointer-events-none after:absolute after:bottom-0 after:end-3 after:h-px after:bg-[var(--separator)] after:content-['']",
+        'after:start-[70px] last:after:hidden',
+        isCurrent && 'bg-[var(--fill)]',
       )}
     >
       <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-start" onClick={onPlay}>
-        <Cover src={thumb} seed={track.id} size={46} />
+        <Cover src={thumb} seed={track.id} size={46} radius={6} />
         <span className="min-w-0 flex-1">
           <span
             className={cx(
@@ -45,7 +49,7 @@ export const TrackRow = memo(function TrackRow({ track, thumb, trailing, onPlay,
             {isPlaying && <span aria-hidden className="me-1 text-[11px]">▮▮</span>}
             {track.title || '—'}
           </span>
-          <span className="block truncate text-[12px] text-[var(--ink-faint)]">
+          <span className="block truncate text-[12px] text-[var(--ink-dim)]">
             {artistNames(track) || t('search.empty')} · {duration(track.duration, lang)}
           </span>
         </span>
@@ -64,7 +68,7 @@ export const TrackRow = memo(function TrackRow({ track, thumb, trailing, onPlay,
       <button
         type="button"
         aria-label={t('common.more')}
-        className="shrink-0 p-1.5 text-[var(--ink-faint)]"
+        className="shrink-0 p-1.5 text-[var(--ink-dim)]"
         onClick={() => (onMore ? onMore() : openActions(track))}
       >
         <MoreIcon size={18} />

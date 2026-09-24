@@ -46,7 +46,9 @@ export function MiniPlayer({ thumb }: { thumb?: string | null }) {
         const forward = document.dir === 'rtl' ? x > 0 : x < 0;
         void (forward ? usePlayer.getState().next() : usePlayer.getState().previous());
       }}
-      className="glass glass-edge glass-spec glass-strong mb-2.5 flex items-center gap-3 overflow-hidden rounded-[var(--radius-glass)] px-3 py-2.5"
+      // Music stacks the now-playing bar straight onto the tab bar, full width,
+      // with one hairline above it. No gap, no corners, nothing floating.
+      className="glass glass-strong relative flex items-center gap-3 overflow-hidden border-t border-[var(--separator)] px-3 py-2"
       style={{ ['--spec' as string]: 0.55 }}
     >
       <button
@@ -67,11 +69,11 @@ export function MiniPlayer({ thumb }: { thumb?: string | null }) {
         type="button"
         onClick={() => void toggle()}
         aria-label={isPlaying ? t('common.pause') : t('common.play')}
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--ink)] text-[#0b0d12]"
+        className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[var(--ink)] active:bg-[var(--fill)]"
       >
-        {isLoading ? <Spinner size={16} /> : isPlaying ? <PauseIcon size={17} /> : <PlayIcon size={17} />}
+        {isLoading ? <Spinner size={16} /> : isPlaying ? <PauseIcon size={22} /> : <PlayIcon size={22} />}
       </button>
-      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-white/10">
+      <div className="absolute inset-x-0 bottom-0 h-[2px] bg-[var(--fill)]">
         <div className="h-full bg-[var(--accent)] transition-[width] duration-300" style={{ width: `${progress}%` }} />
       </div>
     </motion.div>

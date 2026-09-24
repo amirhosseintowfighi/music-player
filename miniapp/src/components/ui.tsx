@@ -42,7 +42,15 @@ export function Glass({
   const Tag = motion[as] as typeof motion.div;
   return (
     <Tag
-      className={cx('glass glass-edge glass-spec rounded-[var(--radius-glass)]', strong && 'glass-strong', className)}
+      // Content sits on a solid grouped surface, the way every Apple list does:
+      // blur belongs to chrome that floats over scrolling content (the tab bar and
+      // the now-playing bar, which use the `glass` utilities directly), not to the
+      // thing being read. Translucent rows were the reason the list was hard to read.
+      className={cx(
+        'rounded-[var(--radius-glass)] bg-[var(--card)]',
+        strong && 'bg-[var(--card-strong)] shadow-[0_1px_3px_rgba(0,0,0,0.06)]',
+        className,
+      )}
       style={{ ...style, ['--spec' as string]: spec }}
       onClick={
         onClick
@@ -122,7 +130,7 @@ export function Spinner({ size = 20 }: { size?: number }) {
     <span
       role="status"
       aria-live="polite"
-      className="inline-block animate-spin rounded-full border-2 border-white/20 border-t-[var(--accent)]"
+      className="inline-block animate-spin rounded-full border-2 border-[var(--separator)] border-t-[var(--accent)]"
       style={{ width: size, height: size }}
     />
   );
@@ -173,7 +181,7 @@ export function Sheet({
       {open && (
         <>
           <motion.div
-            className="fixed inset-0 z-40 bg-black/55"
+            className="fixed inset-0 z-40 bg-[color-mix(in_oklab,var(--bg-0)_70%,transparent)]"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -183,7 +191,9 @@ export function Sheet({
             role="dialog"
             aria-modal="true"
             aria-label={title}
-            className="glass glass-edge glass-strong fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-[var(--radius-glass-lg)] px-4 pt-3"
+            // A sheet is content, not chrome: solid, so the list inside it is read
+            // against a known colour instead of against whatever it covers.
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-[var(--radius-glass-lg)] bg-[var(--card)] px-4 pt-3 shadow-[0_-8px_30px_rgba(0,0,0,0.18)]"
             style={{ paddingBottom: 'calc(20px + var(--safe-bottom))' }}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
@@ -196,7 +206,7 @@ export function Sheet({
               if (info.offset.y > 120) onClose();
             }}
           >
-            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-white/25" />
+            <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--fill-strong)]" />
             {title && <h3 className="mb-3 px-1 text-[15px] font-bold">{title}</h3>}
             {children}
           </motion.div>
@@ -288,11 +298,13 @@ export function ErrorNote({ onRetry }: { onRetry?: () => void }) {
 export function Credit() {
   const { t } = useI18n();
   return (
-    <p className="py-4 text-center text-[11.5px] text-[var(--ink-faint)]">
-      {t('credit.by')}{' '}
+    // One line, its own space, and the two halves kept on one baseline: the credit
+    // was squeezed between a list and the tab bar and read as a broken sentence.
+    <p className="mt-6 mb-2 flex flex-wrap items-baseline justify-center gap-1 px-4 pb-2 text-center text-[12px] leading-6 text-[var(--ink-dim)]">
+      <span>{t('credit.by')}</span>
       <button
         type="button"
-        className="font-bold text-[var(--accent)] underline-offset-2 hover:underline"
+        className="font-semibold text-[var(--accent)] underline underline-offset-4"
         onClick={() => openExternalLink('https://virgule.studio')}
       >
         {t('credit.virgule')}

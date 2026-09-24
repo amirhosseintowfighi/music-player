@@ -34,7 +34,7 @@ function Action({
       onClick={onClick}
       className={cx(
         'flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-start text-[13.5px]',
-        'bg-white/8',
+        'bg-[var(--fill)]',
         tone === 'accent' && 'text-[var(--accent)]',
       )}
     >
@@ -277,7 +277,7 @@ export function TrackActions({
             <button
               key={reason}
               type="button"
-              className="rounded-xl bg-white/8 px-3.5 py-3 text-start text-[13.5px]"
+              className="rounded-xl bg-[var(--fill)] px-3.5 py-3 text-start text-[13.5px]"
               onClick={() => {
                 report.mutate(
                   { reason },
@@ -298,7 +298,7 @@ export function TrackActions({
       <Sheet open={open && pickPlaylist} onClose={close} title={t('playlist.addTo')}>
         <button
           type="button"
-          className="mb-2 flex w-full items-center gap-3 rounded-xl bg-white/8 px-3.5 py-3 text-start text-[13.5px] text-[var(--accent)]"
+          className="mb-2 flex w-full items-center gap-3 rounded-xl bg-[var(--fill)] px-3.5 py-3 text-start text-[13.5px] text-[var(--accent)]"
           onClick={() => setCreateOpen(true)}
         >
           <PlusIcon size={18} />
@@ -311,7 +311,7 @@ export function TrackActions({
               <button
                 key={playlist.id}
                 type="button"
-                className="flex items-center gap-3 rounded-xl bg-white/8 px-3.5 py-3 text-start"
+                className="flex items-center gap-3 rounded-xl bg-[var(--fill)] px-3.5 py-3 text-start"
                 onClick={() =>
                   addTo.mutate(
                     { playlistId: playlist.id, trackIds: [track.id] },

@@ -7,7 +7,7 @@ import { useRecordPlay, useSavePlayback, useStoredPlayback } from '@/api/playlis
 import { useMe } from '@/api/hooks';
 import { MiniPlayer } from '@/components/MiniPlayer';
 import { TabBar } from '@/components/TabBar';
-import { Aurora, Credit, EmptyState, Glass, Sheet, Spinner, Toasts } from '@/components/ui';
+import { Credit, EmptyState, Glass, Sheet, Spinner, Toasts } from '@/components/ui';
 import { I18nProvider, useI18n } from '@/i18n';
 import { applyPalette, DEFAULT_PALETTE, paletteFromUrl, parsePalette } from '@/lib/color';
 import { applyPerf, watchFrameRate } from '@/lib/perf';
@@ -59,7 +59,7 @@ function Paywall() {
         <button
           type="button"
           onClick={close}
-          className="flex-1 rounded-xl bg-white/8 py-2.5 text-[13.5px]"
+          className="flex-1 rounded-xl bg-[var(--fill)] py-2.5 text-[13.5px]"
         >
           {t('plan.later')}
         </button>
@@ -227,7 +227,6 @@ function Shell() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-lg flex-col" style={{ paddingTop: 'var(--safe-top)' }}>
-      <Aurora />
       <main className="flex-1" style={{ paddingBottom: 'var(--chrome-h)' }} key={location.pathname}>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -252,7 +251,7 @@ function Shell() {
         </Routes>
       </main>
 
-      <div className="fixed inset-x-2.5 bottom-2.5 z-30 mx-auto max-w-lg">
+      <div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg">
         <MiniPlayer thumb={currentThumb} />
         <TabBar />
       </div>
@@ -396,7 +395,7 @@ function JoinScreen({
         <button
           type="button"
           disabled={checking}
-          className="w-full rounded-xl border border-white/15 px-4 py-2.5 text-[14px] disabled:opacity-50"
+          className="w-full rounded-xl border border-[var(--separator)] px-4 py-2.5 text-[14px] disabled:opacity-50"
           onClick={() => {
             setChecking(true);
             setStillMissing(false);

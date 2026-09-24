@@ -75,7 +75,7 @@ function AddChannelSheet({ open, onClose }: { open: boolean; onClose: () => void
           spellCheck={false}
           placeholder="@PersianMusic"
           aria-label={t('channel.add.title')}
-          className="min-w-0 flex-1 rounded-xl bg-white/8 px-3.5 py-2.5 text-[14px] outline-none"
+          className="min-w-0 flex-1 rounded-xl bg-[var(--fill)] px-3.5 py-2.5 text-[14px] outline-none"
         />
         <button
           type="button"
@@ -143,7 +143,7 @@ export function Library() {
             onClick={() => (item.id === 'playlists' ? navigate('/playlists') : setTab(item.id))}
             className={cx(
               'shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px]',
-              tab === item.id ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-white/8 text-[var(--ink-dim)]',
+              tab === item.id ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)] text-[var(--ink-dim)]',
             )}
           >
             {t(item.label)}
@@ -155,7 +155,7 @@ export function Library() {
             onClick={() => setFilterOpen(true)}
             className={cx(
               'shrink-0 rounded-full px-3.5 py-1.5 text-[12.5px]',
-              hasFilters ? 'bg-white/20 text-[var(--ink)]' : 'bg-white/8 text-[var(--ink-dim)]',
+              hasFilters ? 'bg-[var(--fill-strong)] text-[var(--ink)]' : 'bg-[var(--fill)] text-[var(--ink-dim)]',
             )}
           >
             {t('library.filter')}
@@ -240,7 +240,7 @@ export function Library() {
               <button
                 type="button"
                 aria-label={t('channel.remove')}
-                className="shrink-0 rounded-xl bg-white/8 px-3 py-2 text-[12px] text-[var(--ink-dim)]"
+                className="shrink-0 rounded-xl bg-[var(--fill)] px-3 py-2 text-[12px] text-[var(--ink-dim)]"
                 onClick={() =>
                   removeChannel.mutate(channel.id, { onSuccess: () => toast(t('channel.removed')) })
                 }
@@ -267,7 +267,7 @@ export function Library() {
               onClick={() => setFilters((f) => ({ ...f, language: f.language === language ? null : language }))}
               className={cx(
                 'rounded-xl px-4 py-2 text-[13px]',
-                filters.language === language ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-white/8',
+                filters.language === language ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)]',
               )}
             >
               {language.toUpperCase()}
@@ -279,14 +279,14 @@ export function Library() {
           <button
             type="button"
             onClick={() => setFilters((f) => ({ ...f, max_duration: f.max_duration ? null : 180, min_duration: null }))}
-            className={cx('rounded-xl px-4 py-2 text-[13px]', filters.max_duration ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-white/8')}
+            className={cx('rounded-xl px-4 py-2 text-[13px]', filters.max_duration ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)]')}
           >
             {t('library.filter.short')}
           </button>
           <button
             type="button"
             onClick={() => setFilters((f) => ({ ...f, min_duration: f.min_duration ? null : 300, max_duration: null }))}
-            className={cx('rounded-xl px-4 py-2 text-[13px]', filters.min_duration ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-white/8')}
+            className={cx('rounded-xl px-4 py-2 text-[13px]', filters.min_duration ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)]')}
           >
             {t('library.filter.long')}
           </button>
@@ -297,7 +297,7 @@ export function Library() {
             setFilters({});
             setFilterOpen(false);
           }}
-          className="w-full rounded-xl bg-white/8 py-2.5 text-[13px]"
+          className="w-full rounded-xl bg-[var(--fill)] py-2.5 text-[13px]"
         >
           {t('library.filter.clear')}
         </button>

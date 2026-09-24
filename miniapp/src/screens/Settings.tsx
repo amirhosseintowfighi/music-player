@@ -32,7 +32,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (next: boolean) => vo
       onClick={() => onChange(!on)}
       className={cx(
         'h-6 w-11 rounded-full p-0.5 transition-colors',
-        on ? 'bg-[var(--accent)]' : 'bg-white/15',
+        on ? 'bg-[var(--accent)]' : 'bg-[var(--fill-strong)]',
       )}
     >
       <span
@@ -73,7 +73,7 @@ function Choice<T extends string>({
   onChange: (value: T) => void;
 }) {
   return (
-    <div className="flex gap-1 rounded-full bg-white/8 p-1">
+    <div className="flex gap-1 rounded-full bg-[var(--fill)] p-1">
       {options.map((option) => (
         <button
           key={option.id}
@@ -163,7 +163,7 @@ export function Settings() {
 
       <Glass className="divide-y divide-white/6">
         <Row label={t('profile.plays')}>
-          <a href="#/profile" className="rounded-full bg-white/8 px-3 py-1.5 text-[12px]">
+          <a href="#/profile" className="rounded-full bg-[var(--fill)] px-3 py-1.5 text-[12px]">
             {t('tab.profile')}
           </a>
         </Row>
@@ -172,14 +172,14 @@ export function Settings() {
             href="#/plans"
             className={cx(
               'rounded-full px-3 py-1 text-[12px] font-bold',
-              plan === 'free' ? 'bg-white/10' : 'bg-[var(--accent)] text-[var(--accent-ink)]',
+              plan === 'free' ? 'bg-[var(--fill)]' : 'bg-[var(--accent)] text-[var(--accent-ink)]',
             )}
           >
             {plan === 'free' ? t('plan.free') : t('plan.pro')}
           </a>
         </Row>
         <Row label={t('plan.manage')}>
-          <a href="#/plans" className="rounded-full bg-white/8 px-3 py-1.5 text-[12px]">
+          <a href="#/plans" className="rounded-full bg-[var(--fill)] px-3 py-1.5 text-[12px]">
             {t('common.more')}
           </a>
         </Row>
@@ -187,7 +187,7 @@ export function Settings() {
           <Row label={t('settings.referral')} hint={me.data.referral_code}>
             <button
               type="button"
-              className="rounded-full bg-white/8 px-3 py-1.5 text-[12px]"
+              className="rounded-full bg-[var(--fill)] px-3 py-1.5 text-[12px]"
               onClick={() => {
                 void navigator.clipboard?.writeText(me.data.referral_code);
                 setCopied(true);

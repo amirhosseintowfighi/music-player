@@ -77,7 +77,7 @@ export function Search() {
             onClick={() => setScope(value)}
             className={cx(
               'rounded-full px-3.5 py-1.5 text-[12.5px]',
-              scope === value ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-white/8 text-[var(--ink-dim)]',
+              scope === value ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)] text-[var(--ink-dim)]',
             )}
           >
             {t(value === 'library' ? 'search.scope.library' : 'search.scope.global')}
@@ -99,7 +99,7 @@ export function Search() {
                 key={item}
                 type="button"
                 onClick={() => setInput(item)}
-                className="rounded-full bg-white/8 px-3.5 py-1.5 text-[12.5px] text-[var(--ink-dim)]"
+                className="rounded-full bg-[var(--fill)] px-3.5 py-1.5 text-[12.5px] text-[var(--ink-dim)]"
               >
                 {item}
               </button>

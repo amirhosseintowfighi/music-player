@@ -1,43 +1,78 @@
 @import 'tailwindcss';
 
-/* Liquid Glass — the material and the tokens behind it (docs/design/tokens.css is the
-   mock-up copy of this file). Three z-layers: aurora background, content, glass chrome. */
+/* The look: Apple Music.
+ *
+ * Two rules explain every value below.
+ *
+ * 1. **Colour is semantic, never literal.** A row divider is `--separator`, a
+ *    secondary line is `--ink-dim`, a resting control is `--fill`. Nothing in the app
+ *    writes `white/8` any more: an overlay that assumes a dark background turns into
+ *    an invisible smear the moment somebody switches to light, which is exactly the
+ *    bug this file exists to end.
+ *
+ * 2. **Material is for chrome, not for content.** The tab bar and the now-playing bar
+ *    float over scrolling content and use a blur; lists, rows and sheets sit on solid
+ *    surfaces so text is always read against a known colour. Glass everywhere is what
+ *    made the track list hard to read.
+ *
+ * Values follow Apple's system palette (label / secondary label / separator / fill)
+ * with Music's own accent, so light and dark are two settings of one system rather
+ * than two designs.
+ */
 
 @theme {
-  --color-ink: #f4f6fb;
-  --color-ink-dim: #a9b1c6;
-  --color-ink-faint: #6b7489;
-  --color-accent: #27e3c8;
-  --color-accent-2: #4aa8ff;
-  --color-accent-ink: #04211d;
-  --radius-glass: 18px;
-  --radius-glass-lg: 26px;
-  --font-sans: Vazirmatn, 'SF Pro Text', -apple-system, 'Segoe UI', Tahoma, system-ui, sans-serif;
+  --color-ink: light-dark(#000000, #ffffff);
+  --color-ink-dim: light-dark(rgba(60, 60, 67, 0.6), rgba(235, 235, 245, 0.6));
+  --color-ink-faint: light-dark(rgba(60, 60, 67, 0.3), rgba(235, 235, 245, 0.3));
+  --color-accent: light-dark(#fa2d48, #ff375f);
+  --color-accent-ink: #ffffff;
+  --radius-glass: 14px;
+  --radius-glass-lg: 20px;
+  --font-sans:
+    Vazirmatn, -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
 }
 
 :root {
   color-scheme: dark;
-  --bg-0: #07080c;
-  --ink: #f4f6fb;
-  --ink-dim: #a9b1c6;
-  --ink-faint: #6b7489;
-  --accent: #27e3c8;
-  --accent-2: #4aa8ff;
-  --accent-ink: #04211d;
 
-  --glass-bg: rgba(255, 255, 255, 0.055);
-  --glass-bg-strong: rgba(255, 255, 255, 0.085);
-  --glass-blur: 28px;
+  /* Surfaces: the page, a card on it, and a card raised above that. Apple's
+     grouped scale — the page is never the same colour as the card sitting on it,
+     which is what makes a list legible without a border. */
+  --bg-0: #000000;
+  --card: #1c1c1e;
+  --card-strong: #2c2c2e;
+
+  /* Text, in the three weights Apple's system defines. */
+  --ink: #ffffff;
+  --ink-dim: rgba(235, 235, 245, 0.6);
+  --ink-faint: rgba(235, 235, 245, 0.3);
+
+  --accent: #ff375f;
+  --accent-2: #ff6482;
+  --accent-ink: #ffffff;
+
+  /* A hairline between rows, and the resting fill of a control. */
+  --separator: rgba(84, 84, 88, 0.6);
+  --fill: rgba(120, 120, 128, 0.24);
+  --fill-strong: rgba(120, 120, 128, 0.36);
+
+  /* Chrome that floats over content. The solid value is what a device without
+     backdrop-filter — or a low-power device — falls back to. */
+  --material-bg: rgba(30, 30, 32, 0.72);
+  --material-solid: #161618;
+  --glass-bg: var(--material-bg);
+  --glass-bg-strong: rgba(44, 44, 46, 0.82);
+  --glass-blur: 30px;
   --glass-saturate: 180%;
-  --glass-border-top: rgba(255, 255, 255, 0.34);
-  --glass-border-bottom: rgba(255, 255, 255, 0.06);
-  --glass-shadow: 0 18px 50px -22px rgba(0, 0, 0, 0.85);
-  --glass-inner: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --glass-border-top: transparent;
+  --glass-border-bottom: transparent;
+  --glass-shadow: none;
+  --glass-inner: none;
 
-  /* Artwork-driven background colours, set by useDominantColor(). */
-  --art-1: #2bd9c4;
-  --art-2: #4a6bff;
-  --art-3: #b02bd9;
+  /* Artwork-driven colours, used only behind the full player (Music does the same). */
+  --art-1: #ff375f;
+  --art-2: #5e5ce6;
+  --art-3: #1c1c1e;
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -46,26 +81,34 @@
 
 :root[data-theme='light'] {
   color-scheme: light;
-  --bg-0: #eef1f7;
-  --ink: #0d1017;
-  --ink-dim: #4a5265;
-  --ink-faint: #838da3;
-  --glass-bg: rgba(255, 255, 255, 0.55);
-  --glass-bg-strong: rgba(255, 255, 255, 0.72);
-  --glass-border-top: rgba(255, 255, 255, 0.9);
-  --glass-border-bottom: rgba(10, 14, 25, 0.08);
-  --glass-shadow: 0 18px 40px -24px rgba(16, 24, 40, 0.45);
+
+  --bg-0: #f2f2f7;
+  --card: #ffffff;
+  --card-strong: #ffffff;
+
+  --ink: #000000;
+  --ink-dim: rgba(60, 60, 67, 0.6);
+  --ink-faint: rgba(60, 60, 67, 0.3);
+
+  --accent: #fa2d48;
+  --accent-2: #ff5a70;
+  --accent-ink: #ffffff;
+
+  --separator: rgba(60, 60, 67, 0.29);
+  --fill: rgba(120, 120, 128, 0.12);
+  --fill-strong: rgba(120, 120, 128, 0.2);
+
+  --material-bg: rgba(249, 249, 249, 0.82);
+  --material-solid: #f7f7f8;
+  --glass-bg: var(--material-bg);
+  --glass-bg-strong: rgba(255, 255, 255, 0.92);
 }
 
-/* Weak device or a measured FPS drop: drop the blur, keep the layout. */
+/* Weak device or a measured FPS drop: solid chrome, same layout. */
 :root[data-perf='low'] {
   --glass-blur: 0px;
-  --glass-bg: #171b24;
-  --glass-bg-strong: #1d222d;
-}
-:root[data-theme='light'][data-perf='low'] {
-  --glass-bg: #e6eaf3;
-  --glass-bg-strong: #f2f5fa;
+  --glass-bg: var(--material-solid);
+  --glass-bg-strong: var(--material-solid);
 }
 
 html,
@@ -79,6 +122,9 @@ body {
   background: var(--bg-0);
   color: var(--ink);
   font-family: var(--font-sans);
+  /* Music sets text tight and dark; -0.01em is the difference between "a web page"
+     and "an app" at these sizes. */
+  letter-spacing: -0.01em;
   overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
@@ -93,12 +139,12 @@ body {
   }
 }
 
+/* Floating chrome: the tab bar, the now-playing bar, sheets. */
 @utility glass {
   position: relative;
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
   -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  box-shadow: var(--glass-shadow), var(--glass-inner);
   isolation: isolate;
 }
 
@@ -106,38 +152,45 @@ body {
   background: var(--glass-bg-strong);
 }
 
-/* 1px edge: light at the top, dark at the bottom — the "rim" of the glass. */
+/* A hairline, where Music draws one. Kept as a utility so the name still reads. */
 @utility glass-edge {
   &::before {
     content: '';
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(to bottom, var(--glass-border-top), var(--glass-border-bottom) 60%);
+    padding: 0.5px;
+    background: var(--separator);
     -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    mask:
       linear-gradient(#000 0 0) content-box,
       linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
+    opacity: 0.6;
     pointer-events: none;
   }
 }
 
-/* Specular highlight; --spec (0..1) is moved by scroll and device tilt. */
+/* Music has no specular sheen on its surfaces; kept as a no-op so callers are free
+   to stop using it one at a time instead of in one risky sweep. */
 @utility glass-spec {
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: radial-gradient(
-      120% 60% at calc(var(--spec, 0.3) * 100%) -10%,
-      rgba(255, 255, 255, 0.22),
-      transparent 60%
-    );
-    pointer-events: none;
-    z-index: -1;
+  isolation: isolate;
+}
+
+/* A grouped list: rows separated by hairlines inset past the artwork, the way every
+   Apple list does it, with no line under the last row. */
+@utility list-group {
+  background: var(--card);
+  border-radius: var(--radius-glass);
+  overflow: hidden;
+}
+
+@utility list-rows {
+  & > *:not(:last-child) {
+    border-bottom: 0.5px solid var(--separator);
   }
 }
 
