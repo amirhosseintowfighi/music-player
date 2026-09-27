@@ -1,7 +1,8 @@
+import { motion } from 'framer-motion';
 import { NavLink } from 'react-router-dom';
 
 import { HomeIcon, LibraryIcon, MoreIcon, RadioIcon, SearchIcon } from '@/components/icons';
-import { cx } from '@/components/ui';
+import { bouncy, cx } from '@/components/ui';
 import { useI18n, type Key } from '@/i18n';
 import { haptic } from '@/lib/telegram';
 
@@ -36,10 +37,20 @@ export function TabBar() {
             )
           }
         >
-          <>
-            <Icon size={24} />
-            {t(key)}
-          </>
+          {({ isActive }) => (
+            <>
+              {/* The icon lands when its tab is picked: a small pop, not a slide. */}
+              <motion.span
+                animate={{ scale: isActive ? 1 : 0.94, y: isActive ? -1 : 0 }}
+                whileTap={{ scale: 0.8 }}
+                transition={bouncy}
+                className="grid place-items-center"
+              >
+                <Icon size={24} strokeWidth={isActive ? 2.2 : 1.8} />
+              </motion.span>
+              {t(key)}
+            </>
+          )}
         </NavLink>
       ))}
     </nav>

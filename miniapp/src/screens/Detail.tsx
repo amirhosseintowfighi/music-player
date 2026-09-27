@@ -85,7 +85,7 @@ function TrackList({
           {t('player.shuffle')}
         </button>
       </div>
-      <Glass className="mt-3 p-1.5">
+      <Glass className="rise mt-3 p-1.5">
         {tracks.map((track, index) => (
           <TrackRow
             key={`${track.id}-${index}`}

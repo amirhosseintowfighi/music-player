@@ -134,6 +134,7 @@ POST /v1/telemetry/playback
 | `/v1/playlists/*`, `/v1/me/*` | پلی‌لیست، لایک، تاریخچه، وضعیت پخش | ۵ |
 | `/v1/plans`, `/v1/payments/*`, `/v1/me/subscription` | پلن‌ها، پرداخت، اشتراک | ۶ |
 | `/v1/discover`, `/v1/trending`, `/v1/tracks/{id}/similar`, `/radio` | پیشنهادها | ۷ |
+| `/v1/jams/*` | جم: گوش دادن هم‌زمان با دوستان (صف و playhead مشترک در Redis) | جم |
 | `/admin/*` | پنل مدیریت (توکن نوع `admin`) | ۸ |
 | `/admin/candidates*`, `/admin/channels/import`, `/admin/crawler/*` | صف کانال‌های پیشنهادی، import دسته‌ای، سلامت کرالر/پارسر/resolver | ADR-002 |
 | `/healthz`, `/readyz`, `/metrics` | سلامت و متریک (فقط شبکهٔ داخلی) | ۱، ۹ |
@@ -141,3 +142,26 @@ POST /v1/telemetry/playback
 `/v1/payments/callback/{provider}` بدون احراز هویت است — درگاه صدایش می‌زند، نه کاربر —
 و به همین دلیل هیچ‌وقت به ورودی‌اش اعتماد نمی‌کند: پرداخت با شناسهٔ خودش پیدا و
 دوباره از درگاه verify می‌شود.
+
+## جم (گوش دادن با هم)
+
+یک صف مشترک و یک playhead که در Redis نگه داشته می‌شود (TTL شش ساعت، با هر تغییر تمدید).
+playhead به شکل «کجا بود و کِی» (`pos` در زمان سرور `at`) ذخیره می‌شود، نه عددی که مدام گزارش شود؛
+پس هر خواننده جای فعلی موزیک را حساب می‌کند و سرور وقتی آهنگی تمام شد خودش به بعدی می‌رود —
+حتی وقتی گوشی میزبان قفل است.
+
+| endpoint | کار |
+|---|---|
+| `POST /v1/jams` | ساختن جم با آنچه الان پخش می‌شود (`track_ids`، `index`، `position_s`، `playing`) |
+| `GET /v1/jams/current` | جمی که کاربر در آن است، یا `null` |
+| `GET /v1/jams/{code}?qrev=N` | وضعیت؛ اگر `qrev` همان باشد صف (`items`) برنمی‌گردد |
+| `POST /v1/jams/{code}/join` · `/leave` | پیوستن و خروج (خروج میزبان یعنی پایان جم) |
+| `DELETE /v1/jams/{code}` | پایان جم (فقط میزبان) |
+| `POST /v1/jams/{code}/control` | `play`/`pause`/`seek`/`next`/`previous`/`jump`؛ با `expected_index` فقط یک بار skip می‌شود |
+| `POST /v1/jams/{code}/queue` | افزودن آهنگ توسط هر عضو (`next`، `end`، یا `now` برای کنترل‌کننده‌ها) |
+| `DELETE /v1/jams/{code}/queue/{index}` | حذف: میزبان هر چیزی، مهمان فقط آنچه خودش اضافه کرده |
+| `PATCH /v1/jams/{code}` | `guests_can_control` (فقط میزبان) |
+
+در بات: `/jam` جم می‌سازد (یا جم فعلی را نشان می‌دهد) با دکمه‌های ورود، دعوت و پایان؛
+`/jam <code>` و لینک `t.me/<bot>?start=jam_<code>` به جم می‌پیوندند، و لینک
+`t.me/<bot>?startapp=jam_<code>` مستقیم مینی‌اپ را روی همان جم باز می‌کند.

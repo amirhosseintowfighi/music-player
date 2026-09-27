@@ -5,19 +5,31 @@ import type { Track } from '@/api/client';
 import {
   ChevronIcon,
   ClockIcon,
+  JamIcon,
   NextIcon,
-  PauseIcon,
-  PlayIcon,
   PrevIcon,
   QueueIcon,
   RepeatIcon,
   ShuffleIcon,
   SpeedIcon,
 } from '@/components/icons';
-import { Aurora, Cover, Glass, LoadMore, Sheet, Spinner, cx, spring } from '@/components/ui';
+import {
+  Aurora,
+  Cover,
+  Glass,
+  LoadMore,
+  PlayPauseGlyph,
+  Sheet,
+  Spinner,
+  bouncy,
+  cx,
+  easeOut,
+  spring,
+} from '@/components/ui';
 import { useI18n } from '@/i18n';
 import { artistNames, duration } from '@/lib/format';
 import { backButton, haptic, openTelegramLink } from '@/lib/telegram';
+import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
 
@@ -283,6 +295,13 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
   const autoplay = usePlayer((s) => s.autoplay);
   const [queueOpen, setQueueOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const jamListeners = useJam((s) => s.jam?.members.length ?? 0);
+  const inJam = useJam((s) => Boolean(s.jam));
+  const openJam = () => {
+    haptic('light');
+    setOpen(false);
+    window.location.hash = '#/jam';
+  };
 
   useEffect(() => {
     if (!open) return undefined;
@@ -323,66 +342,131 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
               <button type="button" aria-label={t('common.back')} onClick={() => setOpen(false)} className="p-1.5">
                 <ChevronIcon size={22} className="rotate-90" />
               </button>
-              <p className="text-[12px] text-[var(--ink-dim)]">{t('player.nowPlaying')}</p>
-              <button type="button" aria-label={t('player.queue')} onClick={() => setQueueOpen(true)} className="p-1.5">
-                <QueueIcon size={21} />
-              </button>
+              {inJam ? (
+                <button
+                  type="button"
+                  onClick={openJam}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-[color-mix(in_oklab,var(--accent)_15%,transparent)] px-2.5 py-1 text-[12px] font-semibold text-[var(--accent)]"
+                >
+                  <span className="live-dot" />
+                  {t('jam.pill', { count: jamListeners })}
+                </button>
+              ) : (
+                <p className="text-[12px] text-[var(--ink-dim)]">{t('player.nowPlaying')}</p>
+              )}
+              <div className="flex items-center">
+                <motion.button
+                  type="button"
+                  aria-label={t('jam.title')}
+                  whileTap={{ scale: 0.85 }}
+                  onClick={openJam}
+                  className={cx('p-1.5', inJam && 'text-[var(--accent)]')}
+                >
+                  <JamIcon size={21} />
+                </motion.button>
+                <motion.button
+                  type="button"
+                  aria-label={t('player.queue')}
+                  whileTap={{ scale: 0.85 }}
+                  // In a Jam the queue is the room's, and it lives on the Jam screen.
+                  onClick={() => (inJam ? openJam() : setQueueOpen(true))}
+                  className="p-1.5"
+                >
+                  <QueueIcon size={21} />
+                </motion.button>
+              </div>
             </div>
 
             <motion.div layoutId="cover" className="mx-auto">
-              <Cover src={thumbs[track.id]} seed={track.id} size={300} radius={26} glyph="♫" />
+              {/* Music's signature: the artwork steps back while paused and forward
+                  again when the music starts, with a shadow that grows with it. */}
+              <motion.div
+                animate={{
+                  scale: isPlaying ? 1 : 0.8,
+                  boxShadow: isPlaying ? '0 24px 60px rgba(0,0,0,0.45)' : '0 8px 20px rgba(0,0,0,0.25)',
+                }}
+                transition={{ type: 'spring', stiffness: 260, damping: 20 }}
+                style={{ borderRadius: 26 }}
+              >
+                <Cover src={thumbs[track.id]} seed={track.id} size={300} radius={26} glyph="♫" />
+              </motion.div>
             </motion.div>
 
-            <div className="mt-7">
-              <h1 className="truncate text-[23px] font-bold tracking-tight">{track.title}</h1>
-              <p className="mt-1 truncate text-[14px] text-[var(--ink-dim)]">{artistNames(track)}</p>
-              <ChannelChip track={track} />
+            <div className="relative mt-7 overflow-hidden">
+              <AnimatePresence mode="popLayout" initial={false}>
+                <motion.div
+                  key={track.id}
+                  initial={{ opacity: 0, x: 24 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -24 }}
+                  transition={{ duration: 0.32, ease: easeOut }}
+                >
+                  <h1 className="truncate text-[23px] font-bold tracking-tight">{track.title}</h1>
+                  <p className="mt-1 truncate text-[14px] text-[var(--ink-dim)]">{artistNames(track)}</p>
+                  <ChannelChip track={track} />
+                </motion.div>
+              </AnimatePresence>
             </div>
 
             <Scrubber />
 
             {/* Music's transport is plain glyphs, not filled discs: the artwork is
                 the colour on this screen and the controls stay out of its way. */}
-            <div className="mt-2 flex items-center justify-center gap-7">
+            <div dir="ltr" className="mt-2 flex items-center justify-center gap-7">
               <button
                 type="button"
                 aria-label={t('player.shuffle')}
                 aria-pressed={shuffle}
+                // The room's order is the room's: no shuffling or looping one copy of it.
+                disabled={inJam}
                 onClick={() => usePlayer.getState().setShuffle(!shuffle)}
-                className={cx('p-2', shuffle ? 'text-[var(--accent)]' : 'text-[var(--ink-dim)]')}
+                className={cx('p-2 disabled:opacity-30', shuffle ? 'text-[var(--accent)]' : 'text-[var(--ink-dim)]')}
               >
                 <ShuffleIcon size={20} />
               </button>
-              <button
+              <motion.button
                 type="button"
                 aria-label="previous"
-                onClick={() => void usePlayer.getState().previous()}
-                className="p-2 text-[var(--ink)]"
+                whileTap={{ scale: 0.75, x: -4 }}
+                transition={bouncy}
+                onClick={() => {
+                  haptic('light');
+                  void usePlayer.getState().previous();
+                }}
+                className="rounded-full p-2 text-[var(--ink)] active:bg-[var(--fill)]"
               >
                 <PrevIcon size={30} />
-              </button>
-              <button
+              </motion.button>
+              <motion.button
                 type="button"
                 aria-label={isPlaying ? t('common.pause') : t('common.play')}
+                whileTap={{ scale: 0.82 }}
+                transition={bouncy}
                 onClick={() => void usePlayer.getState().toggle()}
                 className="grid h-16 w-16 place-items-center rounded-full text-[var(--ink)] active:bg-[var(--fill)]"
               >
-                {isLoading ? <Spinner size={26} /> : isPlaying ? <PauseIcon size={40} /> : <PlayIcon size={40} />}
-              </button>
-              <button
+                {isLoading ? <Spinner size={26} /> : <PlayPauseGlyph playing={isPlaying} size={40} />}
+              </motion.button>
+              <motion.button
                 type="button"
                 aria-label="next"
-                onClick={() => void usePlayer.getState().next()}
-                className="p-2 text-[var(--ink)]"
+                whileTap={{ scale: 0.75, x: 4 }}
+                transition={bouncy}
+                onClick={() => {
+                  haptic('light');
+                  void usePlayer.getState().next();
+                }}
+                className="rounded-full p-2 text-[var(--ink)] active:bg-[var(--fill)]"
               >
                 <NextIcon size={30} />
-              </button>
+              </motion.button>
               <button
                 type="button"
                 aria-label={t('player.repeat')}
                 aria-pressed={repeat !== 'off'}
+                disabled={inJam}
                 onClick={() => usePlayer.getState().cycleRepeat()}
-                className={cx('relative p-2', repeat !== 'off' ? 'text-[var(--accent)]' : 'text-[var(--ink-dim)]')}
+                className={cx('relative p-2 disabled:opacity-30', repeat !== 'off' ? 'text-[var(--accent)]' : 'text-[var(--ink-dim)]')}
               >
                 <RepeatIcon size={20} />
                 {repeat === 'one' && <span className="absolute right-0.5 top-0.5 text-[9px] font-bold">1</span>}

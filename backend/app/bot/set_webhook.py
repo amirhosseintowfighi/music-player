@@ -24,8 +24,18 @@ async def main() -> None:
             max_connections=100,
         )
         for lang, commands in {
-            "fa": [("start", "شروع"), ("help", "راهنما"), ("lang", "تغییر زبان")],
-            "en": [("start", "Start"), ("help", "Help"), ("lang", "Language")],
+            "fa": [
+                ("start", "شروع"),
+                ("help", "راهنما"),
+                ("jam", "گوش دادن با دوستان"),
+                ("lang", "تغییر زبان"),
+            ],
+            "en": [
+                ("start", "Start"),
+                ("help", "Help"),
+                ("jam", "Listen with friends"),
+                ("lang", "Language"),
+            ],
         }.items():
             await bot.set_my_commands(
                 [BotCommand(command=c, description=d) for c, d in commands],

@@ -840,3 +840,64 @@ class FixMetadataIn(ApiModel):
     # Apply the artist correction to every track that currently shares this one's
     # (wrong) artist — the same mangled name is usually posted hundreds of times.
     apply_to_artist: bool = False
+
+
+# ── jam: listening together ───────────────────────────────────────────────────
+
+
+class CreateJamIn(ApiModel):
+    """Seed the jam with what the host is playing now, so nobody starts from silence."""
+
+    track_ids: list[int] = Field(default_factory=list, max_length=500)
+    index: int = Field(0, ge=0)
+    position_s: float = Field(0, ge=0)
+    playing: bool = False
+
+
+class JamControlIn(ApiModel):
+    action: Literal["play", "pause", "seek", "next", "previous", "jump"]
+    position_s: float | None = Field(None, ge=0)
+    index: int | None = Field(None, ge=0)
+    # Only act if the jam is still on this track: every listener's player reports
+    # the end of the same track, and only the first report may skip.
+    expected_index: int | None = Field(None, ge=0)
+
+
+class JamAddIn(ApiModel):
+    track_ids: list[int] = Field(min_length=1, max_length=100)
+    position: Literal["next", "end", "now"] = "end"
+
+
+class JamSettingsIn(ApiModel):
+    guests_can_control: bool
+
+
+class JamMemberOut(ApiModel):
+    user_id: int
+    first_name: str
+    username: str | None = None
+    is_host: bool
+
+
+class JamItemOut(ApiModel):
+    track: TrackOut
+    added_by: int
+
+
+class JamOut(ApiModel):
+    code: str
+    share_url: str
+    host_id: int
+    is_host: bool
+    can_control: bool
+    guests_can_control: bool
+    members: list[JamMemberOut]
+    index: int
+    playing: bool
+    # Where the music is at the moment this response was built.
+    position_s: float
+    rev: int
+    qrev: int
+    queue_length: int
+    # Left out when the caller already has this ``qrev``.
+    items: list[JamItemOut] | None = None

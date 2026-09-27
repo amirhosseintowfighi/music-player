@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
@@ -12,11 +13,12 @@ import {
 } from '@/api/hooks';
 import { ChannelCard } from '@/components/ChannelCard';
 import { TrackRow } from '@/components/TrackRow';
-import { Cover, EmptyState, ErrorNote, Glass, LoadMore, SectionHead, Spinner } from '@/components/ui';
-import { PlayIcon } from '@/components/icons';
+import { Cover, EmptyState, ErrorNote, Glass, LoadMore, SectionHead, Spinner, cx } from '@/components/ui';
+import { JamIcon, PlayIcon } from '@/components/icons';
 import { useI18n } from '@/i18n';
 import { artistNames } from '@/lib/format';
 import { useThumbs } from '@/player/thumbs';
+import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
 
@@ -50,6 +52,29 @@ function ContinueCard({ track, thumb, onPlay }: { track: Track; thumb?: string; 
         <PlayIcon size={18} />
       </button>
     </Glass>
+  );
+}
+
+/** Into the Jam — lit up, with a live dot, while one is going. */
+function JamButton() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const inJam = useJam((s) => Boolean(s.jam));
+  return (
+    <motion.button
+      type="button"
+      aria-label={t('jam.title')}
+      whileTap={{ scale: 0.9 }}
+      onClick={() => navigate('/jam')}
+      className={cx(
+        'relative flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold',
+        inJam ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'bg-[var(--fill)] text-[var(--ink)]',
+      )}
+    >
+      <JamIcon size={17} />
+      {t('jam.title')}
+      {inJam && <span className="live-dot absolute -top-0.5 -end-0.5 ring-2 ring-[var(--bg-0)]" style={{ background: '#fff' }} />}
+    </motion.button>
   );
 }
 
@@ -87,11 +112,14 @@ export function Home() {
             </p>
           )}
         </div>
-        {me.data && (
-          <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffb86b] to-[#ff6b9a] text-[15px] font-bold text-[#2a1206]">
-            {me.data.first_name.slice(0, 1)}
-          </div>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          <JamButton />
+          {me.data && (
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffb86b] to-[#ff6b9a] text-[15px] font-bold text-[#2a1206]">
+              {me.data.first_name.slice(0, 1)}
+            </div>
+          )}
+        </div>
       </header>
 
       {!hasChannels && !channels.isLoading && (
@@ -148,7 +176,7 @@ export function Home() {
       {tracks.length > 0 && (
         <>
           <SectionHead title={t('home.recent')} action={t('home.all')} onAction={() => navigate('/library')} />
-          <Glass className="p-1.5">
+          <Glass className="rise p-1.5">
             {tracks.slice(0, 8).map((track, index) => (
               <TrackRow
                 key={track.id}

@@ -41,6 +41,22 @@ import {
 export type RepeatMode = 'off' | 'all' | 'one';
 export type PlaySource = 'library' | 'search' | 'playlist' | 'channel' | 'discover' | 'mix' | 'radio' | 'trending' | 'shared';
 
+/**
+ * While in a Jam, the transport belongs to everybody: the controls ask the Jam to
+ * move, and the Jam tells every listener's player where to be (see store/jam). The
+ * player itself only follows.
+ */
+export interface Remote {
+  toggle: () => void;
+  next: () => void;
+  previous: () => void;
+  seek: (seconds: number) => void;
+  /** The local copy of the current track finished. */
+  ended: () => void;
+  enqueue: (tracks: Track[], position: 'next' | 'end') => void;
+  play: (request: PlayRequest) => void;
+}
+
 export interface PlayRequest {
   queue: Track[];
   index: number;
@@ -74,10 +90,17 @@ interface PlayerState {
   sleepAt: number | null;
   sleepEndOfTrack: boolean;
   error: PlaybackError | null;
+  /** Set while in a Jam: transport actions go there instead of to the queue. */
+  remote: Remote | null;
   /** Set by the app; used to report finished plays (phase 5). */
   onPlayed: ((track: Track, playedSeconds: number, completed: boolean, source: PlaySource, sourceId: number | null) => void) | null;
 
   play: (request: PlayRequest) => Promise<void>;
+  /**
+   * Put the player on ``queue[index]`` at wherever ``positionAt`` says the music is
+   * *when the audio is ready* (loading takes time, and the room does not wait).
+   */
+  follow: (queue: Track[], index: number, positionAt: () => number, playing: boolean) => Promise<void>;
   toggle: () => Promise<void>;
   next: (auto?: boolean) => Promise<void>;
   previous: () => Promise<void>;
@@ -148,9 +171,16 @@ export const usePlayer = create<PlayerState>((set, get) => ({
   sleepAt: null,
   sleepEndOfTrack: false,
   error: null,
+  remote: null,
   onPlayed: null,
 
-  async play({ queue, index, source, sourceId = null }) {
+  async play(request) {
+    const remote = get().remote;
+    if (remote) {
+      remote.play(request);
+      return;
+    }
+    const { queue, index, source, sourceId = null } = request;
     startedAt = Date.now();
     const state = get();
     const prepared = state.shuffle ? shuffled(queue, index) : { queue, index };
@@ -174,11 +204,38 @@ export const usePlayer = create<PlayerState>((set, get) => ({
     await load(track, set, get);
   },
 
+  async follow(queue, index, positionAt, playing) {
+    const track = queue[index];
+    if (!track) return;
+    get().reportPlayed();
+    startedAt = Date.now();
+    set({
+      queue,
+      manual: [],
+      unshuffled: null,
+      shuffle: false,
+      index,
+      playingManual: false,
+      source: 'shared',
+      sourceId: null,
+      current: track,
+      isLoading: true,
+      error: null,
+      position: positionAt(),
+      duration: track.duration,
+    });
+    await load(track, set, get, 0, { positionAt, autoplay: playing });
+  },
+
   async toggle() {
     const el = audio();
-    const { current, isPlaying } = get();
+    const { current, isPlaying, remote } = get();
     if (!current) return;
     haptic('light');
+    if (remote) {
+      remote.toggle();
+      return;
+    }
     if (isPlaying) {
       el.pause();
       return;
@@ -193,7 +250,12 @@ export const usePlayer = create<PlayerState>((set, get) => ({
   },
 
   async next(auto = false) {
-    const { queue, manual, index, repeat, autoplay, current } = get();
+    const { queue, manual, index, repeat, autoplay, current, remote } = get();
+    if (remote) {
+      if (auto) remote.ended();
+      else remote.next();
+      return;
+    }
     if (repeat === 'one' && auto) {
       const el = audio();
       el.currentTime = 0;
@@ -274,7 +336,11 @@ export const usePlayer = create<PlayerState>((set, get) => ({
   },
 
   async previous() {
-    const { index, queue, position, playingManual } = get();
+    const { index, queue, position, playingManual, remote } = get();
+    if (remote) {
+      remote.previous();
+      return;
+    }
     if (position > 3) {
       audio().currentTime = 0;
       return;
@@ -314,6 +380,11 @@ export const usePlayer = create<PlayerState>((set, get) => ({
   },
 
   seek(seconds) {
+    const remote = get().remote;
+    if (remote) {
+      remote.seek(seconds);
+      return;
+    }
     const el = audio();
     if (Number.isFinite(el.duration)) el.currentTime = Math.max(0, Math.min(seconds, el.duration));
     else el.currentTime = Math.max(0, seconds);
@@ -369,6 +440,11 @@ export const usePlayer = create<PlayerState>((set, get) => ({
   },
 
   enqueue(tracks, position = 'end') {
+    const remote = get().remote;
+    if (remote) {
+      remote.enqueue(tracks, position);
+      return;
+    }
     // Always the manual queue: "play next" must not rewrite the album being played.
     const { manual } = get();
     set({ manual: position === 'next' ? [...tracks, ...manual] : [...manual, ...tracks] });
@@ -505,25 +581,49 @@ export const usePlayer = create<PlayerState>((set, get) => ({
   },
 }));
 
+interface LoadOptions {
+  /** Where to start, read at the last moment (a Jam keeps moving while we load). */
+  positionAt?: () => number;
+  autoplay?: boolean;
+}
+
 async function load(
   track: Track,
   set: (partial: Partial<PlayerState>) => void,
   get: () => PlayerState,
   attempt = 0,
+  options: LoadOptions = {},
 ): Promise<void> {
   const el = audio();
+  const { positionAt, autoplay = true } = options;
   try {
     const offline = await offlineUrl(track.id);
     const src = offline ?? (await ticketFor(track.id)).url;
+    if (get().current?.id !== track.id) return; // moved on while the ticket loaded
     el.src = src;
     el.playbackRate = get().speed;
+    if (positionAt) el.currentTime = Math.max(0, positionAt());
     // Start silent and ramp up: without this every track begins with a click.
     cancelFade();
+    if (!autoplay) {
+      el.volume = get().volume;
+      set({ isLoading: false, isPlaying: false, error: null });
+      return;
+    }
     el.volume = 0;
     await el.play();
+    // The first bytes took a while; catch up with the room.
+    if (positionAt && Math.abs(el.currentTime - positionAt()) > 1) el.currentTime = positionAt();
     void fadeTo(get().volume, FADE_IN_MS);
     set({ isLoading: false, error: null });
   } catch (error) {
+    if (error instanceof DOMException && error.name === 'NotAllowedError') {
+      // The browser wants a tap before it makes sound (a Jam starting on its own).
+      // The track is loaded and in place; the play button does the rest.
+      el.volume = get().volume;
+      set({ isLoading: false, isPlaying: false, error: null });
+      return;
+    }
     const playbackError = toPlaybackError(error);
     // A flaky connection deserves another try; a plan limit or a missing source does
     // not — retrying those would only spin and say nothing useful to the user.
@@ -532,7 +632,7 @@ async function load(
       dropTicket(track.id);
       await new Promise((resolve) => setTimeout(resolve, delay));
       if (get().current?.id !== track.id) return; // the user moved on
-      return load(track, set, get, attempt + 1);
+      return load(track, set, get, attempt + 1, options);
     }
     report('error', { reason: playbackError.kind });
     set({ isLoading: false, isPlaying: false, error: playbackError });

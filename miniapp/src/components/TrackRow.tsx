@@ -1,7 +1,7 @@
 import { memo } from 'react';
 
 import type { Track } from '@/api/client';
-import { Cover, cx } from '@/components/ui';
+import { Cover, Equalizer, cx } from '@/components/ui';
 import { HeartIcon, MoreIcon } from '@/components/icons';
 import { useToggleLike } from '@/api/playlists';
 import { useUi } from '@/store/ui';
@@ -30,13 +30,17 @@ export const TrackRow = memo(function TrackRow({ track, thumb, trailing, onPlay,
     // hairline that starts where the text starts — never under the artwork.
     <div
       className={cx(
-        'group relative flex items-center gap-3 px-3 py-2 transition-colors',
+        'group relative flex items-center gap-3 px-3 py-2 transition-colors duration-300 active:bg-[var(--fill)]',
         "after:pointer-events-none after:absolute after:bottom-0 after:end-3 after:h-px after:bg-[var(--separator)] after:content-['']",
         'after:start-[70px] last:after:hidden',
         isCurrent && 'bg-[var(--fill)]',
       )}
     >
-      <button type="button" className="flex min-w-0 flex-1 items-center gap-3 text-start" onClick={onPlay}>
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 items-center gap-3 text-start transition-transform duration-150 active:scale-[0.985]"
+        onClick={onPlay}
+      >
         <Cover src={thumb} seed={track.id} size={46} radius={6} />
         <span className="min-w-0 flex-1">
           <span
@@ -46,7 +50,7 @@ export const TrackRow = memo(function TrackRow({ track, thumb, trailing, onPlay,
               !track.playable && 'opacity-50',
             )}
           >
-            {isPlaying && <span aria-hidden className="me-1 text-[11px]">▮▮</span>}
+            {isCurrent && <Equalizer playing={isPlaying} size={11} className="me-1.5" />}
             {track.title || '—'}
           </span>
           <span className="block truncate text-[12px] text-[var(--ink-dim)]">

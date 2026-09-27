@@ -200,7 +200,7 @@ export function Profile() {
       {tracks.length > 0 && (
         <>
           <SectionHead title={t('profile.topTracks')} />
-          <Glass className="p-1.5">
+          <Glass className="rise p-1.5">
             {tracks.map((track, index) => (
               <TrackRow
                 key={track.id}

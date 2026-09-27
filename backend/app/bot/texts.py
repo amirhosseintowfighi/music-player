@@ -26,12 +26,14 @@ TEXTS: dict[str, dict[Lang, str]] = {
             "راهنما:\n"
             "• افزودن کانال عمومی: @username یا لینک t.me بفرست، یا یک پست را فوروارد کن.\n"
             "• کانال خصوصی خودت: من را ادمین کانال کن؛ از آن به بعد آهنگ‌های جدید اضافه می‌شوند.\n"
+            "• /jam با دوستانت هم‌زمان موزیک گوش بده\n"
             "• /lang تغییر زبان"
         ),
         "en": (
             "Help:\n"
             "• Public channel: send @username or a t.me link, or forward a post.\n"
             "• Your private channel: make me an admin; new tracks are added from then on.\n"
+            "• /jam listen together with friends, in sync\n"
             "• /lang change language"
         ),
     },
@@ -162,6 +164,41 @@ TEXTS: dict[str, dict[Lang, str]] = {
         "fa": "\u2728 «کشف هفتگی» تازه‌ات آماده است.",
         "en": "\u2728 Your new Discover Weekly is ready.",
     },
+    "jam_card": {
+        "fa": (
+            "🎧 <b>جم {host}</b>\n"
+            "{listeners} نفر دارند با هم گوش می‌دهند.\n\n"
+            "هر کس لینک را باز کند به جم می‌پیوندد، آهنگ اضافه می‌کند "
+            "و همه دقیقاً همان لحظه را می‌شنوند.\n"
+            "کد جم: <code>{code}</code>"
+        ),
+        "en": (
+            "🎧 <b>{host}'s Jam</b>\n"
+            "{listeners} listening together.\n\n"
+            "Anyone who opens the link joins, adds songs, "
+            "and everybody hears the same moment.\n"
+            "Jam code: <code>{code}</code>"
+        ),
+    },
+    "jam_open": {"fa": "🎧 ورود به جم", "en": "🎧 Open the Jam"},
+    "jam_invite": {"fa": "📨 دعوت دوستان", "en": "📨 Invite friends"},
+    "jam_end": {"fa": "⏹ پایان جم", "en": "⏹ End Jam"},
+    "jam_leave": {"fa": "🚪 خروج از جم", "en": "🚪 Leave Jam"},
+    "jam_share_text": {
+        "fa": "بیا با هم موزیک گوش بدیم 🎧",
+        "en": "Come listen with me 🎧",
+    },
+    "jam_joined": {
+        "fa": "✅ به جم {host} پیوستی. پخش‌کننده را باز کن تا همراه بقیه گوش بدهی.",
+        "en": "✅ You joined {host}'s Jam. Open the player to listen along.",
+    },
+    "jam_not_found": {
+        "fa": "این جم تمام شده یا کدش اشتباه است. با /jam یکی تازه بساز.",
+        "en": "That Jam has ended or the code is wrong. Start a new one with /jam.",
+    },
+    "jam_full": {"fa": "این جم پر است.", "en": "This Jam is full."},
+    "jam_ended": {"fa": "جم تمام شد. 👋", "en": "The Jam has ended. 👋"},
+    "jam_left": {"fa": "از جم خارج شدی.", "en": "You left the Jam."},
     "error": {
         "fa": "مشکلی پیش آمد، کمی بعد دوباره امتحان کن.",
         "en": "Something went wrong, please try again shortly.",

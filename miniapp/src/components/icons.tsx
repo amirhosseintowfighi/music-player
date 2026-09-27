@@ -143,3 +143,18 @@ export const SendIcon = (p: Props) => (
   </Icon>
 );
 
+/** Two listeners: the Jam. */
+export const JamIcon = (p: Props) => (
+  <Icon {...p}>
+    <circle cx="9" cy="8" r="3.2" />
+    <path d="M3.5 19.5a5.5 5.5 0 0 1 11 0" />
+    <path d="M15.5 5.2a3.2 3.2 0 0 1 0 6.1" />
+    <path d="M17.5 14.4a5.5 5.5 0 0 1 3 5.1" />
+  </Icon>
+);
+export const LinkIcon = (p: Props) => (
+  <Icon {...p}>
+    <path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1" />
+    <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
+  </Icon>
+);

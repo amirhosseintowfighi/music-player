@@ -5,6 +5,7 @@ from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.client.session.aiohttp import AiohttpSession
 from aiogram.client.telegram import TelegramAPIServer
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.bot.handlers import DbSessionMiddleware, build_router
@@ -30,9 +31,12 @@ def build_bot(settings: Settings) -> Bot:
 
 
 def build_dispatcher(
-    settings: Settings, maker: async_sessionmaker[AsyncSession], http: httpx.AsyncClient
+    settings: Settings,
+    maker: async_sessionmaker[AsyncSession],
+    http: httpx.AsyncClient,
+    redis: Redis,
 ) -> Dispatcher:
-    dp = Dispatcher(settings=settings, http=http)
+    dp = Dispatcher(settings=settings, http=http, redis=redis)
     middleware = DbSessionMiddleware(maker)
     for observer in (
         dp.message,

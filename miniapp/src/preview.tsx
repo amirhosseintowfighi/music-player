@@ -12,10 +12,14 @@ import { createRoot } from 'react-dom/client';
 import { MemoryRouter } from 'react-router-dom';
 
 import type { Track } from '@/api/client';
+import { MiniPlayer } from '@/components/MiniPlayer';
 import { TabBar } from '@/components/TabBar';
 import { TrackRow } from '@/components/TrackRow';
 import { Cover, Credit, EmptyState, Glass } from '@/components/ui';
 import { I18nProvider } from '@/i18n';
+import { JamScreen } from '@/screens/Jam';
+import { useJam } from '@/store/jam';
+import { usePlayer } from '@/store/player';
 import '@/design/tokens.css';
 
 const track = (id: number, title: string, artist: string): Track =>
@@ -40,6 +44,33 @@ const tracks = [
   track(2, 'Shake It Off', 'Taylor Swift'),
   track(3, 'گل سنگم', 'هایده'),
 ];
+
+// The now-playing bar and the Jam read their stores; give them something to show.
+usePlayer.setState({ current: tracks[0] ?? null, queue: tracks, isPlaying: true, position: 80, duration: 218 });
+useJam.setState({
+  jam: {
+    code: 'k7mq2p',
+    share_url: 'https://t.me/bot?startapp=jam_k7mq2p',
+    host_id: 1,
+    is_host: true,
+    can_control: true,
+    guests_can_control: true,
+    members: [
+      { user_id: 1, first_name: 'Amir', username: null, is_host: true },
+      { user_id: 2, first_name: 'سارا', username: null, is_host: false },
+      { user_id: 3, first_name: 'Nima', username: null, is_host: false },
+    ],
+    index: 0,
+    playing: true,
+    position_s: 80,
+    rev: 1,
+    qrev: 1,
+    queue_length: 3,
+    items: null,
+  },
+  items: tracks.map((item, i) => ({ track: item, added_by: i === 2 ? 2 : 1 })),
+  receivedAt: performance.now(),
+});
 
 function Panel({ theme }: { theme: 'light' | 'dark' }) {
   return (
@@ -87,6 +118,14 @@ function Panel({ theme }: { theme: 'light' | 'dark' }) {
         </span>
       </Glass>
       <TabBar />
+
+      <h2 className="mb-2 mt-5 text-[15px] font-bold">Now playing</h2>
+      <MiniPlayer />
+
+      <h2 className="mb-2 mt-5 text-[15px] font-bold">Jam</h2>
+      <div className="-mx-4 mb-5">
+        <JamScreen />
+      </div>
 
       <h2 className="mb-2 mt-5 text-[15px] font-bold">Transport</h2>
       <div className="mb-5 flex items-center justify-center gap-7">

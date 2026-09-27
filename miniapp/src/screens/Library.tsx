@@ -171,7 +171,7 @@ export function Library() {
         ) : (
           <>
             <p className="mt-4 mb-1 px-1 text-[12px] text-[var(--ink-faint)]">{t('library.count', { count: tracks.length })}</p>
-            <Glass className="p-1.5">
+            <Glass className="rise p-1.5">
               {tracks.map((track, index) => (
                 <TrackRow
                   key={track.id}
