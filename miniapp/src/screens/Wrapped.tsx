@@ -72,7 +72,7 @@ export function Wrapped() {
       {data.top_artists.length > 0 && (
         <>
           <SectionHead title={t('wrapped.topArtists')} />
-          <Glass className="p-1.5">
+          <Glass className="rise p-1.5">
             {data.top_artists.map((artist, index) => (
               <button
                 key={artist.id}
@@ -92,7 +92,7 @@ export function Wrapped() {
       {tracks.length > 0 && (
         <>
           <SectionHead title={t('wrapped.topTracks')} />
-          <Glass className="p-1.5">
+          <Glass className="rise p-1.5">
             {tracks.map((track, index) => (
               <TrackRow
                 key={track.id}

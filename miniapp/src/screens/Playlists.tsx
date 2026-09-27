@@ -308,7 +308,7 @@ export function PlaylistScreen() {
       {items.length === 0 ? (
         <EmptyState title={t('playlist.emptyTracks')} />
       ) : (
-        <Glass className="mt-3 p-1.5">
+        <Glass className="rise mt-3 p-1.5">
           <Reorder.Group axis="y" values={order} onReorder={commitOrder} as="div">
             {order.map((track, index) => (
               <ReorderRow
@@ -445,7 +445,7 @@ export function SharedPlaylistScreen() {
           ) : null
         }
       />
-      <Glass className="mt-3 p-1.5">
+      <Glass className="rise mt-3 p-1.5">
         {items.map((track, index) => (
           <TrackRow
             key={track.id}
@@ -490,7 +490,7 @@ export function LikedScreen() {
       {items.length === 0 ? (
         <EmptyState title={t('library.empty')} cta={t('tab.search')} onCta={() => navigate('/search')} />
       ) : (
-        <Glass className="mt-3 p-1.5">
+        <Glass className="rise mt-3 p-1.5">
           {items.map((track, index) => (
             <TrackRow
               key={track.id}

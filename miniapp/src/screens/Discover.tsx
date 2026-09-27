@@ -59,7 +59,7 @@ function PlaylistSection({ section }: { section: Section }) {
       />
       {detail.isLoading && <Spinner />}
       {items.length > 0 && (
-        <Glass className="p-1.5">
+        <Glass className="rise p-1.5">
           {items.slice(0, 5).map((track, index) => (
             <TrackRow
               key={track.id}
@@ -192,7 +192,7 @@ export function Discover() {
       />
       {trending.isLoading && <Spinner />}
       {trending.data && trending.data.items.length > 0 && (
-        <Glass className="p-1.5">
+        <Glass className="rise p-1.5">
           {trending.data.items.slice(0, 20).map((track, index) => (
             <TrackRow
               key={track.id}

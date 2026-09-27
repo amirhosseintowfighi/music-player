@@ -23,7 +23,7 @@ router = APIRouter(tags=["telegram"], include_in_schema=False)
 async def startup(app: FastAPI) -> None:
     state: AppState = app.state.app
     app.state.bot = build_bot(state.settings)
-    app.state.dp = build_dispatcher(state.settings, state.sessionmaker, state.http)
+    app.state.dp = build_dispatcher(state.settings, state.sessionmaker, state.http, state.redis)
 
 
 async def shutdown(app: FastAPI) -> None:

@@ -3486,6 +3486,535 @@
         ]
       }
     },
+    "/v1/jams": {
+      "post": {
+        "tags": [
+          "jams"
+        ],
+        "summary": "Create Jam",
+        "operationId": "create_jam_v1_jams_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateJamIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JamOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/jams/current": {
+      "get": {
+        "tags": [
+          "jams"
+        ],
+        "summary": "Current Jam",
+        "description": "The jam this user is in, if any — so reopening the app puts them back in it.",
+        "operationId": "current_jam_v1_jams_current_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "$ref": "#/components/schemas/JamOut"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "title": "Response Current Jam V1 Jams Current Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/jams/{code}": {
+      "get": {
+        "tags": [
+          "jams"
+        ],
+        "summary": "Get Jam",
+        "operationId": "get_jam_v1_jams__code__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          },
+          {
+            "name": "qrev",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Qrev"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JamOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "jams"
+        ],
+        "summary": "End Jam",
+        "operationId": "end_jam_v1_jams__code__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "jams"
+        ],
+        "summary": "Configure Jam",
+        "operationId": "configure_jam_v1_jams__code__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          },
+          {
+            "name": "qrev",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Qrev"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JamSettingsIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JamOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jams/{code}/join": {
+      "post": {
+        "tags": [
+          "jams"
+        ],
+        "summary": "Join Jam",
+        "operationId": "join_jam_v1_jams__code__join_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JamOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jams/{code}/leave": {
+      "post": {
+        "tags": [
+          "jams"
+        ],
+        "summary": "Leave Jam",
+        "operationId": "leave_jam_v1_jams__code__leave_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jams/{code}/control": {
+      "post": {
+        "tags": [
+          "jams"
+        ],
+        "summary": "Control Jam",
+        "operationId": "control_jam_v1_jams__code__control_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          },
+          {
+            "name": "qrev",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Qrev"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JamControlIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JamOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jams/{code}/queue": {
+      "post": {
+        "tags": [
+          "jams"
+        ],
+        "summary": "Add To Jam",
+        "operationId": "add_to_jam_v1_jams__code__queue_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JamAddIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JamOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/jams/{code}/queue/{index}": {
+      "delete": {
+        "tags": [
+          "jams"
+        ],
+        "summary": "Remove From Jam",
+        "operationId": "remove_from_jam_v1_jams__code__queue__index__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/JamOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/library/tracks": {
       "get": {
         "tags": [
@@ -7837,6 +8366,39 @@
         ],
         "title": "CrawlerHealthOut"
       },
+      "CreateJamIn": {
+        "properties": {
+          "track_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 500,
+            "title": "Track Ids"
+          },
+          "index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Index",
+            "default": 0
+          },
+          "position_s": {
+            "type": "number",
+            "minimum": 0.0,
+            "title": "Position S",
+            "default": 0
+          },
+          "playing": {
+            "type": "boolean",
+            "title": "Playing",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "CreateJamIn",
+        "description": "Seed the jam with what the host is playing now, so nobody starts from silence."
+      },
       "CreatePlaylistIn": {
         "properties": {
           "name": {
@@ -8196,6 +8758,251 @@
           "invalid"
         ],
         "title": "ImportChannelsOut"
+      },
+      "JamAddIn": {
+        "properties": {
+          "track_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Track Ids"
+          },
+          "position": {
+            "type": "string",
+            "enum": [
+              "next",
+              "end",
+              "now"
+            ],
+            "title": "Position",
+            "default": "end"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "track_ids"
+        ],
+        "title": "JamAddIn"
+      },
+      "JamControlIn": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "play",
+              "pause",
+              "seek",
+              "next",
+              "previous",
+              "jump"
+            ],
+            "title": "Action"
+          },
+          "position_s": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Position S"
+          },
+          "index": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Index"
+          },
+          "expected_index": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Index"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action"
+        ],
+        "title": "JamControlIn"
+      },
+      "JamItemOut": {
+        "properties": {
+          "track": {
+            "$ref": "#/components/schemas/TrackOut"
+          },
+          "added_by": {
+            "type": "integer",
+            "title": "Added By"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "track",
+          "added_by"
+        ],
+        "title": "JamItemOut"
+      },
+      "JamMemberOut": {
+        "properties": {
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "is_host": {
+            "type": "boolean",
+            "title": "Is Host"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "user_id",
+          "first_name",
+          "is_host"
+        ],
+        "title": "JamMemberOut"
+      },
+      "JamOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "share_url": {
+            "type": "string",
+            "title": "Share Url"
+          },
+          "host_id": {
+            "type": "integer",
+            "title": "Host Id"
+          },
+          "is_host": {
+            "type": "boolean",
+            "title": "Is Host"
+          },
+          "can_control": {
+            "type": "boolean",
+            "title": "Can Control"
+          },
+          "guests_can_control": {
+            "type": "boolean",
+            "title": "Guests Can Control"
+          },
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/JamMemberOut"
+            },
+            "type": "array",
+            "title": "Members"
+          },
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "playing": {
+            "type": "boolean",
+            "title": "Playing"
+          },
+          "position_s": {
+            "type": "number",
+            "title": "Position S"
+          },
+          "rev": {
+            "type": "integer",
+            "title": "Rev"
+          },
+          "qrev": {
+            "type": "integer",
+            "title": "Qrev"
+          },
+          "queue_length": {
+            "type": "integer",
+            "title": "Queue Length"
+          },
+          "items": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/JamItemOut"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "share_url",
+          "host_id",
+          "is_host",
+          "can_control",
+          "guests_can_control",
+          "members",
+          "index",
+          "playing",
+          "position_s",
+          "rev",
+          "qrev",
+          "queue_length"
+        ],
+        "title": "JamOut"
+      },
+      "JamSettingsIn": {
+        "properties": {
+          "guests_can_control": {
+            "type": "boolean",
+            "title": "Guests Can Control"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "guests_can_control"
+        ],
+        "title": "JamSettingsIn"
       },
       "LangIn": {
         "properties": {

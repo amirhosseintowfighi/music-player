@@ -1152,6 +1152,147 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/jams": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Jam */
+        post: operations["create_jam_v1_jams_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jams/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Current Jam
+         * @description The jam this user is in, if any — so reopening the app puts them back in it.
+         */
+        get: operations["current_jam_v1_jams_current_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jams/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Jam */
+        get: operations["get_jam_v1_jams__code__get"];
+        put?: never;
+        post?: never;
+        /** End Jam */
+        delete: operations["end_jam_v1_jams__code__delete"];
+        options?: never;
+        head?: never;
+        /** Configure Jam */
+        patch: operations["configure_jam_v1_jams__code__patch"];
+        trace?: never;
+    };
+    "/v1/jams/{code}/join": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Join Jam */
+        post: operations["join_jam_v1_jams__code__join_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jams/{code}/leave": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Leave Jam */
+        post: operations["leave_jam_v1_jams__code__leave_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jams/{code}/control": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Control Jam */
+        post: operations["control_jam_v1_jams__code__control_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jams/{code}/queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add To Jam */
+        post: operations["add_to_jam_v1_jams__code__queue_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/jams/{code}/queue/{index}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove From Jam */
+        delete: operations["remove_from_jam_v1_jams__code__queue__index__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/library/tracks": {
         parameters: {
             query?: never;
@@ -2530,6 +2671,29 @@ export interface components {
             /** Unresolved Tracks */
             unresolved_tracks: number;
         };
+        /**
+         * CreateJamIn
+         * @description Seed the jam with what the host is playing now, so nobody starts from silence.
+         */
+        CreateJamIn: {
+            /** Track Ids */
+            track_ids?: number[];
+            /**
+             * Index
+             * @default 0
+             */
+            index: number;
+            /**
+             * Position S
+             * @default 0
+             */
+            position_s: number;
+            /**
+             * Playing
+             * @default false
+             */
+            playing: boolean;
+        };
         /** CreatePlaylistIn */
         CreatePlaylistIn: {
             /** Name */
@@ -2664,6 +2828,84 @@ export interface components {
             blocked: number;
             /** Invalid */
             invalid: string[];
+        };
+        /** JamAddIn */
+        JamAddIn: {
+            /** Track Ids */
+            track_ids: number[];
+            /**
+             * Position
+             * @default end
+             * @enum {string}
+             */
+            position: "next" | "end" | "now";
+        };
+        /** JamControlIn */
+        JamControlIn: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "play" | "pause" | "seek" | "next" | "previous" | "jump";
+            /** Position S */
+            position_s?: number | null;
+            /** Index */
+            index?: number | null;
+            /** Expected Index */
+            expected_index?: number | null;
+        };
+        /** JamItemOut */
+        JamItemOut: {
+            track: components["schemas"]["TrackOut"];
+            /** Added By */
+            added_by: number;
+        };
+        /** JamMemberOut */
+        JamMemberOut: {
+            /** User Id */
+            user_id: number;
+            /** First Name */
+            first_name: string;
+            /** Username */
+            username?: string | null;
+            /** Is Host */
+            is_host: boolean;
+        };
+        /** JamOut */
+        JamOut: {
+            /** Code */
+            code: string;
+            /** Share Url */
+            share_url: string;
+            /** Host Id */
+            host_id: number;
+            /** Is Host */
+            is_host: boolean;
+            /** Can Control */
+            can_control: boolean;
+            /** Guests Can Control */
+            guests_can_control: boolean;
+            /** Members */
+            members: components["schemas"]["JamMemberOut"][];
+            /** Index */
+            index: number;
+            /** Playing */
+            playing: boolean;
+            /** Position S */
+            position_s: number;
+            /** Rev */
+            rev: number;
+            /** Qrev */
+            qrev: number;
+            /** Queue Length */
+            queue_length: number;
+            /** Items */
+            items?: components["schemas"]["JamItemOut"][] | null;
+        };
+        /** JamSettingsIn */
+        JamSettingsIn: {
+            /** Guests Can Control */
+            guests_can_control: boolean;
         };
         /** LangIn */
         LangIn: {
@@ -5738,6 +5980,322 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DiscoverOut"];
+                };
+            };
+        };
+    };
+    create_jam_v1_jams_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateJamIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    current_jam_v1_jams_current_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JamOut"] | null;
+                };
+            };
+        };
+    };
+    get_jam_v1_jams__code__get: {
+        parameters: {
+            query?: {
+                qrev?: number | null;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    end_jam_v1_jams__code__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    configure_jam_v1_jams__code__patch: {
+        parameters: {
+            query?: {
+                qrev?: number | null;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JamSettingsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    join_jam_v1_jams__code__join_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    leave_jam_v1_jams__code__leave_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    control_jam_v1_jams__code__control_post: {
+        parameters: {
+            query?: {
+                qrev?: number | null;
+            };
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JamControlIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_to_jam_v1_jams__code__queue_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["JamAddIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_from_jam_v1_jams__code__queue__index__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["JamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

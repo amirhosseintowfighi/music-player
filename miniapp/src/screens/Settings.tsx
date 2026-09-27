@@ -6,6 +6,7 @@ import {
   useSetNotificationPrefs,
   useSetPublicProfile,
 } from '@/api/social';
+import { JamIcon } from '@/components/icons';
 import { Credit, Glass, cx } from '@/components/ui';
 import { useI18n } from '@/i18n';
 import { useUi } from '@/store/ui';
@@ -106,6 +107,19 @@ export function Settings() {
   return (
     <div className="px-4 pt-4">
       <h1 className="mb-4 text-[21px] font-bold">{t('settings.title')}</h1>
+
+      <a
+        href="#/jam"
+        className="mb-3 flex items-center gap-3 rounded-[var(--radius-glass)] bg-[var(--card)] px-3.5 py-3 transition-transform active:scale-[0.98]"
+      >
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[var(--accent)] to-[var(--accent-2)] text-[var(--accent-ink)]">
+          <JamIcon size={22} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold">{t('jam.title')}</span>
+          <span className="block truncate text-[11.5px] text-[var(--ink-faint)]">{t('jam.startTitle')}</span>
+        </span>
+      </a>
 
       <Glass className="mb-3 divide-y divide-white/6">
         <Row label={t('settings.language')}>

@@ -7,12 +7,53 @@ import {
   type ReactNode,
 } from 'react';
 
+import { PauseIcon, PlayIcon } from '@/components/icons';
 import { useI18n } from '@/i18n';
 import { coverColors } from '@/lib/format';
 import { haptic, openExternalLink } from '@/lib/telegram';
 import { useUi } from '@/store/ui';
 
 export const spring = { type: 'spring', stiffness: 380, damping: 34, mass: 0.9 } as const;
+/** Snappier, with a little overshoot: for glyphs that swap and buttons that land. */
+export const bouncy = { type: 'spring', stiffness: 520, damping: 22, mass: 0.7 } as const;
+/** Apple's standard ease-out, for anything that fades rather than moves. */
+export const easeOut = [0.22, 1, 0.36, 1] as const;
+
+/**
+ * Play and pause are one control, so the glyph turns into the other one instead of
+ * being swapped out — the small detail that makes Music's transport feel physical.
+ */
+export function PlayPauseGlyph({ playing, size }: { playing: boolean; size: number }) {
+  return (
+    <AnimatePresence mode="popLayout" initial={false}>
+      <motion.span
+        key={playing ? 'pause' : 'play'}
+        className="grid place-items-center"
+        initial={{ scale: 0.4, opacity: 0, rotate: playing ? -30 : 30 }}
+        animate={{ scale: 1, opacity: 1, rotate: 0 }}
+        exit={{ scale: 0.4, opacity: 0, rotate: playing ? 30 : -30 }}
+        transition={bouncy}
+      >
+        {playing ? <PauseIcon size={size} /> : <PlayIcon size={size} />}
+      </motion.span>
+    </AnimatePresence>
+  );
+}
+
+/** The dancing bars next to whatever is playing. Frozen (not hidden) while paused. */
+export function Equalizer({ playing, size = 12, className }: { playing: boolean; size?: number; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cx('eq inline-flex items-end gap-[2px]', !playing && 'eq-paused', className)}
+      style={{ height: size, width: size }}
+    >
+      <span />
+      <span />
+      <span />
+    </span>
+  );
+}
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(' ');

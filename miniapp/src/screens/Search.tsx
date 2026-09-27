@@ -183,7 +183,7 @@ export function Search() {
           {tracks.length === 0 ? (
             <EmptyState title={t('search.empty')} body={t('search.emptyHint')} />
           ) : (
-            <Glass className="p-1.5">
+            <Glass className="rise p-1.5">
               {tracks.map((track, index) => (
                 <TrackRow
                   key={track.id}

@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AnimatePresence, motion } from 'framer-motion';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -13,8 +14,10 @@ import { applyPalette, DEFAULT_PALETTE, paletteFromUrl, parsePalette } from '@/l
 import { applyPerf, watchFrameRate } from '@/lib/perf';
 import { initTelegram, openTelegramLink } from '@/lib/telegram';
 import { useThumbs } from '@/player/thumbs';
+import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
+import { JamScreen } from '@/screens/Jam';
 import { Home } from '@/screens/Home';
 import { Library } from '@/screens/Library';
 import { Search } from '@/screens/Search';
@@ -225,31 +228,50 @@ function Shell() {
 
   useEffect(() => usePlayer.getState().attach(), []);
 
+  // Reopening the app puts you back in the Jam you were in.
+  useEffect(() => {
+    if (!location.pathname.startsWith('/jam/')) void useJam.getState().resume();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="mx-auto flex min-h-full max-w-lg flex-col" style={{ paddingTop: 'var(--safe-top)' }}>
-      <main className="flex-1" style={{ paddingBottom: 'var(--chrome-h)' }} key={location.pathname}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/discover" element={<Discover />} />
-          <Route path="/search" element={<Search />} />
-          <Route path="/library" element={<Library />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/channel/:id" element={<ChannelScreen />} />
-          <Route path="/artist/:id" element={<ArtistScreen />} />
-          <Route path="/album/:artistId/:name" element={<AlbumScreen />} />
-          <Route path="/track/:id" element={<TrackScreen />} />
-          <Route path="/playlists" element={<Playlists />} />
-          <Route path="/playlist/:id" element={<PlaylistScreen />} />
-          <Route path="/shared/:slug" element={<SharedPlaylistScreen />} />
-          <Route path="/likes" element={<LikedScreen />} />
-          <Route path="/plans" element={<Plans />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="/user/:id" element={<Profile />} />
-          <Route path="/friends" element={<FriendsFeedScreen />} />
-          <Route path="/wrapped" element={<Wrapped />} />
-          <Route path="*" element={<EmptyState title={t('app.error')} />} />
-        </Routes>
-      </main>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.main
+          className="flex-1"
+          style={{ paddingBottom: 'var(--chrome-h)' }}
+          key={location.pathname}
+          // Screens settle into place rather than snapping: a short rise and fade in,
+          // a quicker fade out, so navigating never feels like waiting.
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } }}
+          exit={{ opacity: 0, transition: { duration: 0.12 } }}
+        >
+          <Routes location={location}>
+            <Route path="/" element={<Home />} />
+            <Route path="/discover" element={<Discover />} />
+            <Route path="/search" element={<Search />} />
+            <Route path="/library" element={<Library />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/channel/:id" element={<ChannelScreen />} />
+            <Route path="/artist/:id" element={<ArtistScreen />} />
+            <Route path="/album/:artistId/:name" element={<AlbumScreen />} />
+            <Route path="/track/:id" element={<TrackScreen />} />
+            <Route path="/playlists" element={<Playlists />} />
+            <Route path="/playlist/:id" element={<PlaylistScreen />} />
+            <Route path="/shared/:slug" element={<SharedPlaylistScreen />} />
+            <Route path="/likes" element={<LikedScreen />} />
+            <Route path="/plans" element={<Plans />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/user/:id" element={<Profile />} />
+            <Route path="/friends" element={<FriendsFeedScreen />} />
+            <Route path="/wrapped" element={<Wrapped />} />
+            <Route path="/jam" element={<JamScreen />} />
+            <Route path="/jam/:code" element={<JamScreen />} />
+            <Route path="*" element={<EmptyState title={t('app.error')} />} />
+          </Routes>
+        </motion.main>
+      </AnimatePresence>
 
       <div className="fixed inset-x-0 bottom-0 z-30 mx-auto max-w-lg">
         <MiniPlayer thumb={currentThumb} />
@@ -288,6 +310,8 @@ function Gate({ children }: { children: React.ReactNode }) {
         if (param.startsWith('pl_')) window.location.hash = `#/shared/${param.slice(3)}`;
         // A shared track: open the app on it and start playing (ADR-003 phase 12).
         else if (param.startsWith('tr_')) window.location.hash = `#/track/${param.slice(3)}`;
+        // A Jam invite: join it and listen along.
+        else if (param.startsWith('jam_')) window.location.hash = `#/jam/${param.slice(4)}`;
         // The forced-join gate. It is deliberately not on the playback path: it runs
         // once here, and an unreachable check lets the listener in (the server
         // decides that, not this screen).

@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import html
 from collections.abc import Awaitable, Callable
 from typing import Any
+from urllib.parse import quote
 
 from aiogram import BaseMiddleware, Bot, F, Router
 from aiogram.enums import ChatMemberStatus, ChatType
@@ -18,16 +20,17 @@ from aiogram.types import (
     WebAppInfo,
 )
 from aiogram.types import User as TgUser
+from redis.asyncio import Redis
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.bot import payments as bot_payments
 from app.bot.texts import t
 from app.config import Settings
-from app.errors import AppError, Forbidden, InvalidInput, LimitReached
+from app.errors import AppError, Forbidden, InvalidInput, LimitReached, NotFound
 from app.models import Channel, User
 from app.security.initdata import TelegramUser
-from app.services import channels, uploads, users
+from app.services import channels, history, jams, uploads, users
 from app.services.channels import ChannelRef
 from app.services.ingest import ingest_items
 from tmusic_common.indexer_contract import AudioItem
@@ -114,13 +117,21 @@ async def _add_and_reply(
 
 
 async def on_start(
-    message: Message, command: CommandObject, session: AsyncSession, settings: Settings
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    settings: Settings,
+    redis: Redis,
 ) -> None:
     if message.from_user is None:
         return
     user = await _user(session, message.from_user)
     if user.is_banned:
         await message.answer(t("banned", user.lang))
+        return
+    # t.me/<bot>?start=jam_<code>: the invite a friend sent from inside a chat.
+    if command.args and command.args.startswith("jam_"):
+        await _join_and_reply(message, session, redis, settings, user, command.args[4:])
         return
     await message.answer(
         t("welcome", user.lang, name=message.from_user.first_name),
@@ -308,6 +319,130 @@ async def on_channel_audio(message: Message, session: AsyncSession, settings: Se
     log.info("bot.channel_audio", channel_id=channel.id, inserted=stats.inserted)
 
 
+# ── jam: listening together ──
+
+
+def _jam_keyboard(
+    settings: Settings, lang: str, jam: jams.Jam, is_host: bool
+) -> InlineKeyboardMarkup:
+    link = f"https://t.me/{settings.bot_username}?startapp=jam_{jam.code}"
+    share = (
+        f"https://t.me/share/url?url={quote(link, safe='')}"
+        f"&text={quote(t('jam_share_text', lang), safe='')}"
+    )
+    last = (
+        InlineKeyboardButton(text=t("jam_end", lang), callback_data=f"jam:end:{jam.code}")
+        if is_host
+        else InlineKeyboardButton(text=t("jam_leave", lang), callback_data=f"jam:leave:{jam.code}")
+    )
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text=t("jam_open", lang), url=link)],
+            [InlineKeyboardButton(text=t("jam_invite", lang), url=share)],
+            [last],
+        ]
+    )
+
+
+def _host_name(jam: jams.Jam) -> str:
+    host = jam.members.get(jam.host_id)
+    return html.escape(host.first_name if host else "—")
+
+
+async def _send_jam_card(
+    message: Message, settings: Settings, lang: str, jam: jams.Jam, user_id: int
+) -> None:
+    await message.answer(
+        t(
+            "jam_card",
+            lang,
+            host=_host_name(jam),
+            listeners=len(jam.members),
+            code=jam.code,
+        ),
+        parse_mode="HTML",
+        reply_markup=_jam_keyboard(settings, lang, jam, is_host=user_id == jam.host_id),
+    )
+
+
+async def _join_and_reply(
+    message: Message,
+    session: AsyncSession,
+    redis: Redis,
+    settings: Settings,
+    user: User,
+    code: str,
+) -> None:
+    try:
+        jam = await jams.join(session, redis, code, user.id)
+    except NotFound:
+        await message.answer(t("jam_not_found", user.lang))
+        return
+    except Forbidden:
+        await message.answer(t("jam_full", user.lang))
+        return
+    await message.answer(t("jam_joined", user.lang, host=_host_name(jam)))
+    await _send_jam_card(message, settings, user.lang, jam, user.id)
+
+
+async def on_jam(
+    message: Message,
+    command: CommandObject,
+    session: AsyncSession,
+    settings: Settings,
+    redis: Redis,
+) -> None:
+    """/jam starts one (or shows the one you are in); /jam <code> joins a friend's."""
+    if message.from_user is None:
+        return
+    user = await _user(session, message.from_user)
+    if user.is_banned:
+        await message.answer(t("banned", user.lang))
+        return
+    if command.args:
+        await _join_and_reply(message, session, redis, settings, user, command.args.strip())
+        return
+    code = await jams.code_of(redis, user.id)
+    if code is not None:
+        try:
+            jam = await jams.load(redis, code)
+        except NotFound:
+            jam = None
+        if jam is not None and user.id in jam.members:
+            await _send_jam_card(message, settings, user.lang, jam, user.id)
+            return
+    # Start from what they were last listening to, so the first friend in hears music.
+    stored = await history.load_playback(session, user.id)
+    jam = await jams.create(
+        session,
+        redis,
+        user.id,
+        list(stored.queue) if stored else [],
+        index=stored.queue_index if stored else 0,
+        position_s=float(stored.position_s) if stored else 0.0,
+    )
+    await _send_jam_card(message, settings, user.lang, jam, user.id)
+
+
+async def on_jam_button(query: CallbackQuery, session: AsyncSession, redis: Redis) -> None:
+    _, action, code = (query.data or "jam::").split(":", 2)
+    user = await _user(session, query.from_user)
+    try:
+        if action == "end":
+            await jams.end(redis, code, user.id)
+            key = "jam_ended"
+        else:
+            await jams.leave(redis, code, user.id)
+            key = "jam_left"
+    except NotFound:
+        key = "jam_not_found"
+    except Forbidden:
+        key = "error"
+    await query.answer(t(key, user.lang), show_alert=key == "jam_not_found")
+    if key in ("jam_ended", "jam_left") and isinstance(query.message, Message):
+        await query.message.edit_reply_markup(reply_markup=None)
+
+
 def build_router() -> Router:
     """A fresh router per dispatcher (aiogram routers attach to one parent only)."""
     router = Router(name="main")
@@ -315,6 +450,8 @@ def build_router() -> Router:
     router.message.register(on_start, CommandStart())
     router.message.register(on_help, Command("help"))
     router.message.register(on_lang, Command("lang"))
+    router.message.register(on_jam, Command("jam"))
+    router.callback_query.register(on_jam_button, F.data.startswith("jam:"))
     router.callback_query.register(on_lang_chosen, F.data.in_({"lang:fa", "lang:en"}))
     router.message.register(on_forward, F.forward_origin)
     router.message.register(on_private_audio, F.chat.type == ChatType.PRIVATE, F.audio)
