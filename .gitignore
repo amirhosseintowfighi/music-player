@@ -20,3 +20,7 @@ infra/certs/
 
 # TypeScript incremental build state — a build artifact, not source.
 *.tsbuildinfo
+
+# scripts/deploy.sh: its state (what is running, what ran before) and local dumps.
+.deploy/
+backups/
