@@ -20,7 +20,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     run_sql(
         "UPDATE plans SET limits ="
-        " '{\"channels\": 3, \"playlists\": 5, \"daily_plays\": 60, \"download\": false}'::jsonb"
+        ' \'{"channels": 3, "playlists": 5, "daily_plays": 60, "download": false}\'::jsonb'
         " WHERE code = 'free';"
         "UPDATE plans SET limits = limits - 'library' WHERE code <> 'free';"
         "DELETE FROM settings WHERE key = 'required_channels';"

@@ -151,6 +151,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: grafana/setup-k6-action@v1
+      # load.js reads its initData list at init time; the real one is generated on
+      # the machine that runs the test, so a placeholder stands in for it here.
+      - run: printf 'placeholder\n' > infra/k6/initdata.txt
       - run: k6 archive --archive-out /dev/null infra/k6/load.js
       - run: k6 archive --archive-out /dev/null infra/k6/stream.js
 
@@ -161,12 +164,17 @@ jobs:
       - name: Shell scripts parse
         run: for f in infra/scripts/*.sh scripts/*.sh; do bash -n "$f"; done
       - name: Compose files are valid
+        # Every compose file reads an env file and MEILI_API_KEY, and neither is in a
+        # fresh checkout: empty files and a dummy key stand in, the rest is set inline.
+        env:
+          MEILI_API_KEY: x
         run: |
+          touch .env .env.core
           docker compose -f compose.yaml config -q
           DOMAIN=example.com POSTGRES_PASSWORD=x APP_DB_PASSWORD=x WG_CORE_IP=10.8.0.1 \
           WG_EDGE_IP=10.8.0.2 GRAFANA_PASSWORD=x \
             docker compose -f infra/compose/core.yml config -q
-          DOMAIN=example.com POSTGRES_PASSWORD=x MEILI_API_KEY=x BOT_USERNAME=b \
+          DOMAIN=example.com POSTGRES_PASSWORD=x BOT_USERNAME=b \
           CERTBOT_EMAIL=a@b.c \
             docker compose -f infra/compose/solo.yml config -q
       - name: nginx templates load in a real nginx
@@ -196,8 +204,9 @@ jobs:
           docker run --rm -v "$PWD:/w" -w /w ghcr.io/yannh/kubeconform:latest             -strict -summary -ignore-missing-schemas infra/k8s/base infra/k8s/edge
       - name: Prometheus rules are valid
         run: |
-          docker run --rm -v "$PWD/infra/monitoring:/m" prom/prometheus:v3.1.0 \
-            promtool check rules /m/alerts.yml
+          # The image's entrypoint is `prometheus`; promtool has to be asked for by name.
+          docker run --rm --entrypoint promtool -v "$PWD/infra/monitoring:/m" \
+            prom/prometheus:v3.1.0 check rules /m/alerts.yml
 
   images:
     runs-on: ubuntu-24.04
