@@ -225,7 +225,11 @@ export function ArtistScreen() {
   const tracks = useMemo(() => flatten(tracksQuery.data), [tracksQuery.data]);
   const top = page.data?.top_tracks ?? [];
   const albums = page.data?.albums ?? [];
-  const thumbs = useThumbs([...top, ...tracks].map((track) => track.id));
+  const thumbs = useThumbs([
+    ...top.map((track) => track.id),
+    ...albums.map((album) => album.cover_track_id).filter((id): id is number => id != null),
+    ...tracks.map((track) => track.id),
+  ]);
 
   if (artist.isError) return <ErrorNote onRetry={() => void artist.refetch()} />;
   if (!artist.data) return <div className="grid place-items-center py-20"><Spinner /></div>;
@@ -286,7 +290,12 @@ export function ArtistScreen() {
                   navigate(`/album/${id}/${encodeURIComponent(album.name)}`)
                 }
               >
-                <Cover seed={album.name} size={112} glyph="💿" />
+                <Cover
+                  src={album.cover_track_id ? thumbs[album.cover_track_id] : undefined}
+                  seed={album.name}
+                  size={112}
+                  glyph="💿"
+                />
                 <p className="mt-1 truncate text-[12.5px] font-medium">{album.name}</p>
                 <p className="truncate text-[11px] text-[var(--ink-dim)]">
                   {album.year ? `${album.year} · ` : ''}

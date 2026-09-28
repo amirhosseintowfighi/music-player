@@ -167,6 +167,12 @@ export function Library() {
   const tracks = useMemo(() => flatten(tracksQuery.data), [tracksQuery.data]);
   const artists = useMemo(() => flatten(artistsQuery.data), [artistsQuery.data]);
   const thumbs = useThumbs(tracks.map((track) => track.id));
+  // An album has no artwork of its own here: one of its tracks lends its cover.
+  const albumCovers = useThumbs(
+    tab === 'albums'
+      ? (albumsQuery.data ?? []).map((album) => album.cover_track_id).filter((id): id is number => id != null)
+      : [],
+  );
   const hasFilters = Object.values(filters).some((value) => value !== null && value !== undefined);
 
   const closeAdd = () => {
@@ -291,7 +297,12 @@ export function Library() {
               className="flex items-center gap-3 p-3"
               onClick={() => setFilters({ album: album.album })}
             >
-              <Cover seed={album.album} size={44} glyph="💿" />
+              <Cover
+                src={album.cover_track_id ? albumCovers[album.cover_track_id] : undefined}
+                seed={album.album}
+                size={44}
+                glyph="💿"
+              />
               <div className="min-w-0">
                 <p className="truncate text-[13.5px] font-semibold">{album.album}</p>
                 <p className="truncate text-[11.5px] text-[var(--ink-faint)]">

@@ -40,6 +40,7 @@ import { BOT_USERNAME, backButton, haptic, openTelegramLink } from '@/lib/telegr
 import { LyricsView } from '@/components/Lyrics';
 import { useAudioSettings } from '@/store/audio';
 import { useConnect } from '@/store/connect';
+import { hiRes } from '@/player/thumbs';
 import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
@@ -330,6 +331,34 @@ function Canvas({ src, playing }: { src?: string; playing: boolean }) {
   );
 }
 
+/**
+ * The big cover, sharp: the list-size thumbnail shows at once, and the full-size one
+ * (usually the file's own artwork) fades in over it as soon as it has loaded.
+ */
+function SharpCover({ small, seed }: { small?: string; seed: number }) {
+  const big = hiRes(small);
+  const [loaded, setLoaded] = useState<string | null>(null);
+  return (
+    <div className="relative" style={{ width: 300, height: 300 }}>
+      <Cover src={small} seed={seed} size={300} radius={26} glyph="♫" />
+      {big && (
+        <motion.img
+          key={big}
+          src={big}
+          alt=""
+          decoding="async"
+          onLoad={() => setLoaded(big)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: loaded === big ? 1 : 0 }}
+          transition={{ duration: 0.35 }}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ borderRadius: 26 }}
+        />
+      )}
+    </div>
+  );
+}
+
 export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
   const { t, lang } = useI18n();
   const open = useUi((s) => s.playerOpen);
@@ -448,7 +477,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                 transition={{ type: 'spring', stiffness: 260, damping: 20 }}
                 style={{ borderRadius: 26 }}
               >
-                <Cover src={thumbs[track.id]} seed={track.id} size={300} radius={26} glyph="♫" />
+                <SharpCover small={thumbs[track.id]} seed={track.id} />
               </motion.div>
             </motion.div>
             )}
@@ -575,7 +604,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
               <Glass
                 className="flex items-center gap-2 px-3.5 py-2 text-[12.5px]"
                 onClick={async () => {
-                  const outcome = await shareCard(track, thumbs[track.id], BOT_USERNAME);
+                  const outcome = await shareCard(track, hiRes(thumbs[track.id]) ?? thumbs[track.id], BOT_USERNAME);
                   if (outcome === 'saved') useUi.getState().toast(t('share.saved'), 'success');
                   if (outcome === 'failed') useUi.getState().toast(t('app.error'), 'error');
                 }}

@@ -24,3 +24,13 @@ export function useThumbs(trackIds: number[]): Record<number, string> {
   for (const [id, url] of Object.entries(items)) out[Number(id)] = url;
   return out;
 }
+
+/**
+ * The full-size version of an artwork URL, for the big cover (full player, lock
+ * screen, share card). The edge then prefers the cover embedded in the file, which is
+ * usually the original, over Telegram's 320 px thumbnail.
+ */
+export function hiRes(url: string | undefined | null): string | undefined {
+  if (!url) return undefined;
+  return url.includes('hi=1') ? url : `${url}${url.includes('?') ? '&' : '?'}hi=1`;
+}
