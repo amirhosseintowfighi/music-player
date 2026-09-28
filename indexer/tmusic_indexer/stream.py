@@ -58,6 +58,59 @@ class RangeNotSatisfiable(Exception):
     pass
 
 
+_MISSING = object()
+
+
+class ArtworkCache:
+    """Covers by (track, size), in memory, bounded by bytes and by age.
+
+    A miss is remembered too, for less time: a track with no artwork anywhere would
+    otherwise be looked up again on every render of every list it appears in.
+    """
+
+    def __init__(
+        self, max_bytes: int = 64 * 1024 * 1024, ttl_s: float = 6 * 3600, miss_ttl_s: float = 600
+    ) -> None:
+        self.max_bytes = max_bytes
+        self.ttl_s = ttl_s
+        self.miss_ttl_s = miss_ttl_s
+        self._items: dict[tuple[int, bool], tuple[float, tuple[bytes, str] | None]] = {}
+        self._bytes = 0
+
+    def get(self, key: tuple[int, bool], now: float | None = None) -> object:
+        entry = self._items.get(key)
+        if entry is None:
+            return _MISSING
+        expires, value = entry
+        if expires < (time.monotonic() if now is None else now):
+            self._drop(key)
+            return _MISSING
+        # Most recently used goes to the end, so eviction takes the oldest first.
+        self._items[key] = self._items.pop(key)
+        return value
+
+    def put(
+        self, key: tuple[int, bool], value: tuple[bytes, str] | None, now: float | None = None
+    ) -> None:
+        size = len(value[0]) if value else 0
+        if size > self.max_bytes // 4:
+            return  # one enormous cover must not empty the cache for everyone else
+        self._drop(key)
+        moment = time.monotonic() if now is None else now
+        self._items[key] = (moment + (self.ttl_s if value else self.miss_ttl_s), value)
+        self._bytes += size
+        while self._bytes > self.max_bytes and self._items:
+            self._drop(next(iter(self._items)))
+
+    def _drop(self, key: tuple[int, bool]) -> None:
+        entry = self._items.pop(key, None)
+        if entry and entry[1]:
+            self._bytes -= len(entry[1][0])
+
+    def __len__(self) -> int:
+        return len(self._items)
+
+
 def parse_range(header: str | None, size: int) -> tuple[int, int] | None:
     """Inclusive (start, end) for a single ``bytes=`` range, or None for the whole file.
 
@@ -115,6 +168,7 @@ class Sources:
         self.http = http
         self._paths: dict[str, _CachedPath] = {}
         self._messages: dict[tuple[str, int, int], tuple[float, Any]] = {}
+        self.artwork = ArtworkCache()
 
     # ── Bot API ──
 
@@ -233,22 +287,45 @@ class Sources:
             raise LookupError("message carries no audio")
         return item
 
-    async def thumbnail(self, ticket: StreamTicket) -> tuple[bytes, str] | None:
+    async def thumbnail(self, ticket: StreamTicket, hi: bool = False) -> tuple[bytes, str] | None:
         """Telegram's thumbnail, or the cover embedded in the file itself.
 
         Many crawled tracks have no Telegram thumbnail but do carry an ID3 APIC
-        frame, which lives in the same head-of-file bytes we can already read. It is
-        streamed through like any other artwork — nothing is stored (ADR-003 §2-6).
+        frame, which lives in the same head-of-file bytes we can already read.
+
+        ``hi`` is for the big artwork (the full player, the lock screen): Telegram's
+        thumbnail of an audio file is small (320 px at best) and looks soft at that
+        size, while the cover inside the file is usually the original. So ``hi`` asks
+        the file first and settles for Telegram's; a list row does the opposite,
+        because the small one is cheaper and plenty for 48 px.
+
+        Answers, misses included, are kept in a bounded memory cache for a while:
+        every list scroll asks for the same covers again, and each one is otherwise
+        a trip to Telegram on the account that also serves playback.
         """
+        key = (ticket.track_id, hi)
+        cached = self.artwork.get(key)
+        if cached is not _MISSING:
+            return cached  # type: ignore[return-value]
+        found: tuple[bytes, str] | None = None
+        if hi:
+            found = await self._embedded_cover(ticket) or await self._telegram_thumb(ticket)
+        else:
+            found = await self._telegram_thumb(ticket) or await self._embedded_cover(ticket)
+        self.artwork.put(key, found)
+        return found
+
+    async def _telegram_thumb(self, ticket: StreamTicket) -> tuple[bytes, str] | None:
         if ticket.message_id is None:
-            return None
+            return None  # a Bot API source: only the file itself can have a cover
         account = await self.account.ready_or_reload()
-        if account is not None:
-            message = await self._message(account, ticket, refresh=False)
-            data = await account.client.download_media(message, file=bytes, thumb=-1)
-            if isinstance(data, bytes) and data:
-                return data, "image/jpeg"
-        return await self._embedded_cover(ticket)
+        if account is None:
+            return None
+        message = await self._message(account, ticket, refresh=False)
+        data = await account.client.download_media(message, file=bytes, thumb=-1)
+        if isinstance(data, bytes) and data:
+            return data, "image/jpeg"
+        return None
 
     async def _embedded_cover(self, ticket: StreamTicket) -> tuple[bytes, str] | None:
         if ticket.size <= 0:
@@ -562,12 +639,14 @@ def create_app(
             ticket = _ticket(request)
         except TicketError:
             return Response(status_code=403)
+        hi = request.query_params.get("hi") == "1"
         try:
-            found = await sources.thumbnail(ticket)
+            found = await sources.thumbnail(ticket, hi=hi)
         except (LookupError, errors.RPCError):
             found = None
         if not found:
-            return Response(status_code=404)
+            # Short, so a cover that turns up later is not hidden for a day.
+            return Response(status_code=404, headers={"Cache-Control": "private, max-age=600"})
         data, mime = found
         return Response(data, media_type=mime, headers={"Cache-Control": "private, max-age=86400"})
 

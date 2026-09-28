@@ -1536,6 +1536,43 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/artists/{artist_id}/related": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Related Artists
+         * @description Fans also like: from our similarity matrix, co-listening, then collaborators.
+         */
+        get: operations["related_artists_v1_artists__artist_id__related_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tracks/{track_id}/credits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Track Credits */
+        get: operations["track_credits_v1_tracks__track_id__credits_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/artists": {
         parameters: {
             query?: never;
@@ -1581,7 +1618,10 @@ export interface paths {
             cookie?: never;
         };
         get?: never;
-        /** Hide Track */
+        /**
+         * Hide Track
+         * @description Hides a song for good, or snoozes it (``snooze_days``) until it may come back.
+         */
         put: operations["hide_track_v1_tracks__track_id__hide_put"];
         post?: never;
         /** Unhide Track */
@@ -1600,6 +1640,26 @@ export interface paths {
         };
         /** Hidden Tracks */
         get: operations["hidden_tracks_v1_me_hidden_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/hidden/tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Hidden Detail
+         * @description Hidden and snoozed songs, newest first, with when each comes back.
+         */
+        get: operations["hidden_detail_v1_me_hidden_tracks_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1881,6 +1941,92 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Pins */
+        get: operations["list_pins_v1_me_pins_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/pins/{kind}/{ref_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Pin */
+        put: operations["pin_v1_me_pins__kind___ref_id__put"];
+        post?: never;
+        /** Unpin */
+        delete: operations["unpin_v1_me_pins__kind___ref_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connect Heartbeat */
+        post: operations["connect_heartbeat_v1_connect_heartbeat_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/command": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Connect Command */
+        post: operations["connect_command_v1_connect_command_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/connect/devices/{device_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Connect Forget */
+        delete: operations["connect_forget_v1_connect_devices__device_id__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -3021,6 +3167,80 @@ export interface components {
                 [key: string]: unknown;
             } | null;
         };
+        /** ConnectCommandIn */
+        ConnectCommandIn: {
+            /** Target */
+            target: string;
+            /** Sender */
+            sender: string;
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "transfer" | "play" | "pause" | "next" | "previous" | "seek";
+            /** Track Ids */
+            track_ids?: number[];
+            /**
+             * Index
+             * @default 0
+             */
+            index: number;
+            /**
+             * Position S
+             * @default 0
+             */
+            position_s: number;
+            /**
+             * Playing
+             * @default true
+             */
+            playing: boolean;
+        };
+        /** ConnectCommandOut */
+        ConnectCommandOut: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "transfer" | "play" | "pause" | "next" | "previous" | "seek";
+            /** Sender */
+            sender: string;
+            /**
+             * Index
+             * @default 0
+             */
+            index: number;
+            /**
+             * Position S
+             * @default 0
+             */
+            position_s: number;
+            /**
+             * Playing
+             * @default true
+             */
+            playing: boolean;
+            /**
+             * Items
+             * @default []
+             */
+            items: components["schemas"]["TrackOut"][];
+        };
+        /** ConnectStateIn */
+        ConnectStateIn: {
+            /** Track Id */
+            track_id?: number | null;
+            /**
+             * Position S
+             * @default 0
+             */
+            position_s: number;
+            /**
+             * Playing
+             * @default false
+             */
+            playing: boolean;
+        };
         /** ConnectionOut */
         ConnectionOut: {
             /** User Id */
@@ -3123,6 +3343,33 @@ export interface components {
             /** Track Ids */
             track_ids?: number[];
         };
+        /** CreditsOut */
+        CreditsOut: {
+            track: components["schemas"]["TrackOut"];
+            /** Genre */
+            genre?: string | null;
+            /** File Name */
+            file_name?: string | null;
+            /** Mime Type */
+            mime_type?: string | null;
+            /**
+             * File Size
+             * @default 0
+             */
+            file_size: number;
+            /** First Posted At */
+            first_posted_at?: string | null;
+            /**
+             * Channels
+             * @default 0
+             */
+            channels: number;
+            /**
+             * Sources
+             * @default []
+             */
+            sources: components["schemas"]["TrackSourceOut"][];
+        };
         /** DaylistOut */
         DaylistOut: {
             /** Playlist Id */
@@ -3136,6 +3383,23 @@ export interface components {
             part: "morning" | "afternoon" | "evening" | "night";
             /** Items */
             items: components["schemas"]["TrackOut"][];
+        };
+        /** DeviceOut */
+        DeviceOut: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "phone" | "tablet" | "desktop" | "web";
+            /** Playing */
+            playing: boolean;
+            /** Position S */
+            position_s: number;
+            track?: components["schemas"]["TrackOut"] | null;
         };
         /** DiscountPreviewOut */
         DiscountPreviewOut: {
@@ -3278,6 +3542,48 @@ export interface components {
             };
             /** Floodwait 24H S */
             floodwait_24h_s: number;
+        };
+        /** HeartbeatIn */
+        HeartbeatIn: {
+            /** Device Id */
+            device_id: string;
+            /** Name */
+            name: string;
+            /**
+             * Kind
+             * @default web
+             * @enum {string}
+             */
+            kind: "phone" | "tablet" | "desktop" | "web";
+            /**
+             * @default {
+             *       "position_s": 0,
+             *       "playing": false
+             *     }
+             */
+            state: components["schemas"]["ConnectStateIn"];
+        };
+        /** HeartbeatOut */
+        HeartbeatOut: {
+            /** Devices */
+            devices: components["schemas"]["DeviceOut"][];
+            /** Commands */
+            commands: components["schemas"]["ConnectCommandOut"][];
+        };
+        /** HiddenOut */
+        HiddenOut: {
+            /** Track Id */
+            track_id: number;
+            /** Until */
+            until?: string | null;
+        };
+        /**
+         * HideIn
+         * @description Empty body hides for good; ``snooze_days`` brings the song back by itself.
+         */
+        HideIn: {
+            /** Snooze Days */
+            snooze_days?: number | null;
         };
         /** ImpersonateOut */
         ImpersonateOut: {
@@ -3631,6 +3937,16 @@ export interface components {
             /** Username */
             username?: string | null;
         };
+        /** PinOut */
+        PinOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "playlist" | "artist";
+            /** Ref Id */
+            ref_id: number;
+        };
         /** PlanOut */
         PlanOut: {
             /** Code */
@@ -3838,6 +4154,11 @@ export interface components {
             created_at?: string | null;
             /** Folder Id */
             folder_id?: number | null;
+            /**
+             * Exclude From Taste
+             * @default false
+             */
+            exclude_from_taste: boolean;
             /** Items */
             items: components["schemas"]["TrackOut"][];
         };
@@ -3885,6 +4206,11 @@ export interface components {
             created_at?: string | null;
             /** Folder Id */
             folder_id?: number | null;
+            /**
+             * Exclude From Taste
+             * @default false
+             */
+            exclude_from_taste: boolean;
         };
         /** PrivateSessionIn */
         PrivateSessionIn: {
@@ -4298,6 +4624,22 @@ export interface components {
             /** Palette */
             palette?: string | null;
         };
+        /** TrackSourceOut */
+        TrackSourceOut: {
+            /** Channel Id */
+            channel_id: number;
+            /** Username */
+            username: string | null;
+            /** Title */
+            title: string;
+            /** Subscribers Count */
+            subscribers_count: number;
+            /**
+             * Posted At
+             * Format: date-time
+             */
+            posted_at: string;
+        };
         /** UpdatePlaylistIn */
         UpdatePlaylistIn: {
             /** Name */
@@ -4308,6 +4650,8 @@ export interface components {
             is_public?: boolean | null;
             /** Is Collaborative */
             is_collaborative?: boolean | null;
+            /** Exclude From Taste */
+            exclude_from_taste?: boolean | null;
         };
         /** UserChannelOut */
         UserChannelOut: {
@@ -7302,6 +7646,68 @@ export interface operations {
             };
         };
     };
+    related_artists_v1_artists__artist_id__related_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    track_credits_v1_tracks__track_id__credits_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreditsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     followed_artists_v1_me_artists_get: {
         parameters: {
             query?: never;
@@ -7362,14 +7768,20 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["HideIn"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
-            204: {
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["HiddenOut"];
+                };
             };
             /** @description Validation Error */
             422: {
@@ -7427,6 +7839,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": number[];
+                };
+            };
+        };
+    };
+    hidden_detail_v1_me_hidden_tracks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HiddenOut"][];
                 };
             };
         };
@@ -7966,6 +8398,183 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DjOut"];
+                };
+            };
+        };
+    };
+    list_pins_v1_me_pins_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinOut"][];
+                };
+            };
+        };
+    };
+    pin_v1_me_pins__kind___ref_id__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "playlist" | "artist";
+                ref_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unpin_v1_me_pins__kind___ref_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                kind: "playlist" | "artist";
+                ref_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PinOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    connect_heartbeat_v1_connect_heartbeat_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HeartbeatIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HeartbeatOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    connect_command_v1_connect_command_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectCommandIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    connect_forget_v1_connect_devices__device_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                device_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
                 };
             };
         };

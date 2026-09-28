@@ -24,6 +24,13 @@ from tmusic_common.stream_ticket import StreamTicket, sign
 
 EDGE_CACHE_TTL_S = 30
 THUMB_TICKET_TTL_S = 3600
+# Artwork links are issued on this grid, so the same cover keeps the same URL for a
+# while and the browser's HTTP cache can answer instead of the edge.
+THUMB_BUCKET_S = 1800
+# A play ticket outlives the song: the player keeps asking for byte ranges as it goes
+# (phones more than anything, they drop their buffer and fetch again), and a ticket
+# that expires mid-song stops the music. Bounded so a leaked link still dies.
+TICKET_MAX_TTL_S = 6 * 3600
 DEFAULT_MIME = "audio/mpeg"
 
 _edges: tuple[float, list[tuple[str, int]]] = (0.0, [])
@@ -41,6 +48,12 @@ class Source:
     channel_id: int | None
     channel_username: str | None
     message_id: int | None
+    duration: int = 0
+
+
+def play_ttl(base_ttl_s: int, duration_s: int) -> int:
+    """How long a play ticket lives: the song twice over plus the base, within bounds."""
+    return max(base_ttl_s, min(TICKET_MAX_TTL_S, 2 * max(duration_s, 0) + base_ttl_s))
 
 
 def edge_base_url(host: str) -> str:
@@ -125,6 +138,7 @@ async def pick_source(session: AsyncSession, track_id: int, bot_id: int, bot_max
         channel_id=best.tg_channel_id if not via_bot else None,
         channel_username=best.username if not via_bot else None,
         message_id=best.message_id if not via_bot else None,
+        duration=int(track.duration or 0),
     )
 
 
@@ -203,7 +217,9 @@ async def issue_ticket(
     ticket = build_ticket(
         source,
         claims.user_id,
-        settings.stream_ticket_ttl_s,
+        settings.stream_ticket_ttl_s
+        if prefetch
+        else play_ttl(settings.stream_ticket_ttl_s, source.duration),
         max_bytes=PREFETCH_BYTES if prefetch else 0,
     )
     exp = ticket.exp
@@ -211,7 +227,9 @@ async def issue_ticket(
     base = edge_base_url(host)
     return StreamOut(
         url=f"{base}/s/{source.track_id}?t={token}",
-        thumb_url=f"{base}/t/{source.track_id}?t={token}" if source.has_thumb else None,
+        # Asked for even without a Telegram thumbnail: the edge falls back to the cover
+        # embedded in the file, and says 404 when there is neither.
+        thumb_url=f"{base}/t/{source.track_id}?t={token}",
         expires_at=exp,
         size=source.file_size,
         mime=ticket.mime,
@@ -228,12 +246,14 @@ _THUMBS_SQL = text(
                r.root, g.file_size, g.mime_type, c.tg_channel_id, c.username, ct.message_id
         FROM roots r
         JOIN tracks g ON (g.id = r.root OR g.canonical_track_id = r.root)
-                     AND g.playable AND NOT g.hidden AND g.has_thumb
+                     AND g.playable AND NOT g.hidden
         JOIN channel_tracks ct ON ct.track_id = g.id
         JOIN channels c ON c.id = ct.channel_id
                        AND c.username IS NOT NULL
                        AND c.status IN ('indexing', 'active')
-        ORDER BY r.root, ct.posted_at DESC
+        -- A copy with a Telegram thumbnail first; any copy will do, because the edge
+        -- falls back to the cover embedded in the file itself.
+        ORDER BY r.root, g.has_thumb DESC, ct.posted_at DESC
     )
     SELECT r.asked, b.root, b.file_size, b.mime_type, b.tg_channel_id, b.username, b.message_id
     FROM roots r JOIN best b ON b.root = r.root
@@ -256,7 +276,10 @@ async def thumbnail_urls(
         return {}
     host = await pick_edge(session)
     base = edge_base_url(host)
-    exp = int(time.time()) + THUMB_TICKET_TTL_S
+    # On a grid: the same cover gets the same URL (and so a browser-cache hit) until
+    # the next bucket, and always at least THUMB_TICKET_TTL_S - THUMB_BUCKET_S to live.
+    bucket = int(time.time()) // THUMB_BUCKET_S * THUMB_BUCKET_S
+    exp = bucket + THUMB_TICKET_TTL_S
     out: dict[str, str] = {}
     signed: dict[int, str] = {}
     for row in rows:

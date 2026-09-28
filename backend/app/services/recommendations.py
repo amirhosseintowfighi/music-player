@@ -49,6 +49,8 @@ MIXES_PER_USER = 3
 MAX_PER_ARTIST = 2  # diversity rule from ADR-0011
 RADAR_SIZE = 30
 RADAR_ARTISTS = 40
+# Which of a user's plays (``h``) may shape what we recommend to them.
+TASTE = taste.COUNTS_FOR_TASTE_SQL
 
 
 @dataclass(frozen=True, slots=True)
@@ -398,12 +400,13 @@ async def _seed_tracks(session: AsyncSession, user_id: int, limit: int = 40) -> 
     """What the user recently engaged with — the input to their recommendations."""
     rows = await session.execute(
         text(
-            """
+            f"""
         SELECT track_id FROM (
             SELECT coalesce(t.canonical_track_id, h.track_id) AS track_id, max(h.played_at) AS at
               FROM play_history h JOIN tracks t ON t.id = h.track_id
              WHERE h.user_id = :uid AND h.completed
                AND h.played_at > now() - interval '60 days'
+               AND {TASTE}
              GROUP BY 1
             UNION ALL
             SELECT coalesce(t.canonical_track_id, l.track_id), l.created_at
@@ -583,12 +586,12 @@ async def daily_mixes(
     day = for_day or datetime.now(UTC).date()
     rows = await session.execute(
         text(
-            """
+            f"""
         SELECT a.id, a.name, count(*) AS weight
           FROM play_history h
           JOIN track_artists ta ON ta.track_id = h.track_id AND ta.role = 'primary'
           JOIN artists a ON a.id = ta.artist_id
-         WHERE h.user_id = :uid AND h.played_at > now() - interval '90 days'
+         WHERE h.user_id = :uid AND h.played_at > now() - interval '90 days' AND {TASTE}
          GROUP BY 1, 2 ORDER BY 3 DESC LIMIT :n
         """
         ).bindparams(uid=user_id, n=MIXES_PER_USER)
@@ -664,14 +667,14 @@ async def _radar_artists(session: AsyncSession, user_id: int) -> list[int]:
     """Followed artists first, then the ones this user actually plays."""
     rows = await session.execute(
         text(
-            """
+            f"""
         SELECT artist_id FROM (
             SELECT f.artist_id, 1000000 AS weight FROM artist_follows f WHERE f.user_id = :uid
             UNION ALL
             SELECT ta.artist_id, count(*) AS weight
               FROM play_history h
               JOIN track_artists ta ON ta.track_id = h.track_id AND ta.role = 'primary'
-             WHERE h.user_id = :uid AND h.played_at > now() - interval '90 days'
+             WHERE h.user_id = :uid AND h.played_at > now() - interval '90 days' AND {TASTE}
              GROUP BY ta.artist_id
             UNION ALL
             SELECT ta.artist_id, 3 * count(*)
@@ -700,14 +703,15 @@ async def release_radar(
         for days in (21, 60):
             rows = await session.execute(
                 text(
-                    """
+                    f"""
                 SELECT t.id FROM tracks t
                  WHERE NOT t.hidden AND t.canonical_track_id IS NULL
                    AND t.created_at > now() - make_interval(days => :days)
                    AND EXISTS (SELECT 1 FROM track_artists ta
                                 WHERE ta.track_id = t.id AND ta.artist_id = ANY(:artists))
                    AND NOT EXISTS (SELECT 1 FROM hidden_tracks x
-                                    WHERE x.user_id = :uid AND x.track_id = t.id)
+                                    WHERE x.user_id = :uid AND x.track_id = t.id
+                                      AND {taste.STILL_HIDDEN_SQL})
                  ORDER BY t.created_at DESC, t.id DESC
                  LIMIT :limit
                 """
@@ -816,10 +820,11 @@ async def daylist(
     start, end, title_fa, title_en = DAYPARTS[part]
     rows = await session.execute(
         text(
-            """
+            f"""
         SELECT coalesce(t.canonical_track_id, h.track_id) AS track_id, count(*) AS plays
           FROM play_history h JOIN tracks t ON t.id = h.track_id
          WHERE h.user_id = :uid AND h.played_at > now() - interval '60 days' AND NOT t.hidden
+           AND {TASTE}
            AND (
              extract(hour FROM h.played_at + make_interval(mins => :tz)) >= :start
              AND extract(hour FROM h.played_at + make_interval(mins => :tz)) < :end
@@ -889,10 +894,10 @@ async def dj_session(session: AsyncSession, user_id: int) -> list[DjSegment]:
         row[0]
         for row in await session.execute(
             text(
-                """
+                f"""
             SELECT coalesce(t.canonical_track_id, h.track_id), count(*) FROM play_history h
               JOIN tracks t ON t.id = h.track_id
-             WHERE h.user_id = :uid AND h.completed AND NOT t.hidden
+             WHERE h.user_id = :uid AND h.completed AND NOT t.hidden AND {TASTE}
                AND h.played_at > now() - interval '30 days'
              GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 30
             """
@@ -903,10 +908,10 @@ async def dj_session(session: AsyncSession, user_id: int) -> list[DjSegment]:
         row[0]
         for row in await session.execute(
             text(
-                """
+                f"""
             SELECT coalesce(t.canonical_track_id, h.track_id), count(*) FROM play_history h
               JOIN tracks t ON t.id = h.track_id
-             WHERE h.user_id = :uid AND h.completed AND NOT t.hidden
+             WHERE h.user_id = :uid AND h.completed AND NOT t.hidden AND {TASTE}
                AND h.played_at <= now() - interval '60 days'
              GROUP BY 1
             HAVING max(h.played_at) <= now() - interval '60 days'

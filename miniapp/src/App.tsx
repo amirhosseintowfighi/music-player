@@ -14,6 +14,7 @@ import { applyPalette, DEFAULT_PALETTE, paletteFromUrl, parsePalette } from '@/l
 import { applyPerf, watchFrameRate } from '@/lib/perf';
 import { initTelegram, openTelegramLink } from '@/lib/telegram';
 import { useThumbs } from '@/player/thumbs';
+import { useConnect } from '@/store/connect';
 import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
@@ -232,6 +233,9 @@ function Shell() {
   }, [currentThumb]);
 
   useEffect(() => usePlayer.getState().attach(), []);
+
+  // Connect: tell this listener's other devices we are here, and take their commands.
+  useEffect(() => useConnect.getState().start(), []);
 
   // Reopening the app puts you back in the Jam you were in.
   useEffect(() => {

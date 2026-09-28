@@ -2,9 +2,13 @@ import { AnimatePresence, motion, Reorder } from 'framer-motion';
 import { useEffect, useRef, useState } from 'react';
 
 import type { Track } from '@/api/client';
+import { CreditsSheet } from '@/components/Credits';
+import { DevicesSheet } from '@/components/Devices';
 import {
   ChevronIcon,
   ClockIcon,
+  DevicesIcon,
+  InfoIcon,
   JamIcon,
   LyricsIcon,
   SparkleIcon,
@@ -12,6 +16,7 @@ import {
   PrevIcon,
   QueueIcon,
   RepeatIcon,
+  ShareIcon,
   ShuffleIcon,
   SpeedIcon,
 } from '@/components/icons';
@@ -30,9 +35,12 @@ import {
 } from '@/components/ui';
 import { useI18n } from '@/i18n';
 import { artistNames, duration } from '@/lib/format';
-import { backButton, haptic, openTelegramLink } from '@/lib/telegram';
+import { shareCard } from '@/lib/shareCard';
+import { BOT_USERNAME, backButton, haptic, openTelegramLink } from '@/lib/telegram';
 import { LyricsView } from '@/components/Lyrics';
 import { useAudioSettings } from '@/store/audio';
+import { useConnect } from '@/store/connect';
+import { hiRes } from '@/player/thumbs';
 import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
@@ -323,6 +331,34 @@ function Canvas({ src, playing }: { src?: string; playing: boolean }) {
   );
 }
 
+/**
+ * The big cover, sharp: the list-size thumbnail shows at once, and the full-size one
+ * (usually the file's own artwork) fades in over it as soon as it has loaded.
+ */
+function SharpCover({ small, seed }: { small?: string; seed: number }) {
+  const big = hiRes(small);
+  const [loaded, setLoaded] = useState<string | null>(null);
+  return (
+    <div className="relative" style={{ width: 300, height: 300 }}>
+      <Cover src={small} seed={seed} size={300} radius={26} glyph="♫" />
+      {big && (
+        <motion.img
+          key={big}
+          src={big}
+          alt=""
+          decoding="async"
+          onLoad={() => setLoaded(big)}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: loaded === big ? 1 : 0 }}
+          transition={{ duration: 0.35 }}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ borderRadius: 26 }}
+        />
+      )}
+    </div>
+  );
+}
+
 export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
   const { t, lang } = useI18n();
   const open = useUi((s) => s.playerOpen);
@@ -339,6 +375,9 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
   const [queueOpen, setQueueOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [lyricsOpen, setLyricsOpen] = useState(false);
+  const [devicesOpen, setDevicesOpen] = useState(false);
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const devices = useConnect((s) => s.devices.length);
   const jamListeners = useJam((s) => s.jam?.members.length ?? 0);
   const inJam = useJam((s) => Boolean(s.jam));
   const openJam = () => {
@@ -438,7 +477,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                 transition={{ type: 'spring', stiffness: 260, damping: 20 }}
                 style={{ borderRadius: 26 }}
               >
-                <Cover src={thumbs[track.id]} seed={track.id} size={300} radius={26} glyph="♫" />
+                <SharpCover small={thumbs[track.id]} seed={track.id} />
               </motion.div>
             </motion.div>
             )}
@@ -537,6 +576,13 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                 <LyricsIcon size={16} />
                 {t('lyrics.title')}
               </Glass>
+              <Glass
+                className={cx('flex items-center gap-2 px-3.5 py-2 text-[12.5px]', devices > 0 && 'text-[var(--accent)]')}
+                onClick={() => setDevicesOpen(true)}
+              >
+                <DevicesIcon size={16} />
+                {devices > 0 ? t('connect.count', { count: devices }) : t('connect.short')}
+              </Glass>
               <Glass className="flex items-center gap-2 px-3.5 py-2 text-[12.5px]" onClick={() => setOptionsOpen(true)}>
                 <SpeedIcon size={16} />
                 {speed}×
@@ -551,10 +597,27 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                 <ClockIcon size={16} />
                 {sleepAt ? duration(Math.max(0, (sleepAt - Date.now()) / 1000), lang) : t('player.sleep')}
               </Glass>
+              <Glass className="flex items-center gap-2 px-3.5 py-2 text-[12.5px]" onClick={() => setCreditsOpen(true)}>
+                <InfoIcon size={16} />
+                {t('credits.title')}
+              </Glass>
+              <Glass
+                className="flex items-center gap-2 px-3.5 py-2 text-[12.5px]"
+                onClick={async () => {
+                  const outcome = await shareCard(track, hiRes(thumbs[track.id]) ?? thumbs[track.id], BOT_USERNAME);
+                  if (outcome === 'saved') useUi.getState().toast(t('share.saved'), 'success');
+                  if (outcome === 'failed') useUi.getState().toast(t('app.error'), 'error');
+                }}
+              >
+                <ShareIcon size={16} />
+                {t('share.short')}
+              </Glass>
             </div>
           </motion.div>
 
           <QueueSheet open={queueOpen} onClose={() => setQueueOpen(false)} thumbs={thumbs} />
+          <DevicesSheet open={devicesOpen} onClose={() => setDevicesOpen(false)} />
+          <CreditsSheet track={track} open={creditsOpen} onClose={() => setCreditsOpen(false)} />
 
           <Sheet open={optionsOpen} onClose={() => setOptionsOpen(false)} title={t('common.more')}>
             <p className="mb-2 px-1 text-[12.5px] text-[var(--ink-dim)]">{t('player.speed')}</p>

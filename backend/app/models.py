@@ -325,6 +325,7 @@ class Playlist(Base):
     folder_id: Mapped[int | None] = mapped_column(
         BigInteger, ForeignKey("playlist_folders.id", ondelete="SET NULL")
     )
+    exclude_from_taste: Mapped[bool] = mapped_column(Boolean, server_default="false")
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
 
@@ -598,6 +599,8 @@ class HiddenTrack(Base):
         BigInteger, ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True
     )
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    # Snoozed rather than hidden: back on its own after this (0016).
+    until: Mapped[datetime | None] = mapped_column(TS)
 
 
 class TrackLyrics(Base):
@@ -639,3 +642,16 @@ class TrackProgress(Base):
     position_s: Mapped[int] = mapped_column(Integer)
     finished: Mapped[bool] = mapped_column(Boolean, server_default="false")
     updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+# ── library extras (0016) ──
+
+
+class LibraryPin(Base):
+    __tablename__ = "library_pins"
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    kind: Mapped[str] = mapped_column(Text, primary_key=True)
+    ref_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    pinned_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())

@@ -18,6 +18,12 @@ export type Dj = components['schemas']['DjOut'];
 export type DjSegment = components['schemas']['DjSegmentOut'];
 export type FollowState = components['schemas']['FollowArtistOut'];
 export type PrivateSession = components['schemas']['PrivateSessionOut'];
+export type Hidden = components['schemas']['HiddenOut'];
+export type Pin = components['schemas']['PinOut'];
+export type Credits = components['schemas']['CreditsOut'];
+export type Device = components['schemas']['DeviceOut'];
+export type Heartbeat = components['schemas']['HeartbeatOut'];
+export type ConnectCommand = components['schemas']['ConnectCommandOut'];
 
 export const listeningKeys = {
   thisIs: (artistId: number) => ['this-is', artistId] as const,
@@ -25,6 +31,9 @@ export const listeningKeys = {
   followed: ['me', 'artists'] as const,
   lyrics: (trackId: number) => ['lyrics', trackId] as const,
   hidden: ['me', 'hidden'] as const,
+  related: (artistId: number) => ['artist', artistId, 'related'] as const,
+  credits: (trackId: number) => ['credits', trackId] as const,
+  pins: ['me', 'pins'] as const,
   privateSession: ['me', 'private-session'] as const,
   inProgress: ['me', 'in-progress'] as const,
   folders: ['folders'] as const,
@@ -61,6 +70,42 @@ export function useFollowArtist(artistId: number) {
 
 export function useFollowedArtists() {
   return useQuery({ queryKey: listeningKeys.followed, queryFn: () => get<Artist[]>('/v1/me/artists') });
+}
+
+/** "Fans also like". */
+export function useRelatedArtists(artistId: number) {
+  return useQuery({
+    queryKey: listeningKeys.related(artistId),
+    queryFn: () => get<Artist[]>(`/v1/artists/${artistId}/related`),
+    enabled: artistId > 0,
+    staleTime: 30 * 60_000,
+  });
+}
+
+export function useCredits(trackId: number | undefined, enabled = true) {
+  return useQuery({
+    queryKey: listeningKeys.credits(trackId ?? 0),
+    queryFn: () => get<Credits>(`/v1/tracks/${trackId}/credits`),
+    enabled: enabled && Boolean(trackId),
+    staleTime: 30 * 60_000,
+  });
+}
+
+// ── pins ──
+
+export function usePins() {
+  return useQuery({ queryKey: listeningKeys.pins, queryFn: () => get<Pin[]>('/v1/me/pins') });
+}
+
+export const MAX_PINS = 4;
+
+export function useTogglePin() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ kind, refId, pinned }: { kind: Pin['kind']; refId: number; pinned: boolean }) =>
+      pinned ? del<Pin[]>(`/v1/me/pins/${kind}/${refId}`) : put<Pin[]>(`/v1/me/pins/${kind}/${refId}`, {}),
+    onSuccess: (pins) => client.setQueryData(listeningKeys.pins, pins),
+  });
 }
 
 // ── lyrics ──
@@ -112,11 +157,19 @@ export function activeLine(lines: LyricLine[], position: number): number {
 
 // ── hide, private session, progress ──
 
+export const SNOOZE_DAYS = 30;
+
 export function useHideTrack() {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ trackId, hidden }: { trackId: number; hidden: boolean }) =>
-      hidden ? del<void>(`/v1/tracks/${trackId}/hide`) : put<void>(`/v1/tracks/${trackId}/hide`, {}),
+    /** ``snooze``: gone for thirty days, then it may come back. */
+    mutationFn: async ({ trackId, hidden, snooze = false }: { trackId: number; hidden: boolean; snooze?: boolean }) => {
+      if (hidden) {
+        await del<void>(`/v1/tracks/${trackId}/hide`);
+        return null;
+      }
+      return put<Hidden>(`/v1/tracks/${trackId}/hide`, snooze ? { snooze_days: SNOOZE_DAYS } : {});
+    },
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: listeningKeys.hidden });
       void client.invalidateQueries({ queryKey: ['discover'] });
@@ -236,4 +289,35 @@ export function useDaylist() {
 
 export function fetchDj(): Promise<Dj> {
   return get<Dj>('/v1/dj');
+}
+
+// ── Connect ──
+
+export interface HeartbeatBody {
+  device_id: string;
+  name: string;
+  kind: Device['kind'];
+  state: { track_id: number | null; position_s: number; playing: boolean };
+}
+
+export function sendHeartbeat(body: HeartbeatBody): Promise<Heartbeat> {
+  return post<Heartbeat>('/v1/connect/heartbeat', body);
+}
+
+export interface CommandBody {
+  target: string;
+  sender: string;
+  action: ConnectCommand['action'];
+  track_ids?: number[];
+  index?: number;
+  position_s?: number;
+  playing?: boolean;
+}
+
+export function sendCommand(body: CommandBody): Promise<void> {
+  return post<void>('/v1/connect/command', body);
+}
+
+export function forgetDevice(deviceId: string): Promise<void> {
+  return del<void>(`/v1/connect/devices/${deviceId}`);
 }

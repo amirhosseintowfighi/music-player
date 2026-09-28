@@ -1,5 +1,5 @@
 /**
- * Audio engine: one <audio> element, stream tickets, MediaSession.
+ * Audio engine: two <audio> elements (playing + next), stream tickets, MediaSession.
  *
  * Tickets are short-lived signed URLs (ADR-0004), so they are cached per track and
  * re-requested when they are about to expire. The element is created lazily on the
@@ -58,6 +58,100 @@ function spare(): HTMLAudioElement {
   return allAudio()[1 - active] as HTMLAudioElement;
 }
 
+/**
+ * Mobile browsers (iOS above all) let an <audio> element make sound only after a
+ * tap has "unlocked" *that* element. The spare is never tapped, so the first track it
+ * takes over — the next song, gapless or crossfaded — was refused, and the music just
+ * stopped. The same goes for a first play whose ticket arrives after the tap is over.
+ *
+ * So on the first touch, every element that is not playing plays a moment of silence,
+ * muted, and stops: from then on each one may start by itself.
+ */
+const unlocked = new WeakSet<HTMLAudioElement>();
+let silence: string | null = null;
+
+function silentUrl(): string {
+  if (silence) return silence;
+  // 0.05 s of 8-bit mono silence as a WAV: smaller than any file we could ship.
+  const samples = 400;
+  const buffer = new ArrayBuffer(44 + samples);
+  const view = new DataView(buffer);
+  const text = (at: number, value: string) => [...value].forEach((c, i) => view.setUint8(at + i, c.charCodeAt(0)));
+  text(0, 'RIFF');
+  view.setUint32(4, 36 + samples, true);
+  text(8, 'WAVEfmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, 8000, true);
+  view.setUint32(28, 8000, true);
+  view.setUint16(32, 1, true);
+  view.setUint16(34, 8, true);
+  text(36, 'data');
+  view.setUint32(40, samples, true);
+  for (let i = 0; i < samples; i += 1) view.setUint8(44 + i, 128);
+  try {
+    silence = URL.createObjectURL(new Blob([buffer], { type: 'audio/wav' }));
+  } catch {
+    silence = '';
+  }
+  return silence;
+}
+
+/** True once every element has been unlocked (nothing left to do on a tap). */
+export function unlockAudio(): boolean {
+  let done = true;
+  for (const el of allAudio()) {
+    if (unlocked.has(el)) continue;
+    // Playing (or holding a track the listener paused): it is already allowed.
+    if (!el.paused || (el.src && el !== spare())) {
+      unlocked.add(el);
+      continue;
+    }
+    done = false;
+    const holding = Boolean(el.src);
+    const src = silentUrl();
+    if (!holding && !src) continue;
+    const muted = el.muted;
+    el.muted = true;
+    if (!holding) el.src = src;
+    let attempt: Promise<void> | undefined;
+    try {
+      attempt = el.play();
+    } catch {
+      el.muted = muted;
+      continue;
+    }
+    void Promise.resolve(attempt)
+      .then(() => {
+        unlocked.add(el);
+        // A real track may have taken the element over while the silence played:
+        // only stop what is still ours to stop.
+        const stillOurs = holding ? el !== audio() : el.src === src;
+        if (!stillOurs) return;
+        el.pause();
+        if (holding) el.currentTime = 0;
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        el.muted = muted;
+      });
+  }
+  return done;
+}
+
+/**
+ * The spare refused to play (not unlocked yet): make the element that was playing a
+ * moment ago the active one again. It was allowed to make sound, so it still is.
+ */
+export function swapBack(): HTMLAudioElement {
+  if (elements.length >= 2) {
+    active = 1 - active;
+    spareTrack = null;
+  }
+  return audio();
+}
+
 export function spareTrackId(): number | null {
   return spareTrack;
 }
@@ -97,6 +191,7 @@ export function resetForTests(): void {
   spareTrack = null;
   created.length = 0;
   tickets.clear();
+  offlineIds = null;
 }
 
 /**
@@ -157,8 +252,17 @@ export function toPlaybackError(error: unknown): PlaybackError {
 /** Offline copies (Pro) are stored in the Cache API and win over the network. */
 const OFFLINE_CACHE = 'tmusic-offline-v1';
 
+/** Which tracks have an offline copy, read once: asking the Cache API on every play is slow. */
+let offlineIds: Set<number> | null = null;
+
+async function knownOffline(): Promise<Set<number>> {
+  offlineIds ??= new Set(await listOffline());
+  return offlineIds;
+}
+
 export async function offlineUrl(trackId: number): Promise<string | null> {
   try {
+    if (!(await knownOffline()).has(trackId)) return null;
     const cache = await caches.open(OFFLINE_CACHE);
     const hit = await cache.match(`/offline/${trackId}`);
     if (!hit) return null;
@@ -186,12 +290,14 @@ export async function saveOffline(trackId: number, onProgress?: (ratio: number) 
   const blob = new Blob(chunks as BlobPart[], { type: ticket.mime });
   const cache = await caches.open(OFFLINE_CACHE);
   await cache.put(`/offline/${trackId}`, new Response(blob, { headers: { 'Content-Type': ticket.mime } }));
+  (await knownOffline()).add(trackId);
 }
 
 export async function removeOffline(trackId: number): Promise<void> {
   try {
     const cache = await caches.open(OFFLINE_CACHE);
     await cache.delete(`/offline/${trackId}`);
+    offlineIds?.delete(trackId);
   } catch {
     /* nothing to remove */
   }
@@ -208,10 +314,15 @@ export async function listOffline(): Promise<number[]> {
   }
 }
 
+/**
+ * The phone's own now-playing controls: the notification, the lock screen, Control
+ * Center, headphone buttons, a car. Metadata goes up as soon as a track is chosen
+ * (not when its audio has loaded), so the notification never shows the last song.
+ */
 export function setMediaSession(
   track: Track | null,
   artwork: string | null,
-  handlers: Partial<Record<MediaSessionAction, () => void>>,
+  handlers: Partial<Record<MediaSessionAction, MediaSessionActionHandler | null>>,
 ): void {
   const session = navigator.mediaSession;
   if (!session) return;
@@ -219,16 +330,25 @@ export function setMediaSession(
     session.metadata = track
       ? new MediaMetadata({
           title: track.title,
-          artist: track.artists.map((a) => a.name).join(', '),
+          artist: track.artists.map((a) => a.name).join(', ') || (track.channel?.title ?? ''),
           album: track.album ?? '',
-          artwork: artwork ? [{ src: artwork, sizes: '320x320', type: 'image/jpeg' }] : [],
+          artwork: artwork
+            ? [
+                { src: artwork, sizes: '512x512' },
+                { src: artwork, sizes: '256x256' },
+              ]
+            : [],
         })
       : null;
-    for (const [action, handler] of Object.entries(handlers)) {
-      session.setActionHandler(action as MediaSessionAction, handler ?? null);
-    }
   } catch {
     /* MediaSession is best-effort */
+  }
+  for (const [action, handler] of Object.entries(handlers)) {
+    try {
+      session.setActionHandler(action as MediaSessionAction, handler ?? null);
+    } catch {
+      /* an action this browser does not know: the others still count */
+    }
   }
 }
 

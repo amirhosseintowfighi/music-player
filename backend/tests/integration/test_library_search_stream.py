@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import Channel, EdgeNode, Track, User
 from app.services import plans
 from app.services import search as search_service
+from app.services import stream as stream_service
 from app.services.ingest import ingest_items
 from app.services.meili import MeiliClient
 from app.workers import jobs
@@ -352,14 +353,19 @@ async def test_stream_ticket_sources(
     assert resp.status_code == 200, resp.text
     body = resp.json()
     assert body["url"].startswith(f"https://cdn.example.test/s/{ids['AgADpol']}?t=")
-    assert body["thumb_url"] is None
+    # Asked for even without a Telegram thumbnail: the edge falls back to the file's cover.
+    assert body["thumb_url"].startswith(f"https://cdn.example.test/t/{ids['AgADpol']}?t=")
     ticket = verify(body["url"].split("t=", 1)[1], settings.signing_keys)
     assert ticket.track_id == ids["AgADpol"]  # canonical id, so the edge cache is shared
     assert ticket.user_id == lib["user_id"]
     assert ticket.channel_username is not None
     assert ticket.message_id is not None
     assert ticket.bot_file_id is None
-    assert ticket.exp <= time.time() + settings.stream_ticket_ttl_s + 1
+    # A play ticket outlives the song, so a phone refetching ranges late never hits 403.
+    duration = await session.scalar(select(Track.duration).where(Track.id == ids["AgADpoldup"]))
+    expected = stream_service.play_ttl(settings.stream_ticket_ttl_s, int(duration or 0))
+    assert expected >= settings.stream_ticket_ttl_s
+    assert time.time() + expected - 5 <= ticket.exp <= time.time() + expected + 1
 
     # A bot-owned file id (≤ 20 MB) is preferred.
     await session.execute(
@@ -542,13 +548,15 @@ async def test_thumbnail_batch_does_not_count_plays(
     )
     assert resp.status_code == 200
     items = resp.json()["items"]
-    # Both the canonical track and its duplicate resolve to the same canonical artwork.
-    assert set(items) == {str(ids["AgADpol"]), str(ids["AgADpoldup"])}
+    # Both the canonical track and its duplicate resolve to the same canonical artwork;
+    # a track with no Telegram thumbnail still gets a link (the edge reads the file's
+    # own cover), and an unknown id gets nothing.
+    assert set(items) == {str(ids["AgADpol"]), str(ids["AgADpoldup"]), str(ids["AgADqueen"])}
     assert items[str(ids["AgADpol"])] == items[str(ids["AgADpoldup"])]
     url = items[str(ids["AgADpol"])]
     assert url.startswith(f"https://cdn.example.test/t/{ids['AgADpol']}?t=")
     ticket = verify(url.split("t=", 1)[1], settings.signing_keys)
-    assert ticket.exp > time.time() + 30 * 60  # long-lived, so lists can be cached
+    assert ticket.exp >= time.time() + 30 * 60 - 1  # long-lived, so lists can be cached
 
     # The daily limit is untouched: a normal stream request still succeeds.
     assert (
@@ -572,3 +580,25 @@ async def test_thumbnail_batch_query_count(
         resp = await client.post("/v1/tracks/thumbs", json={"ids": ids}, headers=lib["auth"])
     assert resp.status_code == 200
     assert counter.count <= 3  # one batch query, regardless of list length
+
+
+def test_play_tickets_outlive_the_song() -> None:
+    assert stream_service.play_ttl(300, 0) == 300
+    assert stream_service.play_ttl(300, 240) == 780  # a four-minute song: 13 minutes
+    assert stream_service.play_ttl(300, 20 * 3600) == stream_service.TICKET_MAX_TTL_S
+
+
+async def test_thumbnail_links_are_stable_and_cover_tracks_without_a_telegram_thumb(
+    client: httpx.AsyncClient, lib: dict[str, Any]
+) -> None:
+    ids = list(lib["ids"].values())
+    first = (await client.post("/v1/tracks/thumbs", json={"ids": ids}, headers=lib["auth"])).json()[
+        "items"
+    ]
+    # No track here has a Telegram thumbnail; the edge still has the file's own cover.
+    assert first
+    again = (await client.post("/v1/tracks/thumbs", json={"ids": ids}, headers=lib["auth"])).json()[
+        "items"
+    ]
+    # Same URL twice in a row, so the browser's cache answers the second time.
+    assert first == again

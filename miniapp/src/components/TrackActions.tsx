@@ -5,13 +5,26 @@ import type { Track } from '@/api/client';
 import { fetchRadio, useSimilar } from '@/api/discover';
 import { useReportTrack } from '@/api/hooks';
 import { useAddToPlaylist, usePlaylists, useSendToChat, useToggleLike } from '@/api/playlists';
-import { useHiddenTracks, useHideTrack } from '@/api/listening';
-import { DownloadIcon, EyeOffIcon, HeartIcon, PlusIcon, QueueIcon, RadioIcon, SendIcon } from '@/components/icons';
+import { SNOOZE_DAYS, useHiddenTracks, useHideTrack } from '@/api/listening';
+import { CreditsSheet } from '@/components/Credits';
+import {
+  DownloadIcon,
+  EyeOffIcon,
+  HeartIcon,
+  InfoIcon,
+  PlusIcon,
+  QueueIcon,
+  RadioIcon,
+  SendIcon,
+  ShareIcon,
+  SnoozeIcon,
+} from '@/components/icons';
 import { Cover, Sheet, Spinner, cx } from '@/components/ui';
 import { CreatePlaylistSheet } from '@/screens/Playlists';
 import { useI18n } from '@/i18n';
 import { artistNames } from '@/lib/format';
-import { openTelegramLink } from '@/lib/telegram';
+import { shareCard } from '@/lib/shareCard';
+import { BOT_USERNAME, openTelegramLink } from '@/lib/telegram';
 import { listOffline, removeOffline, saveOffline } from '@/player/engine';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
@@ -49,8 +62,7 @@ const REPORT_REASONS = ['wrong_metadata', 'copyright', 'inappropriate', 'broken'
 
 /** A shared track opens the Mini App on that track (`startapp=tr_<id>`). */
 function shareLink(trackId: number): string {
-  const bot = (import.meta.env.VITE_BOT_USERNAME as string | undefined) ?? 'tmusic_bot';
-  return `https://t.me/${bot}?startapp=tr_${trackId}`;
+  return `https://t.me/${BOT_USERNAME}?startapp=tr_${trackId}`;
 }
 
 /**
@@ -133,18 +145,22 @@ export function TrackActions({
   const report = useReportTrack(track?.id ?? 0);
   const hide = useHideTrack();
   const hiddenIds = useHiddenTracks();
+  const [creditsOpen, setCreditsOpen] = useState(false);
+  const [carding, setCarding] = useState(false);
 
   if (!track) return null;
 
   const close = () => {
     setPickPlaylist(false);
     setReporting(false);
+    setCreditsOpen(false);
     onClose();
   };
+  const isHidden = hiddenIds.data?.includes(track.id) ?? false;
 
   return (
     <>
-      <Sheet open={open && !pickPlaylist && !reporting} onClose={close} title={t('track.actions')}>
+      <Sheet open={open && !pickPlaylist && !reporting && !creditsOpen} onClose={close} title={t('track.actions')}>
         <div className="mb-4 flex items-center gap-3 px-1">
           <Cover seed={track.id} size={44} />
           <div className="min-w-0">
@@ -194,16 +210,15 @@ export function TrackActions({
           />
           <Action
             icon={<EyeOffIcon size={18} />}
-            label={hiddenIds.data?.includes(track.id) ? t('hide.undo') : t('hide.track')}
-            busy={hide.isPending}
+            label={isHidden ? t('hide.undo') : t('hide.track')}
+            busy={hide.isPending && !hide.variables?.snooze}
             onClick={() => {
-              const hidden = hiddenIds.data?.includes(track.id) ?? false;
               hide.mutate(
-                { trackId: track.id, hidden },
+                { trackId: track.id, hidden: isHidden },
                 {
                   onSuccess: () => {
-                    toast(hidden ? t('hide.undone') : t('hide.done'));
-                    if (!hidden) dropFromQueue(track.id);
+                    toast(isHidden ? t('hide.undone') : t('hide.done'));
+                    if (!isHidden) dropFromQueue(track.id);
                     close();
                   },
                   onError: () => toast(t('app.error'), 'error'),
@@ -211,6 +226,26 @@ export function TrackActions({
               );
             }}
           />
+          {!isHidden && (
+            <Action
+              icon={<SnoozeIcon size={18} />}
+              label={t('snooze.track', { count: SNOOZE_DAYS })}
+              busy={hide.isPending && Boolean(hide.variables?.snooze)}
+              onClick={() => {
+                hide.mutate(
+                  { trackId: track.id, hidden: false, snooze: true },
+                  {
+                    onSuccess: () => {
+                      toast(t('snooze.done', { count: SNOOZE_DAYS }));
+                      dropFromQueue(track.id);
+                      close();
+                    },
+                    onError: () => toast(t('app.error'), 'error'),
+                  },
+                );
+              }}
+            />
+          )}
           <Action
             icon={<SendIcon size={18} />}
             label={t('player.sendToChat')}
@@ -296,6 +331,19 @@ export function TrackActions({
             }}
           />
           <Action
+            icon={<ShareIcon size={18} />}
+            label={t('share.card')}
+            busy={carding}
+            onClick={async () => {
+              setCarding(true);
+              const outcome = await shareCard(track, undefined, BOT_USERNAME);
+              setCarding(false);
+              if (outcome === 'saved') toast(t('share.saved'), 'success');
+              if (outcome === 'failed') toast(t('app.error'), 'error');
+            }}
+          />
+          <Action icon={<InfoIcon size={18} />} label={t('credits.title')} onClick={() => setCreditsOpen(true)} />
+          <Action
             icon={<span aria-hidden>⚠</span>}
             label={t('track.report')}
             onClick={() => setReporting(true)}
@@ -370,6 +418,8 @@ export function TrackActions({
             ))}
         </div>
       </Sheet>
+
+      <CreditsSheet track={track} open={open && creditsOpen} onClose={close} />
 
       <CreatePlaylistSheet
         open={createOpen}

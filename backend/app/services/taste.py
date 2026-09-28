@@ -1,6 +1,9 @@
 """What a listener tells us about themselves without making a playlist.
 
 - **Hide a song**: it leaves every generated playlist and recommendation they see.
+  **Snooze** is the same for 30 days, then it may come back.
+- **Exclude a playlist from the taste profile**: what is played from it (a sleep
+  playlist, the kids' songs) shapes nothing recommended to its owner.
 - **Private session**: for six hours nothing they play is recorded — not in history,
   not in friends' feeds, not in their recommendations.
 - **Progress on long tracks**: a podcast episode or a two-hour set resumes where it
@@ -12,7 +15,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from datetime import UTC, datetime, timedelta
 
-from sqlalchemy import delete, select, text
+from sqlalchemy import ColumnElement, delete, func, or_, select, text
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,11 +40,24 @@ async def _track(session: AsyncSession, track_id: int) -> Track:
 # ── hide ──
 
 
-async def hide(session: AsyncSession, user_id: int, track_id: int) -> None:
+async def hide(
+    session: AsyncSession, user_id: int, track_id: int, snooze_days: int | None = None
+) -> datetime | None:
+    """Hides a song for good, or snoozes it for ``snooze_days``. Returns when it is back.
+
+    Hiding again replaces a snooze and the other way round: the latest choice wins.
+    """
     track = await _track(session, track_id)
+    until = datetime.now(UTC) + timedelta(days=snooze_days) if snooze_days else None
     await session.execute(
-        insert(HiddenTrack).values(user_id=user_id, track_id=track.id).on_conflict_do_nothing()
+        insert(HiddenTrack)
+        .values(user_id=user_id, track_id=track.id, until=until)
+        .on_conflict_do_update(
+            index_elements=[HiddenTrack.user_id, HiddenTrack.track_id],
+            set_={"until": until, "created_at": text("now()")},
+        )
     )
+    return until
 
 
 async def unhide(session: AsyncSession, user_id: int, track_id: int) -> None:
@@ -51,9 +67,36 @@ async def unhide(session: AsyncSession, user_id: int, track_id: int) -> None:
     )
 
 
+def _still_hidden() -> ColumnElement[bool]:
+    return or_(HiddenTrack.until.is_(None), HiddenTrack.until > func.now())
+
+
+# The same rule for raw SQL: ``x`` is the hidden_tracks alias.
+STILL_HIDDEN_SQL = "(x.until IS NULL OR x.until > now())"
+
+# Raw-SQL filter for play_history rows (alias ``h``) that may shape recommendations:
+# plays from a playlist its owner excluded from their taste profile do not.
+COUNTS_FOR_TASTE_SQL = (
+    "NOT (h.source = 'playlist' AND h.source_id IS NOT NULL AND EXISTS ("
+    "SELECT 1 FROM playlists xp WHERE xp.id = h.source_id AND xp.exclude_from_taste))"
+)
+
+
 async def hidden_ids(session: AsyncSession, user_id: int) -> set[int]:
-    rows = await session.scalars(select(HiddenTrack.track_id).where(HiddenTrack.user_id == user_id))
+    rows = await session.scalars(
+        select(HiddenTrack.track_id).where(HiddenTrack.user_id == user_id, _still_hidden())
+    )
     return set(rows.all())
+
+
+async def hidden(session: AsyncSession, user_id: int) -> list[tuple[int, datetime | None]]:
+    """Every hidden or snoozed song with when it comes back (None: never)."""
+    rows = await session.execute(
+        select(HiddenTrack.track_id, HiddenTrack.until)
+        .where(HiddenTrack.user_id == user_id, _still_hidden())
+        .order_by(HiddenTrack.created_at.desc())
+    )
+    return [(row.track_id, row.until) for row in rows]
 
 
 async def without_hidden(session: AsyncSession, user_id: int, ids: Sequence[int]) -> list[int]:

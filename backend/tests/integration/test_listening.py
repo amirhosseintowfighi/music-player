@@ -270,7 +270,8 @@ async def test_hidden_tracks_leave_recommendations(
     )
     assert sangam in [t["id"] for t in recs.json()["items"]]
 
-    assert (await client.put(f"/v1/tracks/{sangam}/hide", headers=headers)).status_code == 204
+    hidden = await client.put(f"/v1/tracks/{sangam}/hide", headers=headers)
+    assert hidden.json() == {"track_id": sangam, "until": None}
     assert (await client.get("/v1/me/hidden", headers=headers)).json() == [sangam]
     recs = await client.post(
         "/v1/recommendations/for-tracks", json={"track_ids": [pol]}, headers=headers
@@ -463,3 +464,247 @@ async def test_daylist_and_dj(
     assert kinds[0] == "favorites"
     seen = [t["id"] for segment in dj["segments"] for t in segment["items"]]
     assert len(seen) == len(set(seen))  # no song twice in a set
+
+
+# ── snooze, taste profile, pins (0016) ────────────────────────────────────────
+
+
+async def test_snoozed_songs_come_back_by_themselves(
+    client: httpx.AsyncClient, session: AsyncSession, catalog: dict[str, Any]
+) -> None:
+    me = await login(client, 5120)
+    headers = bearer(me)
+    pol = catalog["tracks"]["Pol"]
+    snoozed = (
+        await client.put(f"/v1/tracks/{pol}/hide", json={"snooze_days": 30}, headers=headers)
+    ).json()
+    assert snoozed["until"] is not None
+    assert (await client.get("/v1/me/hidden", headers=headers)).json() == [pol]
+    detail = (await client.get("/v1/me/hidden/tracks", headers=headers)).json()
+    assert detail[0]["track_id"] == pol and detail[0]["until"]
+    too_long = await client.put(
+        f"/v1/tracks/{pol}/hide", json={"snooze_days": 365}, headers=headers
+    )
+    assert too_long.status_code == 422
+
+    # Thirty days later it is simply back.
+    await session.execute(
+        text(
+            "UPDATE hidden_tracks SET until = now() - interval '1 minute' WHERE user_id = :u"
+        ).bindparams(u=me["me"]["id"])
+    )
+    await session.commit()
+    assert (await client.get("/v1/me/hidden", headers=headers)).json() == []
+
+    # Hiding again for good replaces the snooze.
+    forever = (await client.put(f"/v1/tracks/{pol}/hide", headers=headers)).json()
+    assert forever["until"] is None
+    assert (await client.get("/v1/me/hidden", headers=headers)).json() == [pol]
+
+
+async def test_a_playlist_can_stay_out_of_the_taste_profile(
+    client: httpx.AsyncClient, session: AsyncSession, catalog: dict[str, Any]
+) -> None:
+    me = await login(client, 5121)
+    headers = bearer(me)
+    tracks = catalog["tracks"]
+    sleep = (
+        await client.post(
+            "/v1/playlists",
+            json={"name": "Sleep", "track_ids": [tracks["Talaagh"]]},
+            headers=headers,
+        )
+    ).json()
+    updated = await client.patch(
+        f"/v1/playlists/{sleep['id']}", json={"exclude_from_taste": True}, headers=headers
+    )
+    assert updated.json()["exclude_from_taste"] is True
+
+    plays: list[tuple[str, dict[str, Any]]] = [
+        ("Talaagh", {"source": "playlist", "source_id": sleep["id"]}),
+        ("Pol", {}),
+    ]
+    for title, source in plays:
+        await client.post(
+            "/v1/history",
+            json={"track_id": tracks[title], "duration_played": 180, "completed": True, **source},
+            headers=headers,
+        )
+    seeds = await recommendations._seed_tracks(session, me["me"]["id"])
+    assert tracks["Pol"] in seeds
+    assert tracks["Talaagh"] not in seeds
+
+    # Nobody else can change it.
+    other = bearer(await login(client, 5122))
+    denied = await client.patch(
+        f"/v1/playlists/{sleep['id']}", json={"exclude_from_taste": False}, headers=other
+    )
+    assert denied.status_code == 404
+
+
+async def test_pins_sit_on_top_of_the_library(
+    client: httpx.AsyncClient, catalog: dict[str, Any]
+) -> None:
+    headers = bearer(await login(client, 5123))
+    stranger = bearer(await login(client, 5124))
+    made = [
+        (await client.post("/v1/playlists", json={"name": f"P{i}"}, headers=headers)).json()["id"]
+        for i in range(2)
+    ]
+    ebi, googoosh = catalog["artists"]["ابی"], catalog["artists"]["گوگوش"]
+    assert (await client.put(f"/v1/me/pins/artist/{ebi}", headers=headers)).status_code == 200
+    for playlist_id in made:
+        await client.put(f"/v1/me/pins/playlist/{playlist_id}", headers=headers)
+    await client.put(f"/v1/me/pins/artist/{googoosh}", headers=headers)
+    pins = (await client.get("/v1/me/pins", headers=headers)).json()
+    assert pins[0] == {"kind": "artist", "ref_id": ebi}
+    assert [p["ref_id"] for p in pins[1:3]] == made
+    assert pins[3] == {"kind": "artist", "ref_id": googoosh}
+
+    # Four at most; pinning one already pinned is fine.
+    dariush = catalog["artists"]["داریوش"]
+    assert (await client.put(f"/v1/me/pins/artist/{dariush}", headers=headers)).status_code == 409
+    assert (await client.put(f"/v1/me/pins/artist/{ebi}", headers=headers)).status_code == 200
+    # Someone else's private playlist cannot be pinned, and bad kinds are refused.
+    assert (
+        await client.put(f"/v1/me/pins/playlist/{made[0]}", headers=stranger)
+    ).status_code == 404
+    assert (await client.put("/v1/me/pins/album/1", headers=headers)).status_code == 422
+
+    after = (await client.delete(f"/v1/me/pins/artist/{ebi}", headers=headers)).json()
+    assert len(after) == 3
+    # A deleted playlist drops off by itself.
+    await client.delete(f"/v1/playlists/{made[0]}", headers=headers)
+    left = (await client.get("/v1/me/pins", headers=headers)).json()
+    assert [p["ref_id"] for p in left] == [made[1], googoosh]
+
+
+# ── Fans also like, credits ───────────────────────────────────────────────────
+
+
+async def test_fans_also_like(
+    client: httpx.AsyncClient, session: AsyncSession, catalog: dict[str, Any]
+) -> None:
+    headers = bearer(await login(client, 5125))
+    tracks, artists = catalog["tracks"], catalog["artists"]
+    googoosh, ebi = artists["گوگوش"], artists["ابی"]
+    # Nothing in common yet: no one listens, nothing is similar.
+    assert (await client.get(f"/v1/artists/{googoosh}/related", headers=headers)).json() == []
+
+    await session.execute(
+        text(
+            "INSERT INTO track_similarity (track_id, similar_id, score) VALUES (:a, :b, 0.8)"
+        ).bindparams(a=tracks["Pol"], b=tracks["Khaneh"])
+    )
+    await session.commit()
+    related = (await client.get(f"/v1/artists/{googoosh}/related", headers=headers)).json()
+    assert [a["id"] for a in related] == [ebi]
+    assert (await client.get("/v1/artists/999999/related", headers=headers)).status_code == 404
+
+
+async def test_fans_also_like_from_co_listening(
+    client: httpx.AsyncClient, catalog: dict[str, Any]
+) -> None:
+    tracks, artists = catalog["tracks"], catalog["artists"]
+    headers: dict[str, str] = {}
+    for telegram_id in (5126, 5127):
+        headers = bearer(await login(client, telegram_id))
+        for title in ("Pol", "Shabe Eshgh"):
+            await client.post(
+                "/v1/history",
+                json={"track_id": tracks[title], "duration_played": 120, "completed": True},
+                headers=headers,
+            )
+    related = (await client.get(f"/v1/artists/{artists['گوگوش']}/related", headers=headers)).json()
+    assert artists["ابی"] in [a["id"] for a in related]
+
+
+async def test_credits_name_the_people_and_the_channels(
+    client: httpx.AsyncClient, catalog: dict[str, Any]
+) -> None:
+    headers = bearer(await login(client, 5128))
+    pol = catalog["tracks"]["Pol"]
+    credits = (await client.get(f"/v1/tracks/{pol}/credits", headers=headers)).json()
+    assert credits["track"]["id"] == pol
+    assert credits["track"]["artists"][0]["role"] == "primary"
+    assert credits["channels"] >= 1
+    assert credits["sources"][0]["username"] == "listenchan"
+    assert credits["first_posted_at"]
+    assert (await client.get("/v1/tracks/999999/credits", headers=headers)).status_code == 404
+
+
+# ── Connect ───────────────────────────────────────────────────────────────────
+
+
+async def test_connect_hands_the_music_to_another_device(
+    client: httpx.AsyncClient, catalog: dict[str, Any]
+) -> None:
+    headers = bearer(await login(client, 5129))
+    stranger = bearer(await login(client, 5130))
+    pol, khaneh = catalog["tracks"]["Pol"], catalog["tracks"]["Khaneh"]
+
+    phone = {"device_id": "phone-123", "name": "iPhone", "kind": "phone"}
+    laptop = {"device_id": "laptop-456", "name": "Telegram Desktop", "kind": "desktop"}
+    alone = (
+        await client.post(
+            "/v1/connect/heartbeat",
+            json={**phone, "state": {"track_id": pol, "position_s": 72, "playing": True}},
+            headers=headers,
+        )
+    ).json()
+    assert alone == {"devices": [], "commands": []}
+
+    seen = (await client.post("/v1/connect/heartbeat", json=laptop, headers=headers)).json()
+    assert [d["id"] for d in seen["devices"]] == ["phone-123"]
+    assert seen["devices"][0]["track"]["id"] == pol and seen["devices"][0]["playing"] is True
+    # Another account sees none of it.
+    theirs = await client.post("/v1/connect/heartbeat", json=laptop, headers=stranger)
+    assert theirs.json()["devices"] == []
+
+    moved = await client.post(
+        "/v1/connect/command",
+        json={
+            "target": "laptop-456",
+            "sender": "phone-123",
+            "action": "transfer",
+            "track_ids": [pol, khaneh],
+            "index": 0,
+            "position_s": 72,
+        },
+        headers=headers,
+    )
+    assert moved.status_code == 204
+    inbox = (await client.post("/v1/connect/heartbeat", json=laptop, headers=headers)).json()
+    command = inbox["commands"][0]
+    assert command["action"] == "transfer" and command["position_s"] == 72
+    assert [t["id"] for t in command["items"]] == [pol, khaneh]
+    # Delivered once.
+    again = (await client.post("/v1/connect/heartbeat", json=laptop, headers=headers)).json()
+    assert again["commands"] == []
+
+    nowhere = await client.post(
+        "/v1/connect/command",
+        json={"target": "gone-999", "sender": "phone-123", "action": "pause"},
+        headers=headers,
+    )
+    assert nowhere.status_code == 404
+    empty = await client.post(
+        "/v1/connect/command",
+        json={"target": "laptop-456", "sender": "phone-123", "action": "transfer"},
+        headers=headers,
+    )
+    assert empty.status_code == 422
+
+    forgot = await client.delete("/v1/connect/devices/phone-123", headers=headers)
+    assert forgot.status_code == 204
+    after = (await client.post("/v1/connect/heartbeat", json=laptop, headers=headers)).json()
+    assert after["devices"] == []
+
+
+async def test_stale_devices_drop_off(redis: Any) -> None:
+    from app.services import connect
+
+    device = connect.Device(id="old-device", name="Old", kind="web", seen=0)
+    await connect.heartbeat(redis, 1, device, now=1000.0)
+    assert [d.id for d in await connect.devices(redis, 1, now=1000.0 + 5)] == ["old-device"]
+    assert await connect.devices(redis, 1, now=1000.0 + connect.STALE_S + 1) == []

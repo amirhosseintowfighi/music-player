@@ -40,10 +40,13 @@ import {
   setMediaSession,
   setPlaybackState,
   setPositionState,
+  swapBack,
   ticketFor,
   toPlaybackError,
+  unlockAudio,
   type PlaybackError,
 } from '@/player/engine';
+import { hiRes } from '@/player/thumbs';
 
 export type RepeatMode = 'off' | 'all' | 'one';
 export type PlaySource = 'library' | 'search' | 'playlist' | 'channel' | 'discover' | 'mix' | 'radio' | 'trending' | 'shared';
@@ -181,6 +184,23 @@ let lastTick = 0;
 let startedAt = 0;
 let stalled = false;
 
+/**
+ * Recovering from a failure mid-song. Phones drop what they buffered and ask for the
+ * rest again as they go; if that request fails (a link that ran out, a network that
+ * blinked) the element stops with an error and, until now, the music simply ended.
+ * Now it gets a fresh link and carries on from the same second, a few times per song.
+ */
+const MAX_RECOVERIES = 3;
+let recoveries = { trackId: 0, count: 0 };
+/** A stall that does not clear by itself is treated like a failure. */
+const STALL_RECOVER_MS = 12_000;
+let stallTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearStallTimer(): void {
+  if (stallTimer) clearTimeout(stallTimer);
+  stallTimer = null;
+}
+
 export const usePlayer = create<PlayerState>((set, get) => ({
   queue: [],
   manual: [],
@@ -277,6 +297,9 @@ export const usePlayer = create<PlayerState>((set, get) => ({
       el.pause();
       return;
     }
+    // A skip that failed can leave the element faded to silence: never resume mute.
+    cancelFade();
+    el.volume = get().volume;
     try {
       await el.play();
     } catch {
@@ -593,6 +616,29 @@ export const usePlayer = create<PlayerState>((set, get) => ({
   /** Wires the <audio> element to the store; returns an unsubscribe function. */
   attach() {
     applyEffects();
+    // Unlock both audio elements on the first touch (see engine.unlockAudio). Capture
+    // phase, so it runs before the tap's own handler starts loading a track.
+    const unlockEvents = ['touchend', 'pointerdown', 'click', 'keydown'] as const;
+    const onGesture = () => {
+      if (unlockAudio()) for (const name of unlockEvents) document.removeEventListener(name, onGesture, true);
+    };
+    for (const name of unlockEvents) document.addEventListener(name, onGesture, true);
+    /** Gets a fresh link and picks the song up where it stopped. False when out of tries. */
+    const recover = (el: HTMLAudioElement, reason: string): boolean => {
+      const { current, remote } = get();
+      if (!current || remote) return false;
+      if (recoveries.trackId !== current.id) recoveries = { trackId: current.id, count: 0 };
+      if (recoveries.count >= MAX_RECOVERIES) return false;
+      recoveries.count += 1;
+      const at = el.currentTime || get().position;
+      const wasPlaying = get().isPlaying || get().isLoading;
+      clearStallTimer();
+      dropTicket(current.id);
+      report('error', { reason, recovered: true, attempt: recoveries.count });
+      set({ isLoading: true });
+      void load(current, set, get, 0, { positionAt: () => at, autoplay: wasPlaying, keepElement: true });
+      return true;
+    };
     /**
      * Near the end of a track: buffer the next one in the spare element (gapless),
      * and with crossfade on, start it while this one fades out.
@@ -646,6 +692,7 @@ export const usePlayer = create<PlayerState>((set, get) => ({
           startedAt = 0;
         }
         if (stalled) stalled = false;
+        clearStallTimer();
         // Warm whatever actually plays next — manual queue included.
         const [upcoming] = get().upcoming();
         if (upcoming) void prefetch(upcoming.id);
@@ -656,6 +703,12 @@ export const usePlayer = create<PlayerState>((set, get) => ({
         if (!get().isPlaying || stalled) return;
         stalled = true;
         report('underrun');
+        // Still stuck after a while: the connection under the element is gone.
+        clearStallTimer();
+        stallTimer = setTimeout(() => {
+          stallTimer = null;
+          if (stalled && el === audio() && el.readyState < 3) recover(el, 'stall');
+        }, STALL_RECOVER_MS);
       };
       const onPause = () => {
         if (el !== audio()) return;
@@ -682,9 +735,12 @@ export const usePlayer = create<PlayerState>((set, get) => ({
       const onError = () => {
         if (el !== audio()) return;
         const track = get().current;
-        if (track) dropTicket(track.id);
+        if (!track || !el.getAttribute('src')) return;
+        if (recover(el, 'media')) return;
+        dropTicket(track.id);
         report('error', { reason: 'decode' });
-        set({ isLoading: false, isPlaying: false });
+        el.volume = get().volume;
+        set({ isLoading: false, isPlaying: false, error: toPlaybackError(new Error('media')) });
       };
       el.addEventListener('timeupdate', onTime);
       el.addEventListener('play', onPlay);
@@ -707,6 +763,8 @@ export const usePlayer = create<PlayerState>((set, get) => ({
     });
     return () => {
       for (const cleanup of cleanups) cleanup();
+      for (const name of unlockEvents) document.removeEventListener(name, onGesture, true);
+      clearStallTimer();
     };
   },
 }));
@@ -715,6 +773,32 @@ interface LoadOptions {
   /** Where to start, read at the last moment (a Jam keeps moving while we load). */
   positionAt?: () => number;
   autoplay?: boolean;
+  /** Recovering the same song: reuse the element, do not swap to the spare. */
+  keepElement?: boolean;
+}
+
+/** The lock-screen / notification controls, wired to this store. */
+function mediaHandlers(get: () => PlayerState): Partial<Record<MediaSessionAction, MediaSessionActionHandler | null>> {
+  return {
+    // Explicit play and pause: a toggle would do the opposite whenever the store and
+    // the element disagree for a moment (which is exactly when people press them).
+    play: () => {
+      if (!get().isPlaying) void get().toggle();
+    },
+    pause: () => {
+      if (get().isPlaying) void get().toggle();
+    },
+    stop: () => {
+      if (get().isPlaying) void get().toggle();
+    },
+    nexttrack: () => void get().next(),
+    previoustrack: () => void get().previous(),
+    seekto: (details) => {
+      if (details.seekTime !== undefined) get().seek(details.seekTime);
+    },
+    seekbackward: (details) => get().seek(Math.max(0, get().position - (details.seekOffset ?? 10))),
+    seekforward: (details) => get().seek(get().position + (details.seekOffset ?? 10)),
+  };
 }
 
 async function load(
@@ -724,31 +808,29 @@ async function load(
   attempt = 0,
   options: LoadOptions = {},
 ): Promise<void> {
-  const { positionAt, autoplay = true } = options;
+  const { positionAt, autoplay = true, keepElement = false } = options;
   const overlapMs = pendingCrossfadeMs;
   pendingCrossfadeMs = 0;
   crossfading = false;
+  // The notification and lock screen show the new song straight away.
+  if (attempt === 0 && !keepElement) setMediaSession(track, null, mediaHandlers(get));
   // The next track may already be buffered in the spare element: switch to it.
-  const outgoing = takePreloaded(track.id);
-  const el = audio();
+  const outgoing = keepElement ? null : takePreloaded(track.id);
+  let el = audio();
   if (outgoing && outgoing !== el) {
     if (overlapMs > 0) void fadeElement(outgoing, 0, overlapMs).then(() => outgoing.pause());
     else outgoing.pause();
   }
   resumeEffects();
   try {
-    const offline = await offlineUrl(track.id);
-    const src = offline ?? (await ticketFor(track.id)).url;
+    // The link and (for a long track) the saved place, asked for at the same time.
+    const wantsProgress = !positionAt && !get().remote && track.duration >= LONG_FORM_S;
+    const [src, saved] = await Promise.all([
+      offlineUrl(track.id).then(async (offline) => offline ?? (await ticketFor(track.id)).url),
+      wantsProgress ? loadProgress(track.id).catch(() => null) : Promise.resolve(null),
+    ]);
     // A long track picks up where this listener left it, on any device.
-    let resumeAt = 0;
-    if (!positionAt && !get().remote && track.duration >= LONG_FORM_S) {
-      try {
-        const saved = await loadProgress(track.id);
-        if (saved && !saved.finished && saved.position_s > 30) resumeAt = saved.position_s;
-      } catch {
-        /* start from the top */
-      }
-    }
+    const resumeAt = saved && !saved.finished && saved.position_s > 30 ? saved.position_s : 0;
     if (get().current?.id !== track.id) return; // moved on while the ticket loaded
     if (!outgoing || el.src !== src) el.src = src;
     if (resumeAt) el.currentTime = resumeAt;
@@ -762,16 +844,33 @@ async function load(
       return;
     }
     el.volume = 0;
-    await el.play();
+    try {
+      await el.play();
+    } catch (error) {
+      // The spare had never been allowed to make sound. The element that was playing
+      // a moment ago was: put the new song there instead of stopping the music.
+      if (!(error instanceof DOMException && error.name === 'NotAllowedError' && outgoing)) throw error;
+      const position = el.currentTime;
+      el.pause();
+      el = swapBack();
+      cancelFade();
+      el.src = src;
+      el.currentTime = position;
+      el.playbackRate = get().speed;
+      el.volume = 0;
+      await el.play();
+    }
     // The first bytes took a while; catch up with the room.
     if (positionAt && Math.abs(el.currentTime - positionAt()) > 1) el.currentTime = positionAt();
     void fadeTo(get().volume, overlapMs > 0 ? overlapMs : FADE_IN_MS);
     set({ isLoading: false, error: null });
   } catch (error) {
+    // Whatever failed, the element must not be left silent for the next attempt.
+    cancelFade();
+    el.volume = get().volume;
     if (error instanceof DOMException && error.name === 'NotAllowedError') {
       // The browser wants a tap before it makes sound (a Jam starting on its own).
       // The track is loaded and in place; the play button does the rest.
-      el.volume = get().volume;
       set({ isLoading: false, isPlaying: false, error: null });
       return;
     }
@@ -783,20 +882,17 @@ async function load(
       dropTicket(track.id);
       await new Promise((resolve) => setTimeout(resolve, delay));
       if (get().current?.id !== track.id) return; // the user moved on
-      return load(track, set, get, attempt + 1, options);
+      return load(track, set, get, attempt + 1, { ...options, keepElement: true });
     }
     report('error', { reason: playbackError.kind });
     set({ isLoading: false, isPlaying: false, error: playbackError });
     return;
   }
-  const artwork = track.has_thumb ? (await ticketFor(track.id)).thumb_url : null;
-  setMediaSession(track, artwork ?? null, {
-    play: () => void get().toggle(),
-    pause: () => void get().toggle(),
-    nexttrack: () => void get().next(),
-    previoustrack: () => void get().previous(),
-    seekto: (details?: MediaSessionActionDetails) => {
-      if (details?.seekTime !== undefined) get().seek(details.seekTime);
-    },
-  });
+  // The big artwork for the lock screen: the file's own cover where it has one.
+  try {
+    const ticket = await ticketFor(track.id);
+    if (get().current?.id === track.id) setMediaSession(track, hiRes(ticket.thumb_url) ?? null, mediaHandlers(get));
+  } catch {
+    /* no artwork is still a notification */
+  }
 }

@@ -260,6 +260,8 @@ class PlaylistOut(ApiModel):
     updated_at: datetime
     created_at: datetime | None = None
     folder_id: int | None = None
+    # Plays from it do not shape the owner's recommendations.
+    exclude_from_taste: bool = False
 
 
 class PlaylistDetailOut(PlaylistOut):
@@ -277,6 +279,7 @@ class UpdatePlaylistIn(ApiModel):
     description: str | None = Field(None, max_length=500)
     is_public: bool | None = None
     is_collaborative: bool | None = None
+    exclude_from_taste: bool | None = None
 
 
 class AddTracksIn(ApiModel):
@@ -1006,3 +1009,87 @@ class DjSegmentOut(ApiModel):
 
 class DjOut(ApiModel):
     segments: list[DjSegmentOut]
+
+
+# ── library extras (0016): snooze, pins, credits, Connect ──
+
+
+class HideIn(ApiModel):
+    """Empty body hides for good; ``snooze_days`` brings the song back by itself."""
+
+    snooze_days: int | None = Field(None, ge=1, le=90)
+
+
+class HiddenOut(ApiModel):
+    track_id: int
+    until: datetime | None = None
+
+
+class PinOut(ApiModel):
+    kind: Literal["playlist", "artist"]
+    ref_id: int
+
+
+class TrackSourceOut(ApiModel):
+    channel_id: int
+    username: str | None
+    title: str
+    subscribers_count: int
+    posted_at: datetime
+
+
+class CreditsOut(ApiModel):
+    track: TrackOut
+    genre: str | None = None
+    file_name: str | None = None
+    mime_type: str | None = None
+    file_size: int = 0
+    first_posted_at: datetime | None = None
+    channels: int = 0
+    sources: list[TrackSourceOut] = []
+
+
+class ConnectStateIn(ApiModel):
+    track_id: int | None = None
+    position_s: float = Field(0, ge=0, le=24 * 3600)
+    playing: bool = False
+
+
+class HeartbeatIn(ApiModel):
+    device_id: str = Field(min_length=6, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    name: str = Field(min_length=1, max_length=60)
+    kind: Literal["phone", "tablet", "desktop", "web"] = "web"
+    state: ConnectStateIn = ConnectStateIn()
+
+
+class DeviceOut(ApiModel):
+    id: str
+    name: str
+    kind: Literal["phone", "tablet", "desktop", "web"]
+    playing: bool
+    position_s: float
+    track: TrackOut | None = None
+
+
+class ConnectCommandOut(ApiModel):
+    action: Literal["transfer", "play", "pause", "next", "previous", "seek"]
+    sender: str
+    index: int = 0
+    position_s: float = 0
+    playing: bool = True
+    items: list[TrackOut] = []
+
+
+class HeartbeatOut(ApiModel):
+    devices: list[DeviceOut]
+    commands: list[ConnectCommandOut]
+
+
+class ConnectCommandIn(ApiModel):
+    target: str = Field(min_length=6, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    sender: str = Field(min_length=6, max_length=64, pattern=r"^[A-Za-z0-9_-]+$")
+    action: Literal["transfer", "play", "pause", "next", "previous", "seek"]
+    track_ids: list[int] = Field(default_factory=list, max_length=200)
+    index: int = Field(0, ge=0)
+    position_s: float = Field(0, ge=0, le=24 * 3600)
+    playing: bool = True

@@ -173,7 +173,11 @@ async def test_thumbnail_and_health(edge: httpx.AsyncClient) -> None:
     thumb = await edge.get(url(mt_ticket(), kind="t"))
     assert thumb.status_code == 200
     assert thumb.headers["content-type"] == "image/jpeg"
-    assert (await edge.get(url(mt_ticket(message_id=None), kind="t"))).status_code == 404
+    assert (
+        await edge.get(
+            url(mt_ticket(track_id=10, message_id=None, channel_username=None), kind="t")
+        )
+    ).status_code == 404
     health = await edge.get("/healthz")
     assert health.json() == {"status": "ok", "resolver_account": 1}
     assert "edge_stream_bytes_total" in (await edge.get("/metrics")).text
@@ -429,3 +433,94 @@ async def test_a_warming_fetch_reads_on_the_crawling_account(
     assert warm.status_code == 206
     assert any(call[0] == "download" for call in crawler_client.calls)
     assert not any(call[0] == "download" for call in client_fake.calls)
+
+
+async def test_the_big_artwork_prefers_the_cover_inside_the_file(
+    settings: Settings, client_fake: FakeClient
+) -> None:
+    """Telegram's thumbnail of an audio file is small; the file's own cover is the original."""
+    from tests.test_id3 import apic_tag
+
+    cover = bytes([0x89]) + b"PNGbigcover"
+    client_fake.file_bytes = apic_tag(cover) + DATA  # Telegram's small thumb exists too
+
+    async with httpx.AsyncClient(transport=bot_api_transport([])) as tg:
+        async with await make_http(settings, client_fake, tg) as edge:
+            small = await edge.get(url(mt_ticket(), kind="t"))
+            big = await edge.get(url(mt_ticket(), kind="t") + "&hi=1")
+
+    assert small.content == client_fake.thumb_bytes
+    assert big.content == cover
+
+
+async def test_artwork_is_asked_for_once(settings: Settings, client_fake: FakeClient) -> None:
+    seen: list[int] = []
+    original = client_fake.download_media
+
+    async def counting(message: object, file: object, thumb: int) -> bytes:
+        seen.append(thumb)
+        return await original(message, file, thumb)
+
+    client_fake.download_media = counting  # type: ignore[method-assign]
+    async with httpx.AsyncClient(transport=bot_api_transport([])) as tg:
+        async with await make_http(settings, client_fake, tg) as edge:
+            for _ in range(3):
+                assert (await edge.get(url(mt_ticket(), kind="t"))).status_code == 200
+    assert len(seen) == 1
+
+
+async def test_a_missing_cover_is_remembered_briefly(
+    settings: Settings, client_fake: FakeClient
+) -> None:
+    client_fake.thumb_bytes = b""
+    client_fake.file_bytes = DATA
+    async with httpx.AsyncClient(transport=bot_api_transport([])) as tg:
+        async with await make_http(settings, client_fake, tg) as edge:
+            first = await edge.get(url(mt_ticket(), kind="t"))
+            client_fake.thumb_bytes = b"\xff\xd8late"
+            second = await edge.get(url(mt_ticket(), kind="t"))
+    assert first.status_code == second.status_code == 404
+    assert first.headers["cache-control"] == "private, max-age=600"
+
+
+def test_artwork_cache_is_bounded_and_expires() -> None:
+    from tmusic_indexer.stream import _MISSING, ArtworkCache
+
+    cache = ArtworkCache(max_bytes=100, ttl_s=10, miss_ttl_s=1)
+    cache.put((1, False), (b"x" * 20, "image/jpeg"), now=0)
+    cache.put((2, False), (b"y" * 20, "image/jpeg"), now=0)
+    cache.get((1, False), now=1)  # 1 is now the most recently used
+    cache.put((3, False), (b"z" * 20, "image/jpeg"), now=1)
+    cache.put((4, False), (b"w" * 20, "image/jpeg"), now=1)
+    cache.put((5, False), (b"v" * 21, "image/jpeg"), now=1)  # over 100 bytes: 2 goes
+    assert cache.get((2, False), now=2) is _MISSING
+    assert cache.get((1, False), now=2) is not _MISSING
+    # Too big for one entry: not kept at all.
+    cache.put((6, False), (b"b" * 50, "image/png"), now=2)
+    assert cache.get((6, False), now=2) is _MISSING
+    # A miss lives for less time than a hit.
+    cache.put((7, True), None, now=2)
+    assert cache.get((7, True), now=2.5) is None
+    assert cache.get((7, True), now=4) is _MISSING
+    assert cache.get((1, False), now=20) is _MISSING
+    assert len(cache) >= 1
+
+
+async def test_a_bot_api_track_can_still_show_its_embedded_cover(settings: Settings) -> None:
+    from tests.test_id3 import apic_tag
+
+    cover = bytes([0x89]) + b"PNGbotcover"
+    body = apic_tag(cover) + DATA
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.path.endswith("/getFile"):
+            return httpx.Response(200, json={"ok": True, "result": {"file_path": "music/f.mp3"}})
+        start, end = (int(x) for x in request.headers["Range"].removeprefix("bytes=").split("-"))
+        return httpx.Response(206, content=body[start : end + 1])
+
+    ticket = mt_ticket(message_id=None, channel_username=None, bot_file_id="BQAD", size=len(body))
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as tg:
+        async with await make_http(settings, FakeClient([]), tg) as edge:
+            resp = await edge.get(url(ticket, kind="t"))
+    assert resp.status_code == 200
+    assert resp.content == cover

@@ -12,7 +12,8 @@ import {
   useChannelTracks,
   useTrack,
 } from '@/api/hooks';
-import { useFollowArtist, useThisIs } from '@/api/listening';
+import { useFollowArtist, useRelatedArtists, useThisIs } from '@/api/listening';
+import { PinButton } from '@/components/PinButton';
 import { TrackRow } from '@/components/TrackRow';
 import { Cover, ErrorNote, Glass, LoadMore, Spinner, bouncy, cx } from '@/components/ui';
 import { ChevronIcon, PlayIcon, ShuffleIcon } from '@/components/icons';
@@ -69,6 +70,37 @@ function FollowButton({ artistId, following }: { artistId: number; following: bo
     >
       {on ? t('artist.following') : t('artist.follow')}
     </motion.button>
+  );
+}
+
+/** "Fans also like": other artists this one's listeners play. */
+function RelatedArtists({ artistId }: { artistId: number }) {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const related = useRelatedArtists(artistId);
+  const items = related.data ?? [];
+  if (items.length === 0) return null;
+  return (
+    <section className="mt-5">
+      <h2 className="mb-2 text-[14px] font-bold">{t('artist.fansAlsoLike')}</h2>
+      <div className="flex gap-3.5 overflow-x-auto pb-1">
+        {items.map((other, index) => (
+          <motion.button
+            key={other.id}
+            type="button"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: Math.min(index, 8) * 0.04 }}
+            whileTap={{ scale: 0.95 }}
+            className="w-24 shrink-0 text-center"
+            onClick={() => navigate(`/artist/${other.id}`)}
+          >
+            <Cover src={other.image_url} seed={other.name} size={96} radius={48} glyph="🎤" />
+            <p className="mt-1.5 truncate text-[12.5px] font-medium">{other.name}</p>
+          </motion.button>
+        ))}
+      </div>
+    </section>
   );
 }
 
@@ -193,7 +225,11 @@ export function ArtistScreen() {
   const tracks = useMemo(() => flatten(tracksQuery.data), [tracksQuery.data]);
   const top = page.data?.top_tracks ?? [];
   const albums = page.data?.albums ?? [];
-  const thumbs = useThumbs([...top, ...tracks].map((track) => track.id));
+  const thumbs = useThumbs([
+    ...top.map((track) => track.id),
+    ...albums.map((album) => album.cover_track_id).filter((id): id is number => id != null),
+    ...tracks.map((track) => track.id),
+  ]);
 
   if (artist.isError) return <ErrorNote onRetry={() => void artist.refetch()} />;
   if (!artist.data) return <div className="grid place-items-center py-20"><Spinner /></div>;
@@ -214,7 +250,10 @@ export function ArtistScreen() {
             thumb={artist.data.image_url ?? undefined}
           />
         </div>
-        {page.data && <FollowButton artistId={id} following={page.data.following ?? false} />}
+        <div className="flex shrink-0 items-center gap-1">
+          <PinButton kind="artist" refId={id} />
+          {page.data && <FollowButton artistId={id} following={page.data.following ?? false} />}
+        </div>
       </div>
 
       <ThisIsCard artistId={id} name={artist.data.name} image={artist.data.image_url} />
@@ -251,7 +290,12 @@ export function ArtistScreen() {
                   navigate(`/album/${id}/${encodeURIComponent(album.name)}`)
                 }
               >
-                <Cover seed={album.name} size={112} glyph="💿" />
+                <Cover
+                  src={album.cover_track_id ? thumbs[album.cover_track_id] : undefined}
+                  seed={album.name}
+                  size={112}
+                  glyph="💿"
+                />
                 <p className="mt-1 truncate text-[12.5px] font-medium">{album.name}</p>
                 <p className="truncate text-[11px] text-[var(--ink-dim)]">
                   {album.year ? `${album.year} · ` : ''}
@@ -262,6 +306,8 @@ export function ArtistScreen() {
           </div>
         </section>
       )}
+
+      <RelatedArtists artistId={id} />
 
       <h2 className="mt-5 text-[14px] font-bold">{t('artist.allTracks')}</h2>
       <TrackList tracks={tracks} thumbs={thumbs} source="library" sourceId={id} />

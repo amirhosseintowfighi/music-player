@@ -14,6 +14,8 @@ export interface TelegramTheme {
 
 interface WebApp {
   initData?: string;
+  /** "android", "ios", "tdesktop", "macos", "weba", "webk", "unknown"… */
+  platform?: string;
   colorScheme?: 'light' | 'dark';
   themeParams?: Record<string, string>;
   ready?: () => void;
@@ -41,6 +43,14 @@ function webApp(): WebApp | undefined {
 
 export function isInsideTelegram(): boolean {
   return Boolean(webApp()?.initData);
+}
+
+/** The bot the Mini App belongs to, for links and share cards. */
+export const BOT_USERNAME = (import.meta.env.VITE_BOT_USERNAME as string | undefined) ?? 'tmusic_bot';
+
+/** Which Telegram app we are running in ("android", "ios", "tdesktop"…), or "". */
+export function telegramPlatform(): string {
+  return webApp()?.platform ?? '';
 }
 
 /** Raw initData string for POST /v1/auth/telegram. Empty when it cannot be found. */

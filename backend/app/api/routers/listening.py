@@ -1,27 +1,37 @@
-"""The listening features: artist essentials and follows, lyrics, hiding a song,
-private sessions, long-track progress, folders, Blend, Daylist and the DJ."""
+"""The listening features: artist essentials, follows and "Fans also like", lyrics
+and credits, hiding or snoozing a song, private sessions, long-track progress,
+folders and pins, Blend, Daylist, the DJ and Connect."""
 
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query, Response
 
 from app.api.deps import Claims, HttpDep, RedisDep, SessionDep, SettingsDep, WritableClaims
-from app.errors import NotFound
+from app.errors import InvalidInput, NotFound
 from app.schemas import (
     ArtistOut,
     BlendInviteOut,
     BlendOut,
+    ConnectCommandIn,
+    ConnectCommandOut,
+    CreditsOut,
     DaylistOut,
+    DeviceOut,
     DjOut,
     DjSegmentOut,
     FilePlaylistIn,
     FolderIn,
     FolderOut,
     FollowArtistOut,
+    HeartbeatIn,
+    HeartbeatOut,
+    HiddenOut,
+    HideIn,
     LyricsOut,
     Page,
+    PinOut,
     PrivateSessionIn,
     PrivateSessionOut,
     ProgressIn,
@@ -29,16 +39,20 @@ from app.schemas import (
     ThisIsOut,
     TrackIdsIn,
     TrackOut,
+    TrackSourceOut,
 )
 from app.services import (
     blends,
+    connect,
     folders,
     follows,
     lastfm,
     library,
     lyrics,
+    pins,
     playlists,
     recommendations,
+    related,
     taste,
 )
 
@@ -90,6 +104,43 @@ async def unfollow_artist(
     )
 
 
+@router.get("/artists/{artist_id}/related", response_model=list[ArtistOut])
+async def related_artists(artist_id: int, claims: Claims, session: SessionDep) -> list[ArtistOut]:
+    """Fans also like: from our similarity matrix, co-listening, then collaborators."""
+    out: list[ArtistOut] = []
+    for found in await related.related_artist_ids(session, artist_id):
+        try:
+            out.append(await library.get_artist(session, found, claims.lang))
+        except NotFound:
+            continue
+    return out
+
+
+@router.get("/tracks/{track_id}/credits", response_model=CreditsOut)
+async def track_credits(track_id: int, claims: Claims, session: SessionDep) -> CreditsOut:
+    found = await related.credits(session, track_id)
+    track = await library.get_track(session, found.track_id, claims.lang, claims.user_id)
+    return CreditsOut(
+        track=track,
+        genre=found.genre,
+        file_name=found.file_name,
+        mime_type=found.mime_type,
+        file_size=found.file_size,
+        first_posted_at=found.first_posted_at,
+        channels=found.channels,
+        sources=[
+            TrackSourceOut(
+                channel_id=s.channel_id,
+                username=s.username,
+                title=s.title,
+                subscribers_count=s.subscribers_count,
+                posted_at=s.posted_at,
+            )
+            for s in found.sources
+        ],
+    )
+
+
 @router.get("/me/artists", response_model=list[ArtistOut])
 async def followed_artists(claims: Claims, session: SessionDep) -> list[ArtistOut]:
     """The artists this user follows, newest follow first."""
@@ -125,10 +176,13 @@ async def track_lyrics(
 # ── hide a song ──
 
 
-@router.put("/tracks/{track_id}/hide", status_code=204)
-async def hide_track(track_id: int, claims: WritableClaims, session: SessionDep) -> Response:
-    await taste.hide(session, claims.user_id, track_id)
-    return Response(status_code=204)
+@router.put("/tracks/{track_id}/hide", response_model=HiddenOut)
+async def hide_track(
+    track_id: int, claims: WritableClaims, session: SessionDep, body: HideIn | None = None
+) -> HiddenOut:
+    """Hides a song for good, or snoozes it (``snooze_days``) until it may come back."""
+    until = await taste.hide(session, claims.user_id, track_id, body.snooze_days if body else None)
+    return HiddenOut(track_id=track_id, until=until)
 
 
 @router.delete("/tracks/{track_id}/hide", status_code=204)
@@ -140,6 +194,15 @@ async def unhide_track(track_id: int, claims: WritableClaims, session: SessionDe
 @router.get("/me/hidden", response_model=list[int])
 async def hidden_tracks(claims: Claims, session: SessionDep) -> list[int]:
     return sorted(await taste.hidden_ids(session, claims.user_id))
+
+
+@router.get("/me/hidden/tracks", response_model=list[HiddenOut])
+async def hidden_detail(claims: Claims, session: SessionDep) -> list[HiddenOut]:
+    """Hidden and snoozed songs, newest first, with when each comes back."""
+    return [
+        HiddenOut(track_id=track_id, until=until)
+        for track_id, until in await taste.hidden(session, claims.user_id)
+    ]
 
 
 # ── private session ──
@@ -334,3 +397,109 @@ async def dj(claims: Claims, session: SessionDep) -> DjOut:
             if any(t in hydrated for t in segment.track_ids)
         ]
     )
+
+
+# ── pins ──
+
+
+@router.get("/me/pins", response_model=list[PinOut])
+async def list_pins(claims: Claims, session: SessionDep) -> list[PinOut]:
+    return [
+        PinOut(kind=kind, ref_id=ref_id)
+        for kind, ref_id in await pins.list_for(session, claims.user_id)
+    ]
+
+
+@router.put("/me/pins/{kind}/{ref_id}", response_model=list[PinOut])
+async def pin(
+    kind: Literal["playlist", "artist"], ref_id: int, claims: WritableClaims, session: SessionDep
+) -> list[PinOut]:
+    await pins.pin(session, claims.user_id, kind, ref_id)
+    return await list_pins(claims, session)
+
+
+@router.delete("/me/pins/{kind}/{ref_id}", response_model=list[PinOut])
+async def unpin(
+    kind: Literal["playlist", "artist"], ref_id: int, claims: WritableClaims, session: SessionDep
+) -> list[PinOut]:
+    await pins.unpin(session, claims.user_id, kind, ref_id)
+    return await list_pins(claims, session)
+
+
+# ── Connect: your devices ──
+
+
+@router.post("/connect/heartbeat", response_model=HeartbeatOut)
+async def connect_heartbeat(
+    body: HeartbeatIn, claims: Claims, session: SessionDep, redis: RedisDep
+) -> HeartbeatOut:
+    others, commands = await connect.heartbeat(
+        redis,
+        claims.user_id,
+        connect.Device(
+            id=body.device_id,
+            name=body.name,
+            kind=body.kind,
+            seen=0,
+            track_id=body.state.track_id,
+            position_s=body.state.position_s,
+            playing=body.state.playing,
+        ),
+    )
+    wanted = {d.track_id for d in others if d.track_id} | {t for c in commands for t in c.track_ids}
+    hydrated = {
+        t.id: t
+        for t in await library.hydrate_tracks(
+            session, sorted(wanted), claims.lang, viewer_id=claims.user_id
+        )
+    }
+    return HeartbeatOut(
+        devices=[
+            DeviceOut(
+                id=d.id,
+                name=d.name,
+                kind=d.kind,
+                playing=d.playing,
+                position_s=d.position_s,
+                track=hydrated.get(d.track_id) if d.track_id else None,
+            )
+            for d in others
+        ],
+        commands=[
+            ConnectCommandOut(
+                action=c.action,
+                sender=c.sender,
+                index=c.index,
+                position_s=c.position_s,
+                playing=c.playing,
+                items=[hydrated[t] for t in c.track_ids if t in hydrated],
+            )
+            for c in commands
+        ],
+    )
+
+
+@router.post("/connect/command", status_code=204)
+async def connect_command(body: ConnectCommandIn, claims: Claims, redis: RedisDep) -> Response:
+    if body.action == "transfer" and not body.track_ids:
+        raise InvalidInput("nothing to play", reason="empty")
+    await connect.send(
+        redis,
+        claims.user_id,
+        body.target,
+        connect.Command(
+            action=body.action,
+            sender=body.sender,
+            track_ids=tuple(body.track_ids),
+            index=min(body.index, max(len(body.track_ids) - 1, 0)),
+            position_s=body.position_s,
+            playing=body.playing,
+        ),
+    )
+    return Response(status_code=204)
+
+
+@router.delete("/connect/devices/{device_id}", status_code=204)
+async def connect_forget(device_id: str, claims: Claims, redis: RedisDep) -> Response:
+    await connect.forget(redis, claims.user_id, device_id[:64])
+    return Response(status_code=204)
