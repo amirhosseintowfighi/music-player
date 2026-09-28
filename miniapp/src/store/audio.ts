@@ -6,6 +6,7 @@
  */
 import { create } from 'zustand';
 
+import { fragileWebView } from '@/lib/perf';
 import { onElement } from '@/player/engine';
 
 export type EqPreset = 'flat' | 'bass' | 'treble' | 'vocal' | 'acoustic' | 'electronic' | 'night';
@@ -80,6 +81,9 @@ interface Chain {
 let chain: Chain | null = null;
 
 function wanted(): boolean {
+  // WebKitGTK (Telegram Desktop on Linux) crashes routing a media element through Web
+  // Audio: there the music plays unprocessed rather than not at all.
+  if (fragileWebView()) return false;
   const { normalize, eq } = useAudioSettings.getState();
   return normalize || eq !== 'flat';
 }

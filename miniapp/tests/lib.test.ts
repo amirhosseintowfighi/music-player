@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { formatNumber, translate } from '@/i18n';
 import { DEFAULT_PALETTE, applyPalette, paletteFromImageData, parsePalette } from '@/lib/color';
 import { artistNames, coverColors, duration, relativeTime } from '@/lib/format';
-import { deviceLooksSlow, watchFrameRate } from '@/lib/perf';
+import { deviceLooksSlow, fragileWebView, watchFrameRate } from '@/lib/perf';
 import { getInitData, haptic, initTelegram } from '@/lib/telegram';
 
 describe('formatting', () => {
@@ -163,5 +163,17 @@ describe('crediting a track', () => {
   it('says nothing rather than something wrong when even that is missing', () => {
     expect(artistNames({ artists: [] })).toBe('');
     expect(artistNames({ artists: [], channel: null })).toBe('');
+  });
+});
+
+describe('fragile web views', () => {
+  it('recognises WebKitGTK (Telegram Desktop on Linux) and nothing else', () => {
+    const gtk = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
+    const chromeLinux = 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36';
+    const android = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Mobile Safari/537.36';
+    const mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_5) AppleWebKit/605.1.15 (KHTML, like Gecko)';
+    const windows = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/129.0 Safari/537.36 Edg/129.0';
+    expect(fragileWebView(gtk)).toBe(true);
+    for (const ua of [chromeLinux, android, mac, windows]) expect(fragileWebView(ua)).toBe(false);
   });
 });

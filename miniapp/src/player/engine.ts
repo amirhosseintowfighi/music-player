@@ -6,6 +6,7 @@
  * first play so that a Mini App that never plays anything costs nothing.
  */
 import { ApiError, post, type StreamTicket, type Track } from '@/api/client';
+import { fragileWebView } from '@/lib/perf';
 
 const TICKET_SAFETY_MS = 20_000;
 
@@ -41,10 +42,17 @@ export function audio(): HTMLAudioElement {
   return elements[active] as HTMLAudioElement;
 }
 
+/**
+ * WebKitGTK (Telegram Desktop on Linux) gets one element only: every <audio> there is
+ * a GStreamer pipeline, and a second one buffering beside the first is one of the
+ * things that brings its web process down. It loses gapless and crossfade, nothing else.
+ */
+const single = fragileWebView();
+
 /** Both elements, creating the spare if needed — for listeners that watch both. */
 export function allAudio(): HTMLAudioElement[] {
   audio();
-  if (elements.length < 2) elements.push(make());
+  if (elements.length < 2 && !single) elements.push(make());
   return elements;
 }
 
@@ -100,6 +108,9 @@ function silentUrl(): string {
 
 /** True once every element has been unlocked (nothing left to do on a tap). */
 export function unlockAudio(): boolean {
+  // Desktop engines need no unlocking, and WebKitGTK is better off without the extra
+  // media pipeline the silent clip would start.
+  if (single) return true;
   let done = true;
   for (const el of allAudio()) {
     if (unlocked.has(el)) continue;
@@ -158,7 +169,7 @@ export function spareTrackId(): number | null {
 
 /** Buffers ``track`` in the spare element so it can start without waiting. */
 export async function preloadNext(track: Track): Promise<void> {
-  if (spareTrack === track.id) return;
+  if (single || spareTrack === track.id) return;
   const el = spare();
   spareTrack = track.id;
   try {

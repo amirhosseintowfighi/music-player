@@ -291,7 +291,7 @@ export function Aurora() {
   return (
     <div
       aria-hidden
-      className="pointer-events-none fixed -inset-x-[20%] -top-[20%] -z-10 h-[70vh] transition-[background] duration-700"
+      className="aurora pointer-events-none fixed -inset-x-[20%] -top-[20%] -z-10 h-[70vh] transition-[background] duration-700"
       style={{
         background:
           'radial-gradient(40% 50% at 20% 20%, color-mix(in oklab, var(--art-1) 55%, transparent), transparent 70%),' +
