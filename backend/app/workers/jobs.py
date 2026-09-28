@@ -22,8 +22,11 @@ from app.models import EdgeNode, User
 from app.redis_util import resolve
 from app.services import (
     artistinfo,
+    blends,
     broadcast,
     crawling,
+    follows,
+    lastfm,
     metadata,
     notifications,
     recommendations,
@@ -376,6 +379,25 @@ async def enrich_artists(ctx: Ctx) -> dict[str, int]:
     settings = get_settings()
     async with session_scope(_maker(ctx)) as session:
         return await artistinfo.enrich_batch(session, ctx["http"], settings)
+
+
+async def enrich_lastfm(ctx: Ctx) -> dict[str, int]:
+    """Learns the order of artists' best-known songs for "This Is" playlists (0015)."""
+    settings = get_settings()
+    async with session_scope(_maker(ctx)) as session:
+        return await lastfm.enrich_batch(session, ctx["http"], settings)
+
+
+async def refresh_blends(ctx: Ctx) -> int:
+    """Rebuilds every Blend from both people's latest listening, once a day."""
+    async with session_scope(_maker(ctx)) as session:
+        return await blends.refresh_all(session)
+
+
+async def notify_new_releases(ctx: Ctx) -> int:
+    """Tells followers when an artist they follow got a new track today."""
+    async with session_scope(_maker(ctx)) as session:
+        return await follows.queue_new_releases(session)
 
 
 PREWARM_BATCH = 120

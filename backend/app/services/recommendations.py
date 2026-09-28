@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.errors import NotFound
 from app.models import Playlist, User
-from app.services import history, plans, playlists, users
+from app.services import history, plans, playlists, taste, users
 from tmusic_common.logging import get_logger
 
 log = get_logger(__name__)
@@ -47,6 +47,8 @@ DISCOVER_SIZE = 30
 MIX_SIZE = 25
 MIXES_PER_USER = 3
 MAX_PER_ARTIST = 2  # diversity rule from ADR-0011
+RADAR_SIZE = 30
+RADAR_ARTISTS = 40
 
 
 @dataclass(frozen=True, slots=True)
@@ -378,6 +380,14 @@ async def _diversify(
 
 # ── generated playlists ───────────────────────────────────────────────────────
 
+# Playlists the app makes for a listener (a Blend belongs to two people and is shown
+# with them, not here).
+GENERATED_KINDS = ("discover_weekly", "daily_mix", "release_radar", "daylist")
+GENERATED_TITLES: dict[str, tuple[str, str]] = {
+    "discover_weekly": ("کشف هفتگی", "Discover Weekly"),
+    "release_radar": ("رادار آهنگ‌های تازه", "Release Radar"),
+}
+
 
 def week_start(today: date | None = None) -> date:
     day = today or datetime.now(UTC).date()
@@ -474,6 +484,8 @@ async def _replace_generated(
     track_ids: list[int],
 ) -> Playlist:
     """Creates (or refills) one generated playlist. Idempotent per (user, kind, day)."""
+    # A song the listener hid never comes back in anything we make for them.
+    track_ids = await taste.without_hidden(session, user_id, track_ids)
     existing = (
         await session.scalars(
             select(Playlist).where(
@@ -645,6 +657,303 @@ async def _mix_for_artist(session: AsyncSession, user_id: int, artist_id: int) -
     return (anchor + around)[:MIX_SIZE]
 
 
+# ── Release Radar ─────────────────────────────────────────────────────────────
+
+
+async def _radar_artists(session: AsyncSession, user_id: int) -> list[int]:
+    """Followed artists first, then the ones this user actually plays."""
+    rows = await session.execute(
+        text(
+            """
+        SELECT artist_id FROM (
+            SELECT f.artist_id, 1000000 AS weight FROM artist_follows f WHERE f.user_id = :uid
+            UNION ALL
+            SELECT ta.artist_id, count(*) AS weight
+              FROM play_history h
+              JOIN track_artists ta ON ta.track_id = h.track_id AND ta.role = 'primary'
+             WHERE h.user_id = :uid AND h.played_at > now() - interval '90 days'
+             GROUP BY ta.artist_id
+            UNION ALL
+            SELECT ta.artist_id, 3 * count(*)
+              FROM likes l
+              JOIN track_artists ta ON ta.track_id = l.track_id AND ta.role = 'primary'
+             WHERE l.user_id = :uid
+             GROUP BY ta.artist_id
+        ) s
+        GROUP BY artist_id ORDER BY sum(weight) DESC LIMIT :limit
+        """
+        ).bindparams(uid=user_id, limit=RADAR_ARTISTS)
+    )
+    return [row[0] for row in rows]
+
+
+async def release_radar(
+    session: AsyncSession, user_id: int, *, for_week: date | None = None
+) -> Playlist:
+    """New music from the artists this user follows and plays, refreshed weekly."""
+    monday = for_week or week_start()
+    artists = await _radar_artists(session, user_id)
+    chosen: list[int] = []
+    if artists:
+        # Three weeks first; a quiet stretch widens to two months rather than leave
+        # the playlist empty.
+        for days in (21, 60):
+            rows = await session.execute(
+                text(
+                    """
+                SELECT t.id FROM tracks t
+                 WHERE NOT t.hidden AND t.canonical_track_id IS NULL
+                   AND t.created_at > now() - make_interval(days => :days)
+                   AND EXISTS (SELECT 1 FROM track_artists ta
+                                WHERE ta.track_id = t.id AND ta.artist_id = ANY(:artists))
+                   AND NOT EXISTS (SELECT 1 FROM hidden_tracks x
+                                    WHERE x.user_id = :uid AND x.track_id = t.id)
+                 ORDER BY t.created_at DESC, t.id DESC
+                 LIMIT :limit
+                """
+                ).bindparams(days=days, artists=artists, uid=user_id, limit=RADAR_SIZE * 3)
+            )
+            chosen = await _diversify(session, [row[0] for row in rows])
+            if len(chosen) >= RADAR_SIZE // 3:
+                break
+    return await _replace_generated(
+        session,
+        user_id,
+        kind="release_radar",
+        name="Release Radar",
+        description="New music from the artists you follow and play.",
+        generated_for=monday,
+        track_ids=chosen[:RADAR_SIZE],
+    )
+
+
+# ── "more like these": Enhance, Smart Shuffle ─────────────────────────────────
+
+
+async def for_tracks(
+    session: AsyncSession, user_id: int, seed_ids: list[int], limit: int = 20
+) -> list[int]:
+    """Tracks that belong next to ``seed_ids`` and are not already among them.
+
+    This is what a playlist's "recommended songs" and Smart Shuffle draw from: the
+    neighbours the seeds share most, then — for a playlist too new for the matrix —
+    other popular songs by the same artists.
+    """
+    if not seed_ids:
+        return []
+    seeds = list(dict.fromkeys(seed_ids))[:200]
+    exclude = set(seeds) | await taste.hidden_ids(session, user_id)
+    rows = await session.execute(
+        text(
+            """
+        SELECT s.similar_id FROM track_similarity s
+          JOIN tracks t ON t.id = s.similar_id
+         WHERE s.track_id = ANY(:seeds) AND NOT t.hidden AND t.canonical_track_id IS NULL
+         GROUP BY s.similar_id
+         ORDER BY count(*) DESC, sum(s.score) DESC
+         LIMIT :limit
+        """
+        ).bindparams(seeds=seeds, limit=limit * 4)
+    )
+    found = [row[0] for row in rows if row[0] not in exclude]
+    if len(found) < limit:
+        more = await session.execute(
+            text(
+                """
+            SELECT t.id FROM tracks t
+             WHERE NOT t.hidden AND t.canonical_track_id IS NULL
+               AND NOT (t.id = ANY(:seeds))
+               AND EXISTS (
+                   SELECT 1 FROM track_artists a
+                    WHERE a.track_id = t.id AND a.role = 'primary' AND a.artist_id IN (
+                        SELECT artist_id FROM track_artists WHERE track_id = ANY(:seeds)
+                    )
+               )
+             ORDER BY t.likes_count DESC, t.plays_total DESC, t.id
+             LIMIT :limit
+            """
+            ).bindparams(seeds=seeds, limit=limit * 3)
+        )
+        known = set(found)
+        found += [row[0] for row in more if row[0] not in exclude and row[0] not in known]
+    return (await _diversify(session, found))[:limit]
+
+
+# ── Daylist ───────────────────────────────────────────────────────────────────
+
+Daypart = Literal["morning", "afternoon", "evening", "night"]
+DAYPARTS: dict[Daypart, tuple[int, int, str, str]] = {
+    # name: (from hour, to hour, Persian title, English title), in the user's own time.
+    "morning": (5, 11, "صبح", "morning"),
+    "afternoon": (11, 17, "بعدازظهر", "afternoon"),
+    "evening": (17, 22, "عصر و شب", "evening"),
+    "night": (22, 29, "نیمه‌شب", "late night"),  # 29 = 5 the next morning
+}
+DAYLIST_SIZE = 30
+
+
+def daypart(now: datetime, tz_offset_minutes: int) -> Daypart:
+    hour = (now + timedelta(minutes=tz_offset_minutes)).hour
+    for name, (start, end, _, _) in DAYPARTS.items():
+        if start <= hour < end or start <= hour + 24 < end:
+            return name
+    return "night"
+
+
+async def daylist(
+    session: AsyncSession, user_id: int, now: datetime | None = None
+) -> tuple[Playlist, Daypart]:
+    """What this listener plays at this time of day, and more like it.
+
+    Built from the plays that happened in the same part of the day (in their own
+    timezone), so the morning list and the late-night one really are different.
+    """
+    moment = now or datetime.now(UTC)
+    user = await session.get(User, user_id)
+    if user is None:
+        raise NotFound("user not found")
+    part = daypart(moment, user.tz_offset_minutes)
+    start, end, title_fa, title_en = DAYPARTS[part]
+    rows = await session.execute(
+        text(
+            """
+        SELECT coalesce(t.canonical_track_id, h.track_id) AS track_id, count(*) AS plays
+          FROM play_history h JOIN tracks t ON t.id = h.track_id
+         WHERE h.user_id = :uid AND h.played_at > now() - interval '60 days' AND NOT t.hidden
+           AND (
+             extract(hour FROM h.played_at + make_interval(mins => :tz)) >= :start
+             AND extract(hour FROM h.played_at + make_interval(mins => :tz)) < :end
+             OR extract(hour FROM h.played_at + make_interval(mins => :tz)) + 24 < :end
+           )
+         GROUP BY 1 ORDER BY 2 DESC LIMIT 40
+        """
+        ).bindparams(uid=user_id, tz=user.tz_offset_minutes, start=start, end=end)
+    )
+    favourites = [row[0] for row in rows]
+    seeds = favourites or await _seed_tracks(session, user_id)
+    fresh = await for_tracks(session, user_id, seeds, DAYLIST_SIZE)
+    # Half what they reach for at this hour, half new things that sit with it.
+    picked = mix_alternating(favourites[: DAYLIST_SIZE // 2], fresh)[:DAYLIST_SIZE]
+    if not picked:
+        picked = await _library_fallback(session, user_id, DAYLIST_SIZE)
+    name = f"Daylist · {title_en}" if user.lang == "en" else f"دی‌لیست · {title_fa}"
+    playlist = await _replace_generated(
+        session,
+        user_id,
+        kind="daylist",
+        name=name,
+        description=part,
+        generated_for=(moment + timedelta(minutes=user.tz_offset_minutes)).date(),
+        track_ids=picked,
+    )
+    return playlist, part
+
+
+def mix_alternating(a: list[int], b: list[int]) -> list[int]:
+    out: list[int] = []
+    seen: set[int] = set()
+    for pair in zip(a, b, strict=False):
+        for track in pair:
+            if track not in seen:
+                out.append(track)
+                seen.add(track)
+    for track in a[len(b) :] + b[len(a) :]:
+        if track not in seen:
+            out.append(track)
+            seen.add(track)
+    return out
+
+
+# ── DJ ────────────────────────────────────────────────────────────────────────
+
+
+@dataclass(frozen=True, slots=True)
+class DjSegment:
+    kind: DjKind
+    track_ids: list[int]
+
+
+DJ_SEGMENT = 5
+DjKind = Literal["favorites", "throwback", "discovery", "new"]
+DJ_KINDS: tuple[DjKind, ...] = ("favorites", "throwback", "discovery", "new")
+
+
+async def dj_session(session: AsyncSession, user_id: int) -> list[DjSegment]:
+    """A DJ set in segments, each introduced by the DJ in the app.
+
+    Favourites to open, something they have not played in a while, something new to
+    them, then new releases — and round again with the next five of each.
+    """
+    hidden = await taste.hidden_ids(session, user_id)
+    favourites = [
+        row[0]
+        for row in await session.execute(
+            text(
+                """
+            SELECT coalesce(t.canonical_track_id, h.track_id), count(*) FROM play_history h
+              JOIN tracks t ON t.id = h.track_id
+             WHERE h.user_id = :uid AND h.completed AND NOT t.hidden
+               AND h.played_at > now() - interval '30 days'
+             GROUP BY 1 ORDER BY 2 DESC, 1 LIMIT 30
+            """
+            ).bindparams(uid=user_id)
+        )
+    ]
+    throwback = [
+        row[0]
+        for row in await session.execute(
+            text(
+                """
+            SELECT coalesce(t.canonical_track_id, h.track_id), count(*) FROM play_history h
+              JOIN tracks t ON t.id = h.track_id
+             WHERE h.user_id = :uid AND h.completed AND NOT t.hidden
+               AND h.played_at <= now() - interval '60 days'
+             GROUP BY 1
+            HAVING max(h.played_at) <= now() - interval '60 days'
+             ORDER BY 2 DESC, 1 LIMIT 30
+            """
+            ).bindparams(uid=user_id)
+        )
+    ]
+    seeds = await _seed_tracks(session, user_id)
+    discovery = await _candidates(session, user_id, seeds, 30) if seeds else []
+    if not discovery:
+        discovery = await trending_ids(session, "7d", "plays", 30)
+    artists = await _radar_artists(session, user_id)
+    new = []
+    if artists:
+        new = [
+            row[0]
+            for row in await session.execute(
+                text(
+                    "SELECT t.id FROM tracks t WHERE NOT t.hidden AND t.canonical_track_id IS NULL"
+                    " AND t.created_at > now() - interval '30 days'"
+                    " AND EXISTS (SELECT 1 FROM track_artists ta WHERE ta.track_id = t.id"
+                    " AND ta.artist_id = ANY(:a)) ORDER BY t.created_at DESC LIMIT 30"
+                ).bindparams(a=artists)
+            )
+        ]
+    pools: dict[str, list[int]] = {
+        "favorites": favourites,
+        "throwback": throwback,
+        "discovery": discovery,
+        "new": new,
+    }
+    used: set[int] = set(hidden)
+    segments: list[DjSegment] = []
+    for round_ in range(3):
+        for kind in DJ_KINDS:
+            pool = [t for t in pools[kind] if t not in used]
+            chunk = pool[:DJ_SEGMENT]
+            if not chunk:
+                continue
+            used.update(chunk)
+            segments.append(DjSegment(kind=kind, track_ids=chunk))
+        if round_ == 0 and not segments:
+            break
+    return segments
+
+
 # ── the Discover screen ───────────────────────────────────────────────────────
 
 
@@ -653,10 +962,10 @@ async def generated_playlists(session: AsyncSession, user_id: int) -> list[Playl
         select(Playlist)
         .where(
             Playlist.user_id == user_id,
-            Playlist.kind.in_(("discover_weekly", "daily_mix")),
+            Playlist.kind.in_(GENERATED_KINDS),
             Playlist.tracks_count > 0,
         )
-        .order_by(Playlist.kind, Playlist.name)
+        .order_by(Playlist.kind, Playlist.generated_for.desc().nulls_last(), Playlist.name)
     )
     return list(rows.all())
 
@@ -670,15 +979,25 @@ async def discover_sections(session: AsyncSession, user_id: int) -> list[Section
     all_mixes = "all_mixes" in plan.features
 
     sections: list[Section] = []
+    latest: dict[str, date] = {}
     for playlist in await generated_playlists(session, user_id):
+        # Only this period's copy of a weekly or daily playlist: last week's is noise.
+        if playlist.kind in ("release_radar", "daylist") and playlist.generated_for:
+            if latest.get(playlist.kind, playlist.generated_for) > playlist.generated_for:
+                continue
+            latest[playlist.kind] = playlist.generated_for
         if playlist.kind == "daily_mix" and not all_mixes:
             continue
+        # The Daylist has a card of its own that knows what time it is.
+        if playlist.kind == "daylist":
+            continue
+        fa, en = GENERATED_TITLES.get(playlist.kind, (playlist.name, playlist.name))
         sections.append(
             Section(
                 id=f"pl-{playlist.id}",
                 kind="playlist",
-                title_fa="کشف هفتگی" if playlist.kind == "discover_weekly" else playlist.name,
-                title_en="Discover Weekly" if playlist.kind == "discover_weekly" else playlist.name,
+                title_fa=fa,
+                title_en=en,
                 playlist_id=playlist.id,
                 track_ids=[],
             )
@@ -727,7 +1046,12 @@ async def refresh_for_user(session: AsyncSession, user_id: int) -> dict[str, Any
     """Regenerates one user's mixes; used by the nightly job and by the admin panel."""
     weekly = await discover_weekly(session, user_id)
     mixes = await daily_mixes(session, user_id)
-    return {"discover_weekly": weekly.tracks_count, "daily_mixes": len(mixes)}
+    radar = await release_radar(session, user_id)
+    return {
+        "discover_weekly": weekly.tracks_count,
+        "daily_mixes": len(mixes),
+        "release_radar": radar.tracks_count,
+    }
 
 
 async def active_user_ids(session: AsyncSession, days: int = 30, limit: int = 5000) -> list[int]:
@@ -746,7 +1070,8 @@ async def prune_generated(session: AsyncSession, keep_days: int = 21) -> int:
     """Old generated playlists are noise in the library; the user never asked for them."""
     result = await session.execute(
         text(
-            "DELETE FROM playlists WHERE kind IN ('discover_weekly','daily_mix')"
+            "DELETE FROM playlists WHERE kind IN ('discover_weekly','daily_mix','release_radar',"
+            "'daylist')"
             " AND generated_for < current_date - make_interval(days => :days) RETURNING 1"
         ).bindparams(days=keep_days)
     )
@@ -765,6 +1090,7 @@ __all__ = [
     "rebuild_similarity",
     "rebuild_trending",
     "refresh_for_user",
+    "release_radar",
     "similar_ids",
     "trending_ids",
     "week_start",

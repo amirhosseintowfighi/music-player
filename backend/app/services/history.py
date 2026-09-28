@@ -133,6 +133,12 @@ async def record_play(session: AsyncSession, user_id: int, event: PlayEvent) -> 
     """Writes one play to the (partitioned) history. Very short plays are ignored."""
     if event.duration_played < MIN_PLAY_SECONDS:
         return False
+    # A private session records nothing: no history, no feed, no recommendations.
+    private = await session.scalar(
+        text("SELECT private_until > now() FROM users WHERE id = :uid").bindparams(uid=user_id)
+    )
+    if private:
+        return False
     root = await canonical_id(session, event.track_id)
     await session.execute(
         text(

@@ -182,6 +182,8 @@ class ArtistPageOut(ApiModel):
     artist: ArtistOut
     top_tracks: list[TrackOut] = []
     albums: list[AlbumRef] = []
+    following: bool = False
+    followers: int = 0
 
 
 class AlbumOut(ApiModel):
@@ -237,7 +239,16 @@ class PlaylistOut(ApiModel):
     id: int
     name: str
     description: str | None
-    kind: Literal["manual", "smart_ai", "discover_weekly", "daily_mix", "radio"]
+    kind: Literal[
+        "manual",
+        "smart_ai",
+        "discover_weekly",
+        "daily_mix",
+        "radio",
+        "release_radar",
+        "blend",
+        "daylist",
+    ]
     is_public: bool
     is_collaborative: bool
     share_slug: str | None
@@ -247,6 +258,8 @@ class PlaylistOut(ApiModel):
     is_owner: bool = True
     can_edit: bool = True
     updated_at: datetime
+    created_at: datetime | None = None
+    folder_id: int | None = None
 
 
 class PlaylistDetailOut(PlaylistOut):
@@ -901,3 +914,95 @@ class JamOut(ApiModel):
     queue_length: int
     # Left out when the caller already has this ``qrev``.
     items: list[JamItemOut] | None = None
+
+
+# ── listening features (0015) ─────────────────────────────────────────────────
+
+
+class ThisIsOut(ApiModel):
+    """An artist's essentials, in the order the world knows them (or ours, without Last.fm)."""
+
+    artist: ArtistOut
+    source: Literal["lastfm", "plays"]
+    items: list[TrackOut]
+
+
+class FollowArtistOut(ApiModel):
+    following: bool
+    followers: int
+
+
+class LyricsOut(ApiModel):
+    track_id: int
+    # False when there are none; kept as an answer, not an error, so it is remembered.
+    found: bool = True
+    # LRC: "[mm:ss.xx] line" per line. Null when only unsynced words exist.
+    synced: str | None = None
+    plain: str | None = None
+    source: str | None = None
+
+
+class TrackIdsIn(ApiModel):
+    track_ids: list[int] = Field(min_length=1, max_length=200)
+
+
+class PrivateSessionIn(ApiModel):
+    on: bool
+
+
+class PrivateSessionOut(ApiModel):
+    private_until: datetime | None = None
+
+
+class ProgressIn(ApiModel):
+    position_s: int = Field(ge=0, le=24 * 3600)
+
+
+class ProgressOut(ApiModel):
+    track_id: int
+    position_s: int
+    finished: bool
+
+
+class FolderIn(ApiModel):
+    name: str = Field(min_length=1, max_length=60)
+
+
+class FolderOut(ApiModel):
+    id: int
+    name: str
+    playlists: int = 0
+
+
+class FilePlaylistIn(ApiModel):
+    folder_id: int | None = None
+
+
+class BlendInviteOut(ApiModel):
+    code: str
+    share_url: str
+
+
+class BlendOut(ApiModel):
+    id: int
+    other_user_id: int
+    other_name: str
+    playlist_id: int | None
+    match_pct: int
+    refreshed_at: datetime
+
+
+class DaylistOut(ApiModel):
+    playlist_id: int
+    name: str
+    part: Literal["morning", "afternoon", "evening", "night"]
+    items: list[TrackOut]
+
+
+class DjSegmentOut(ApiModel):
+    kind: Literal["favorites", "throwback", "discovery", "new"]
+    items: list[TrackOut]
+
+
+class DjOut(ApiModel):
+    segments: list[DjSegmentOut]
