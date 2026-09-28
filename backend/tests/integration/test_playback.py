@@ -8,6 +8,7 @@ frozen player, and the four numbers that tell us playback is healthy must move.
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -97,7 +98,9 @@ async def test_a_prefetch_ticket_carries_a_byte_ceiling(
     assert warm_ticket.user_id == full_ticket.user_id  # still bound to the user
 
 
-async def test_the_edge_refuses_to_serve_past_a_prefetch_ceiling(settings: Any) -> None:
+async def test_the_edge_refuses_to_serve_past_a_prefetch_ceiling(
+    settings: Any, tmp_path: Path
+) -> None:
     """The ceiling is inside the signature, so the client cannot ask for more."""
     from tmusic_indexer.account import Account, ResolverAccount
     from tmusic_indexer.config import Settings as EdgeSettings
@@ -110,6 +113,8 @@ async def test_the_edge_refuses_to_serve_past_a_prefetch_ceiling(settings: Any) 
         internal_api_token="internal-token", tg_api_id=1, tg_api_hash="h",
         session_enc_key="a-very-long-test-key", bot_token="123456:TEST",
         stream_signing_keys=settings.stream_signing_keys.get_secret_value(),
+        # Resolving a channel writes its peer cache here; the default is /data.
+        sessions_dir=tmp_path / "s",
     )  # fmt: skip
     resolver = ResolverAccount(edge_settings)
     resolver.account = Account(key="acc1", client=Telegram())
