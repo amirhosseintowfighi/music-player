@@ -109,6 +109,15 @@
   --glass-blur: 0px;
   --glass-bg: var(--material-solid);
   --glass-bg-strong: var(--material-solid);
+  /* A zero blur is still a backdrop-filter, and still a compositing layer: off
+     entirely (WebKitGTK crashes under them; weak phones stutter). */
+  --glass-filter: none;
+}
+
+/* The big blurred wash behind the full player, likewise. */
+:root[data-perf='low'] .aurora {
+  filter: none;
+  opacity: 0.55;
 }
 
 html,
@@ -143,8 +152,8 @@ body {
 @utility glass {
   position: relative;
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: var(--glass-filter, blur(var(--glass-blur)) saturate(var(--glass-saturate)));
+  -webkit-backdrop-filter: var(--glass-filter, blur(var(--glass-blur)) saturate(var(--glass-saturate)));
   isolation: isolate;
 }
 

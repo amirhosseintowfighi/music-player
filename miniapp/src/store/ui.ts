@@ -2,7 +2,7 @@ import { create } from 'zustand';
 
 import type { Track } from '@/api/client';
 import type { Lang } from '@/i18n';
-import { applyPerf, deviceLooksSlow, readPerfPreference, savePerfPreference, type PerfMode } from '@/lib/perf';
+import { applyPerf, deviceLooksSlow, fragileWebView, readPerfPreference, savePerfPreference, type PerfMode } from '@/lib/perf';
 
 export interface Toast {
   id: number;
@@ -39,6 +39,8 @@ interface UiState {
 let toastId = 0;
 
 function resolveLow(mode: PerfMode): boolean {
+  // WebKitGTK crashes under the glass and blur effects: plain panels, whatever the setting.
+  if (fragileWebView()) return true;
   return mode === 'low' || (mode === 'auto' && deviceLooksSlow());
 }
 

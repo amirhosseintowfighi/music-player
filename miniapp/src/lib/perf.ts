@@ -12,6 +12,18 @@ const STORAGE_KEY = 'tmusic.perf';
 const LOW_FPS = 45;
 const SAMPLE_MS = 2000;
 
+/**
+ * Telegram Desktop on Linux shows Mini Apps in WebKitGTK, and WebKitGTK's web process
+ * dies ("Webview crashed") under exactly what the player leans on: large animated
+ * blurs, backdrop-filter, Web Audio on a media element, several media pipelines at
+ * once. Windows (WebView2) and macOS (WKWebView) are not affected.
+ *
+ * Recognised by its user agent: WebKit on Linux that is neither Chromium nor Android.
+ */
+export function fragileWebView(ua: string = globalThis.navigator?.userAgent ?? ''): boolean {
+  return /Linux/.test(ua) && /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android|CrOS/.test(ua);
+}
+
 export function deviceLooksSlow(): boolean {
   const nav = navigator as Navigator & { deviceMemory?: number; hardwareConcurrency?: number };
   if (typeof nav.deviceMemory === 'number' && nav.deviceMemory <= 4) return true;
