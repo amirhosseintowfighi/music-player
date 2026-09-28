@@ -16,19 +16,86 @@ interface CachedTicket extends StreamTicket {
 }
 
 const tickets = new Map<number, CachedTicket>();
-let element: HTMLAudioElement | null = null;
+
+/**
+ * Two elements, one playing. The spare holds the *next* track, already buffered, so
+ * a track can start the instant the last one ends (gapless) or while it is still
+ * fading out (crossfade). ``audio()`` is always the one the listener hears.
+ */
+let elements: HTMLAudioElement[] = [];
+let active = 0;
+/** Which track the spare element has loaded, if any. */
+let spareTrack: number | null = null;
+const created: ((el: HTMLAudioElement) => void)[] = [];
+
+function make(): HTMLAudioElement {
+  const el = new Audio();
+  el.preload = 'metadata';
+  el.crossOrigin = 'anonymous';
+  for (const hook of created) hook(el);
+  return el;
+}
 
 export function audio(): HTMLAudioElement {
-  if (!element) {
-    element = new Audio();
-    element.preload = 'metadata';
-    element.crossOrigin = 'anonymous';
+  if (elements.length === 0) elements = [make()];
+  return elements[active] as HTMLAudioElement;
+}
+
+/** Both elements, creating the spare if needed — for listeners that watch both. */
+export function allAudio(): HTMLAudioElement[] {
+  audio();
+  if (elements.length < 2) elements.push(make());
+  return elements;
+}
+
+/** Runs for every element that exists now or is made later (the effects chain). */
+export function onElement(hook: (el: HTMLAudioElement) => void): void {
+  created.push(hook);
+  for (const el of elements) hook(el);
+}
+
+function spare(): HTMLAudioElement {
+  return allAudio()[1 - active] as HTMLAudioElement;
+}
+
+export function spareTrackId(): number | null {
+  return spareTrack;
+}
+
+/** Buffers ``track`` in the spare element so it can start without waiting. */
+export async function preloadNext(track: Track): Promise<void> {
+  if (spareTrack === track.id) return;
+  const el = spare();
+  spareTrack = track.id;
+  try {
+    const offline = await offlineUrl(track.id);
+    const src = offline ?? (await ticketFor(track.id)).url;
+    if (spareTrack !== track.id) return;
+    el.preload = 'auto';
+    el.src = src;
+    el.load();
+  } catch {
+    if (spareTrack === track.id) spareTrack = null;
   }
-  return element;
+}
+
+/**
+ * Makes the spare the playing element when it holds ``trackId``. Returns the element
+ * that was playing (so a crossfade can fade it out), or null when nothing was ready.
+ */
+export function takePreloaded(trackId: number): HTMLAudioElement | null {
+  if (spareTrack !== trackId || elements.length < 2) return null;
+  const previous = audio();
+  active = 1 - active;
+  spareTrack = null;
+  return previous;
 }
 
 export function resetForTests(): void {
-  element = null;
+  elements = [];
+  active = 0;
+  spareTrack = null;
+  created.length = 0;
   tickets.clear();
 }
 
@@ -241,6 +308,29 @@ export function fadeTo(target: number, ms: number): Promise<void> {
         resolve();
       }
     }, FADE_STEP_MS);
+  });
+}
+
+/** A fade on any element, independent of the main one (the outgoing side of a crossfade). */
+const elementFades = new WeakMap<HTMLAudioElement, ReturnType<typeof setInterval>>();
+
+export function fadeElement(el: HTMLAudioElement, target: number, ms: number): Promise<void> {
+  const running = elementFades.get(el);
+  if (running) clearInterval(running);
+  const steps = Math.max(1, Math.round(ms / FADE_STEP_MS));
+  const delta = (target - el.volume) / steps;
+  return new Promise((resolve) => {
+    let left = steps;
+    const timer = setInterval(() => {
+      left -= 1;
+      el.volume = left <= 0 ? target : Math.max(0, Math.min(1, el.volume + delta));
+      if (left <= 0) {
+        clearInterval(timer);
+        elementFades.delete(el);
+        resolve();
+      }
+    }, FADE_STEP_MS);
+    elementFades.set(el, timer);
   });
 }
 

@@ -18,10 +18,17 @@ import { create } from 'zustand';
 
 import type { Track } from '@/api/client';
 import { fetchRadio } from '@/api/discover';
+import { fetchForTracks, loadProgress, saveProgress } from '@/api/listening';
 import { haptic } from '@/lib/telegram';
+import { applyEffects, resumeEffects, useAudioSettings } from '@/store/audio';
 import {
+  allAudio,
   audio,
   cancelFade,
+  fadeElement,
+  preloadNext,
+  spareTrackId,
+  takePreloaded,
   dropTicket,
   fadeTo,
   FADE_IN_MS,
@@ -82,6 +89,10 @@ interface PlayerState {
   duration: number;
   buffered: number;
   shuffle: boolean;
+  /** Smart Shuffle: recommendations mixed into what is playing (shuffle stays on). */
+  smart: boolean;
+  /** The tracks Smart Shuffle added, so they can be marked and taken out again. */
+  smartIds: number[];
   repeat: RepeatMode;
   speed: number;
   volume: number;
@@ -109,6 +120,9 @@ interface PlayerState {
   setVolume: (volume: number) => void;
   setAutoplay: (on: boolean) => void;
   setShuffle: (on: boolean) => void;
+  setSmartShuffle: (on: boolean) => Promise<void>;
+  /** Off → shuffle → smart shuffle → off, like Spotify's button. */
+  cycleShuffle: () => void;
   cycleRepeat: () => void;
   setSleep: (minutes: number | null, endOfTrack?: boolean) => void;
   enqueue: (tracks: Track[], position?: 'next' | 'end') => void;
@@ -143,6 +157,24 @@ async function radioFor(trackId: number): Promise<Track[]> {
   }
 }
 
+/** A track this long is listened to in sittings: its place is remembered. */
+export const LONG_FORM_S = 10 * 60;
+const PROGRESS_EVERY_MS = 15_000;
+let lastProgressSave = 0;
+
+function rememberPlace(track: Track | null, seconds: number, force = false): void {
+  if (!track || track.duration < LONG_FORM_S || seconds < 5) return;
+  const now = Date.now();
+  if (!force && now - lastProgressSave < PROGRESS_EVERY_MS) return;
+  lastProgressSave = now;
+  void saveProgress(track.id, seconds).catch(() => undefined);
+}
+
+/** Set while the next track is fading in over the end of this one. */
+let crossfading = false;
+/** How long the next load should overlap the outgoing track (0 = no crossfade). */
+let pendingCrossfadeMs = 0;
+
 let playedSeconds = 0;
 let lastTick = 0;
 /** Set when the user asks for a track; cleared when sound actually starts. */
@@ -164,6 +196,8 @@ export const usePlayer = create<PlayerState>((set, get) => ({
   duration: 0,
   buffered: 0,
   shuffle: false,
+  smart: false,
+  smartIds: [],
   repeat: 'off',
   speed: 1,
   volume: 1,
@@ -202,6 +236,8 @@ export const usePlayer = create<PlayerState>((set, get) => ({
       duration: track.duration,
     });
     await load(track, set, get);
+    // Smart Shuffle is a mode, not a one-off: a new source gets its own suggestions.
+    if (get().smart) void get().setSmartShuffle(true);
   },
 
   async follow(queue, index, positionAt, playing) {
@@ -232,6 +268,7 @@ export const usePlayer = create<PlayerState>((set, get) => ({
     const { current, isPlaying, remote } = get();
     if (!current) return;
     haptic('light');
+    resumeEffects();
     if (remote) {
       remote.toggle();
       return;
@@ -407,11 +444,65 @@ export const usePlayer = create<PlayerState>((set, get) => ({
         0,
         unshuffled.findIndex((track) => track.id === current?.id),
       );
-      set({ shuffle: false, queue: unshuffled, unshuffled: null, index: restored });
+      // The original order has no suggestions in it: Smart Shuffle ends with shuffle.
+      set({ shuffle: false, smart: false, smartIds: [], queue: unshuffled, unshuffled: null, index: restored });
     } else {
-      set({ shuffle: on });
+      set(on ? { shuffle: true } : { shuffle: false, smart: false, smartIds: [] });
     }
     haptic('select');
+  },
+
+  async setSmartShuffle(on) {
+    const strip = () => {
+      const { queue, index, smartIds, current } = get();
+      if (smartIds.length === 0) return;
+      const added = new Set(smartIds);
+      const kept = queue.filter((track, i) => i <= index || !added.has(track.id));
+      set({
+        queue: kept,
+        index: Math.max(0, kept.findIndex((track) => track.id === current?.id)),
+        smartIds: [],
+      });
+    };
+    if (!on) {
+      strip();
+      set({ smart: false });
+      haptic('select');
+      return;
+    }
+    strip();
+    if (!get().shuffle) get().setShuffle(true);
+    set({ smart: true });
+    const { queue } = get();
+    if (queue.length === 0) return;
+    const inQueue = new Set(queue.map((track) => track.id));
+    let recs: Track[] = [];
+    try {
+      recs = (await fetchForTracks(queue.map((track) => track.id), 20)).filter((track) => !inQueue.has(track.id));
+    } catch {
+      return; // no suggestions is still a shuffle
+    }
+    if (!get().smart || recs.length === 0) return;
+    // One suggestion after every three of theirs, in what is still to come.
+    const { queue: now, index } = get();
+    const head = now.slice(0, index + 1);
+    const rest = now.slice(index + 1);
+    const mixed: Track[] = [];
+    let r = 0;
+    rest.forEach((track, i) => {
+      mixed.push(track);
+      if ((i + 1) % 3 === 0 && r < recs.length) mixed.push(recs[r++] as Track);
+    });
+    while (r < recs.length && mixed.length < rest.length + Math.ceil(rest.length / 3) + 1) mixed.push(recs[r++] as Track);
+    const used = recs.slice(0, r);
+    set({ queue: [...head, ...mixed], smartIds: used.map((track) => track.id) });
+  },
+
+  cycleShuffle() {
+    const { shuffle, smart } = get();
+    if (!shuffle) get().setShuffle(true);
+    else if (!smart) void get().setSmartShuffle(true);
+    else get().setShuffle(false);
   },
 
   setVolume(volume) {
@@ -501,82 +592,121 @@ export const usePlayer = create<PlayerState>((set, get) => ({
 
   /** Wires the <audio> element to the store; returns an unsubscribe function. */
   attach() {
-    const el = audio();
-    const onTime = () => {
-      const now = Date.now();
-      if (lastTick && el.paused === false) playedSeconds += Math.min((now - lastTick) / 1000, 2);
-      lastTick = now;
-      set({ position: el.currentTime, duration: Number.isFinite(el.duration) ? el.duration : get().duration });
-      setPositionState(el.currentTime, el.duration, el.playbackRate);
-      const { sleepAt, sleepEndOfTrack } = get();
-      if (sleepAt && now >= sleepAt && !sleepEndOfTrack) {
-        el.pause();
-        set({ sleepAt: null });
-      }
-    };
-    const onPlay = () => {
-      lastTick = Date.now();
-      set({ isPlaying: true, isLoading: false });
-      setPlaybackState('playing');
-    };
-    const onPlaying = () => {
-      // The first sound: this is the number the acceptance criterion is about.
-      if (startedAt) {
-        report('start', { ms: Date.now() - startedAt });
-        startedAt = 0;
-      }
-      if (stalled) stalled = false;
-      // Warm whatever actually plays next — manual queue included.
+    applyEffects();
+    /**
+     * Near the end of a track: buffer the next one in the spare element (gapless),
+     * and with crossfade on, start it while this one fades out.
+     */
+    const transitionAhead = (el: HTMLAudioElement) => {
+      const { remote, repeat, isPlaying, current } = get();
+      if (remote || !isPlaying || !current || repeat === 'one') return;
+      if (!Number.isFinite(el.duration) || el.duration <= 0) return;
+      const { crossfade, gapless } = useAudioSettings.getState();
+      if (!gapless && crossfade <= 0) return;
       const [upcoming] = get().upcoming();
-      if (upcoming) void prefetch(upcoming.id);
-    };
-    const onWaiting = () => {
-      // Only a stall *during* playback is an underrun; the initial load is not.
-      if (!get().isPlaying || stalled) return;
-      stalled = true;
-      report('underrun');
-    };
-    const onPause = () => {
-      lastTick = 0;
-      set({ isPlaying: false });
-      setPlaybackState('paused');
-    };
-    const onEnded = () => {
-      get().reportPlayed(true);
-      const { sleepEndOfTrack } = get();
-      if (sleepEndOfTrack) {
-        set({ sleepEndOfTrack: false, sleepAt: null, isPlaying: false });
-        return;
+      if (!upcoming) return;
+      const left = el.duration - el.currentTime;
+      if (left <= Math.max(crossfade + 10, 20) && spareTrackId() !== upcoming.id) void preloadNext(upcoming);
+      if (crossfade > 0 && !crossfading && el.duration > crossfade * 3 && left <= crossfade) {
+        crossfading = true;
+        pendingCrossfadeMs = crossfade * 1000;
+        get().reportPlayed(true);
+        void get().next(true);
       }
-      void get().next(true);
     };
-    const onProgress = () => {
-      const ranges = el.buffered;
-      set({ buffered: ranges.length ? ranges.end(ranges.length - 1) : 0 });
-    };
-    const onError = () => {
-      const track = get().current;
-      if (track) dropTicket(track.id);
-      report('error', { reason: 'decode' });
-      set({ isLoading: false, isPlaying: false });
-    };
-    el.addEventListener('timeupdate', onTime);
-    el.addEventListener('play', onPlay);
-    el.addEventListener('playing', onPlaying);
-    el.addEventListener('waiting', onWaiting);
-    el.addEventListener('pause', onPause);
-    el.addEventListener('ended', onEnded);
-    el.addEventListener('progress', onProgress);
-    el.addEventListener('error', onError);
+    // Both elements are watched; only the one playing is listened to.
+    const cleanups = allAudio().map((el) => {
+      const onTime = () => {
+        // The spare element (preloading, or fading out) speaks for nobody.
+        if (el !== audio()) return;
+        const now = Date.now();
+        if (lastTick && el.paused === false) playedSeconds += Math.min((now - lastTick) / 1000, 2);
+        lastTick = now;
+        set({ position: el.currentTime, duration: Number.isFinite(el.duration) ? el.duration : get().duration });
+        setPositionState(el.currentTime, el.duration, el.playbackRate);
+        const { sleepAt, sleepEndOfTrack } = get();
+        if (sleepAt && now >= sleepAt && !sleepEndOfTrack) {
+          el.pause();
+          set({ sleepAt: null });
+        }
+        transitionAhead(el);
+        if (!get().remote) rememberPlace(get().current, el.currentTime);
+      };
+      const onPlay = () => {
+        if (el !== audio()) return;
+        lastTick = Date.now();
+        set({ isPlaying: true, isLoading: false });
+        setPlaybackState('playing');
+      };
+      const onPlaying = () => {
+        if (el !== audio()) return;
+        // The first sound: this is the number the acceptance criterion is about.
+        if (startedAt) {
+          report('start', { ms: Date.now() - startedAt });
+          startedAt = 0;
+        }
+        if (stalled) stalled = false;
+        // Warm whatever actually plays next — manual queue included.
+        const [upcoming] = get().upcoming();
+        if (upcoming) void prefetch(upcoming.id);
+      };
+      const onWaiting = () => {
+        if (el !== audio()) return;
+        // Only a stall *during* playback is an underrun; the initial load is not.
+        if (!get().isPlaying || stalled) return;
+        stalled = true;
+        report('underrun');
+      };
+      const onPause = () => {
+        if (el !== audio()) return;
+        lastTick = 0;
+        set({ isPlaying: false });
+        setPlaybackState('paused');
+        if (!get().remote) rememberPlace(get().current, el.currentTime, true);
+      };
+      const onEnded = () => {
+        if (el !== audio()) return;
+        get().reportPlayed(true);
+        const { sleepEndOfTrack } = get();
+        if (sleepEndOfTrack) {
+          set({ sleepEndOfTrack: false, sleepAt: null, isPlaying: false });
+          return;
+        }
+        void get().next(true);
+      };
+      const onProgress = () => {
+        if (el !== audio()) return;
+        const ranges = el.buffered;
+        set({ buffered: ranges.length ? ranges.end(ranges.length - 1) : 0 });
+      };
+      const onError = () => {
+        if (el !== audio()) return;
+        const track = get().current;
+        if (track) dropTicket(track.id);
+        report('error', { reason: 'decode' });
+        set({ isLoading: false, isPlaying: false });
+      };
+      el.addEventListener('timeupdate', onTime);
+      el.addEventListener('play', onPlay);
+      el.addEventListener('playing', onPlaying);
+      el.addEventListener('waiting', onWaiting);
+      el.addEventListener('pause', onPause);
+      el.addEventListener('ended', onEnded);
+      el.addEventListener('progress', onProgress);
+      el.addEventListener('error', onError);
+      return () => {
+        el.removeEventListener('timeupdate', onTime);
+        el.removeEventListener('play', onPlay);
+        el.removeEventListener('playing', onPlaying);
+        el.removeEventListener('waiting', onWaiting);
+        el.removeEventListener('pause', onPause);
+        el.removeEventListener('ended', onEnded);
+        el.removeEventListener('progress', onProgress);
+        el.removeEventListener('error', onError);
+      };
+    });
     return () => {
-      el.removeEventListener('timeupdate', onTime);
-      el.removeEventListener('play', onPlay);
-      el.removeEventListener('playing', onPlaying);
-      el.removeEventListener('waiting', onWaiting);
-      el.removeEventListener('pause', onPause);
-      el.removeEventListener('ended', onEnded);
-      el.removeEventListener('progress', onProgress);
-      el.removeEventListener('error', onError);
+      for (const cleanup of cleanups) cleanup();
     };
   },
 }));
@@ -594,13 +724,34 @@ async function load(
   attempt = 0,
   options: LoadOptions = {},
 ): Promise<void> {
-  const el = audio();
   const { positionAt, autoplay = true } = options;
+  const overlapMs = pendingCrossfadeMs;
+  pendingCrossfadeMs = 0;
+  crossfading = false;
+  // The next track may already be buffered in the spare element: switch to it.
+  const outgoing = takePreloaded(track.id);
+  const el = audio();
+  if (outgoing && outgoing !== el) {
+    if (overlapMs > 0) void fadeElement(outgoing, 0, overlapMs).then(() => outgoing.pause());
+    else outgoing.pause();
+  }
+  resumeEffects();
   try {
     const offline = await offlineUrl(track.id);
     const src = offline ?? (await ticketFor(track.id)).url;
+    // A long track picks up where this listener left it, on any device.
+    let resumeAt = 0;
+    if (!positionAt && !get().remote && track.duration >= LONG_FORM_S) {
+      try {
+        const saved = await loadProgress(track.id);
+        if (saved && !saved.finished && saved.position_s > 30) resumeAt = saved.position_s;
+      } catch {
+        /* start from the top */
+      }
+    }
     if (get().current?.id !== track.id) return; // moved on while the ticket loaded
-    el.src = src;
+    if (!outgoing || el.src !== src) el.src = src;
+    if (resumeAt) el.currentTime = resumeAt;
     el.playbackRate = get().speed;
     if (positionAt) el.currentTime = Math.max(0, positionAt());
     // Start silent and ramp up: without this every track begins with a click.
@@ -614,7 +765,7 @@ async function load(
     await el.play();
     // The first bytes took a while; catch up with the room.
     if (positionAt && Math.abs(el.currentTime - positionAt()) > 1) el.currentTime = positionAt();
-    void fadeTo(get().volume, FADE_IN_MS);
+    void fadeTo(get().volume, overlapMs > 0 ? overlapMs : FADE_IN_MS);
     set({ isLoading: false, error: null });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'NotAllowedError') {

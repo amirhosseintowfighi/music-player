@@ -6,6 +6,8 @@ import {
   ChevronIcon,
   ClockIcon,
   JamIcon,
+  LyricsIcon,
+  SparkleIcon,
   NextIcon,
   PrevIcon,
   QueueIcon,
@@ -29,6 +31,8 @@ import {
 import { useI18n } from '@/i18n';
 import { artistNames, duration } from '@/lib/format';
 import { backButton, haptic, openTelegramLink } from '@/lib/telegram';
+import { LyricsView } from '@/components/Lyrics';
+import { useAudioSettings } from '@/store/audio';
 import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
@@ -132,6 +136,7 @@ function QueueRow({
   active?: boolean;
 }) {
   const { t } = useI18n();
+  const suggested = usePlayer((s) => s.smartIds.includes(track.id));
   return (
     <div
       className="flex items-center gap-3 rounded-xl px-1 py-1.5"
@@ -143,7 +148,10 @@ function QueueRow({
           <span className={cx('block truncate text-[13.5px]', active && 'font-bold text-[var(--accent)]')}>
             {track.title}
           </span>
-          <span className="block truncate text-[11.5px] text-[var(--ink-faint)]">{artistNames(track)}</span>
+          <span className="flex items-center gap-1 truncate text-[11.5px] text-[var(--ink-faint)]">
+            {suggested && <SparkleIcon size={11} className="shrink-0 text-[var(--accent)]" />}
+            {artistNames(track)}
+          </span>
         </span>
       </button>
       {onRemove && (
@@ -281,6 +289,40 @@ function ChannelChip({ track }: { track: Track }) {
   );
 }
 
+/**
+ * Canvas: the artwork, large and soft, drifting slowly behind the player while the
+ * music plays. Spotify loops a short video here; we have the cover, so the cover
+ * moves — and holds still when the music does.
+ */
+function Canvas({ src, playing }: { src?: string; playing: boolean }) {
+  const enabled = useAudioSettings((s) => s.canvas);
+  const lowPerf = useUi((s) => s.lowPerf);
+  if (!enabled || !src || lowPerf) return null;
+  return (
+    <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+      <motion.img
+        key={src}
+        src={src}
+        alt=""
+        className="absolute left-1/2 top-1/2 h-[140vmax] w-[140vmax] max-w-none object-cover"
+        style={{ filter: 'blur(38px) saturate(160%)', x: '-50%', y: '-50%' }}
+        initial={{ opacity: 0, scale: 1 }}
+        animate={
+          playing
+            ? { opacity: 0.55, scale: [1, 1.18, 1.05, 1], rotate: [0, 6, -4, 0] }
+            : { opacity: 0.4 }
+        }
+        transition={
+          playing
+            ? { opacity: { duration: 1.2 }, scale: { duration: 28, repeat: Infinity, ease: 'easeInOut' }, rotate: { duration: 28, repeat: Infinity, ease: 'easeInOut' } }
+            : { duration: 0.8 }
+        }
+      />
+      <div className="absolute inset-0 bg-[color-mix(in_oklab,var(--bg-0)_45%,transparent)]" />
+    </div>
+  );
+}
+
 export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
   const { t, lang } = useI18n();
   const open = useUi((s) => s.playerOpen);
@@ -289,12 +331,14 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
   const isPlaying = usePlayer((s) => s.isPlaying);
   const isLoading = usePlayer((s) => s.isLoading);
   const shuffle = usePlayer((s) => s.shuffle);
+  const smart = usePlayer((s) => s.smart);
   const repeat = usePlayer((s) => s.repeat);
   const speed = usePlayer((s) => s.speed);
   const sleepAt = usePlayer((s) => s.sleepAt);
   const autoplay = usePlayer((s) => s.autoplay);
   const [queueOpen, setQueueOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [lyricsOpen, setLyricsOpen] = useState(false);
   const jamListeners = useJam((s) => s.jam?.members.length ?? 0);
   const inJam = useJam((s) => Boolean(s.jam));
   const openJam = () => {
@@ -324,6 +368,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
           {/* The one screen Music lets the artwork colour: a soft wash of the cover's
               own palette behind the art, and a solid page everywhere else. */}
           <Aurora />
+          <Canvas src={thumbs[track.id]} playing={isPlaying} />
           <motion.div
             className="mx-auto flex min-h-full max-w-lg flex-col px-5"
             style={{ paddingTop: 'calc(18px + var(--safe-top))', paddingBottom: 'calc(24px + var(--safe-bottom))' }}
@@ -377,6 +422,11 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
               </div>
             </div>
 
+            {lyricsOpen ? (
+              <div className="h-[300px]">
+                <LyricsView trackId={track.id} />
+              </div>
+            ) : (
             <motion.div layoutId="cover" className="mx-auto">
               {/* Music's signature: the artwork steps back while paused and forward
                   again when the music starts, with a shadow that grows with it. */}
@@ -391,6 +441,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                 <Cover src={thumbs[track.id]} seed={track.id} size={300} radius={26} glyph="♫" />
               </motion.div>
             </motion.div>
+            )}
 
             <div className="relative mt-7 overflow-hidden">
               <AnimatePresence mode="popLayout" initial={false}>
@@ -415,14 +466,19 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
             <div dir="ltr" className="mt-2 flex items-center justify-center gap-7">
               <button
                 type="button"
-                aria-label={t('player.shuffle')}
+                aria-label={smart ? t('player.smartShuffle') : t('player.shuffle')}
                 aria-pressed={shuffle}
                 // The room's order is the room's: no shuffling or looping one copy of it.
                 disabled={inJam}
-                onClick={() => usePlayer.getState().setShuffle(!shuffle)}
-                className={cx('p-2 disabled:opacity-30', shuffle ? 'text-[var(--accent)]' : 'text-[var(--ink-dim)]')}
+                onClick={() => {
+                  const wasSmart = usePlayer.getState().smart;
+                  usePlayer.getState().cycleShuffle();
+                  if (!wasSmart && shuffle) useUi.getState().toast(t('player.smartShuffle.on'), 'success');
+                }}
+                className={cx('relative p-2 disabled:opacity-30', shuffle ? 'text-[var(--accent)]' : 'text-[var(--ink-dim)]')}
               >
                 <ShuffleIcon size={20} />
+                {smart && <SparkleIcon size={11} className="absolute right-0.5 top-0.5" />}
               </button>
               <motion.button
                 type="button"
@@ -473,7 +529,14 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
               </button>
             </div>
 
-            <div className="mt-7 flex items-center justify-center gap-3">
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+              <Glass
+                className={cx('flex items-center gap-2 px-3.5 py-2 text-[12.5px]', lyricsOpen && 'text-[var(--accent)]')}
+                onClick={() => setLyricsOpen((open) => !open)}
+              >
+                <LyricsIcon size={16} />
+                {t('lyrics.title')}
+              </Glass>
               <Glass className="flex items-center gap-2 px-3.5 py-2 text-[12.5px]" onClick={() => setOptionsOpen(true)}>
                 <SpeedIcon size={16} />
                 {speed}×

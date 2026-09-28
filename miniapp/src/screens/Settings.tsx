@@ -6,9 +6,11 @@ import {
   useSetNotificationPrefs,
   useSetPublicProfile,
 } from '@/api/social';
+import { usePrivateSession, useSetPrivateSession } from '@/api/listening';
 import { JamIcon } from '@/components/icons';
 import { Credit, Glass, cx } from '@/components/ui';
-import { useI18n } from '@/i18n';
+import { useI18n, type Key } from '@/i18n';
+import { EQ_PRESETS, useAudioSettings, type EqPreset } from '@/store/audio';
 import { useUi } from '@/store/ui';
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
@@ -53,6 +55,7 @@ const NOTIFY_KEYS = [
   'sub_expiry',
   'payment',
   'system',
+  'new_release',
 ] as const;
 
 const NOTIFY_LABEL = {
@@ -62,6 +65,7 @@ const NOTIFY_LABEL = {
   sub_expiry: 'notify.sub_expiry',
   payment: 'notify.payment',
   system: 'notify.system',
+  new_release: 'notify.new_release',
 } as const;
 
 function Choice<T extends string>({
@@ -89,6 +93,85 @@ function Choice<T extends string>({
         </button>
       ))}
     </div>
+  );
+}
+
+const EQ_LABEL: Record<EqPreset, Key> = {
+  flat: 'audio.eq.flat',
+  bass: 'audio.eq.bass',
+  treble: 'audio.eq.treble',
+  vocal: 'audio.eq.vocal',
+  acoustic: 'audio.eq.acoustic',
+  electronic: 'audio.eq.electronic',
+  night: 'audio.eq.night',
+};
+
+/** How the music sounds on this device (Music's "Playback" settings). */
+function PlaybackSettings() {
+  const { t, n } = useI18n();
+  const audio = useAudioSettings();
+  const privateSession = usePrivateSession();
+  const setPrivate = useSetPrivateSession();
+  const privateOn = Boolean(privateSession.data?.private_until);
+  return (
+    <>
+      <h2 className="mb-2 mt-5 px-1 text-[13px] font-semibold text-[var(--ink-dim)]">{t('audio.title')}</h2>
+      <Glass className="mb-3 divide-y divide-[var(--separator)]">
+        <div className="px-3.5 py-3">
+          <div className="flex items-center justify-between">
+            <p className="text-[14px]">{t('audio.crossfade')}</p>
+            <span className="text-[13px] text-[var(--ink-dim)]">
+              {audio.crossfade === 0 ? t('audio.off') : t('audio.seconds', { count: audio.crossfade })}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={12}
+            step={1}
+            value={audio.crossfade}
+            aria-label={t('audio.crossfade')}
+            onChange={(event) => audio.set({ crossfade: Number(event.target.value) })}
+            className="mt-2 w-full accent-[var(--accent)]"
+          />
+          <p className="mt-0.5 text-[11.5px] text-[var(--ink-faint)]">{t('audio.crossfade.hint', { max: n(12) })}</p>
+        </div>
+        <Row label={t('audio.gapless')} hint={t('audio.gapless.hint')}>
+          <Toggle on={audio.gapless} onChange={(gapless) => audio.set({ gapless })} />
+        </Row>
+        <Row label={t('audio.normalize')} hint={t('audio.normalize.hint')}>
+          <Toggle on={audio.normalize} onChange={(normalize) => audio.set({ normalize })} />
+        </Row>
+        <div className="px-3.5 py-3">
+          <p className="text-[14px]">{t('audio.eq')}</p>
+          <p className="mt-0.5 text-[11.5px] text-[var(--ink-faint)]">{t('audio.eq.hint')}</p>
+          <div className="no-scrollbar -mx-1 mt-2.5 flex gap-2 overflow-x-auto px-1">
+            {(Object.keys(EQ_PRESETS) as EqPreset[]).map((preset) => (
+              <button
+                key={preset}
+                type="button"
+                aria-pressed={audio.eq === preset}
+                onClick={() => audio.set({ eq: preset })}
+                className={cx(
+                  'shrink-0 rounded-full px-3 py-1.5 text-[12px] transition-colors',
+                  audio.eq === preset
+                    ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]'
+                    : 'bg-[var(--fill)] text-[var(--ink-dim)]',
+                )}
+              >
+                {t(EQ_LABEL[preset])}
+              </button>
+            ))}
+          </div>
+        </div>
+        <Row label={t('audio.canvas')} hint={t('audio.canvas.hint')}>
+          <Toggle on={audio.canvas} onChange={(canvas) => audio.set({ canvas })} />
+        </Row>
+        <Row label={t('private.title')} hint={t('private.hint')}>
+          <Toggle on={privateOn} onChange={(on) => setPrivate.mutate(on)} />
+        </Row>
+      </Glass>
+    </>
   );
 }
 
@@ -174,6 +257,8 @@ export function Settings() {
           </Row>
         ))}
       </Glass>
+
+      <PlaybackSettings />
 
       <Glass className="divide-y divide-white/6">
         <Row label={t('profile.plays')}>

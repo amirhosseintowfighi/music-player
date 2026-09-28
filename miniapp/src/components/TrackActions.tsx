@@ -5,7 +5,8 @@ import type { Track } from '@/api/client';
 import { fetchRadio, useSimilar } from '@/api/discover';
 import { useReportTrack } from '@/api/hooks';
 import { useAddToPlaylist, usePlaylists, useSendToChat, useToggleLike } from '@/api/playlists';
-import { DownloadIcon, HeartIcon, PlusIcon, QueueIcon, RadioIcon, SendIcon } from '@/components/icons';
+import { useHiddenTracks, useHideTrack } from '@/api/listening';
+import { DownloadIcon, EyeOffIcon, HeartIcon, PlusIcon, QueueIcon, RadioIcon, SendIcon } from '@/components/icons';
 import { Cover, Sheet, Spinner, cx } from '@/components/ui';
 import { CreatePlaylistSheet } from '@/screens/Playlists';
 import { useI18n } from '@/i18n';
@@ -93,6 +94,18 @@ function SimilarStrip({ track, onPlay }: { track: Track; onPlay: () => void }) {
   );
 }
 
+/** A hidden song leaves what is still to come; if it is playing, the music moves on. */
+function dropFromQueue(trackId: number): void {
+  const player = usePlayer.getState();
+  if (player.remote) return; // the room's queue is not one listener's to prune
+  const { queue, index, manual, current } = player;
+  usePlayer.setState({
+    queue: queue.filter((track, i) => i <= index || track.id !== trackId),
+    manual: manual.filter((track) => track.id !== trackId),
+  });
+  if (current?.id === trackId) void player.next();
+}
+
 /** Long-press / "…" menu for a track: like, playlist, queue, send, offline. */
 export function TrackActions({
   track,
@@ -118,6 +131,8 @@ export function TrackActions({
   const [reporting, setReporting] = useState(false);
   const play = usePlayer((s) => s.play);
   const report = useReportTrack(track?.id ?? 0);
+  const hide = useHideTrack();
+  const hiddenIds = useHiddenTracks();
 
   if (!track) return null;
 
@@ -175,6 +190,25 @@ export function TrackActions({
               enqueue([track], 'next');
               toast(t('track.queued'));
               close();
+            }}
+          />
+          <Action
+            icon={<EyeOffIcon size={18} />}
+            label={hiddenIds.data?.includes(track.id) ? t('hide.undo') : t('hide.track')}
+            busy={hide.isPending}
+            onClick={() => {
+              const hidden = hiddenIds.data?.includes(track.id) ?? false;
+              hide.mutate(
+                { trackId: track.id, hidden },
+                {
+                  onSuccess: () => {
+                    toast(hidden ? t('hide.undone') : t('hide.done'));
+                    if (!hidden) dropFromQueue(track.id);
+                    close();
+                  },
+                  onError: () => toast(t('app.error'), 'error'),
+                },
+              );
             }}
           />
           <Action

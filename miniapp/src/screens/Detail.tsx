@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
@@ -11,8 +12,9 @@ import {
   useChannelTracks,
   useTrack,
 } from '@/api/hooks';
+import { useFollowArtist, useThisIs } from '@/api/listening';
 import { TrackRow } from '@/components/TrackRow';
-import { Cover, ErrorNote, Glass, LoadMore, Spinner } from '@/components/ui';
+import { Cover, ErrorNote, Glass, LoadMore, Spinner, bouncy, cx } from '@/components/ui';
 import { ChevronIcon, PlayIcon, ShuffleIcon } from '@/components/icons';
 import { useI18n } from '@/i18n';
 import { useThumbs } from '@/player/thumbs';
@@ -44,6 +46,53 @@ function Header({
         <p className="truncate text-[12.5px] text-[var(--ink-dim)]">{subtitle}</p>
       </div>
     </div>
+  );
+}
+
+/** Follow an artist: their new music lands in Release Radar and in a notice. */
+function FollowButton({ artistId, following }: { artistId: number; following: boolean }) {
+  const { t } = useI18n();
+  const toggle = useFollowArtist(artistId);
+  const on = toggle.isPending ? !following : following;
+  return (
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.92 }}
+      transition={bouncy}
+      aria-pressed={on}
+      disabled={toggle.isPending}
+      onClick={() => toggle.mutate(following)}
+      className={cx(
+        'shrink-0 rounded-full px-4 py-1.5 text-[12.5px] font-semibold transition-colors',
+        on ? 'border border-[var(--separator)] text-[var(--ink)]' : 'bg-[var(--accent)] text-[var(--accent-ink)]',
+      )}
+    >
+      {on ? t('artist.following') : t('artist.follow')}
+    </motion.button>
+  );
+}
+
+/** The "This Is" card on an artist page: their essentials, one tap away. */
+function ThisIsCard({ artistId, name, image }: { artistId: number; name: string; image?: string | null }) {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  return (
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.98 }}
+      onClick={() => navigate(`/this-is/${artistId}`)}
+      className="mt-4 flex w-full items-center gap-3.5 overflow-hidden rounded-[var(--radius-glass)] bg-gradient-to-br from-[color-mix(in_oklab,var(--accent)_28%,var(--card))] to-[var(--card)] p-3 text-start"
+    >
+      <Cover src={image} seed={`this-is-${artistId}`} size={64} radius={10} glyph="★" />
+      <span className="min-w-0 flex-1">
+        <span className="block text-[11px] font-bold uppercase tracking-wide text-[var(--accent)]">
+          {t('thisIs.label')}
+        </span>
+        <span className="block truncate text-[16px] font-bold">{t('thisIs.title', { name })}</span>
+        <span className="block truncate text-[12px] text-[var(--ink-dim)]">{t('thisIs.hint')}</span>
+      </span>
+      <PlayIcon size={22} className="shrink-0 text-[var(--accent)]" />
+    </motion.button>
   );
 }
 
@@ -151,13 +200,24 @@ export function ArtistScreen() {
 
   return (
     <div className="px-4">
-      <Header
-        title={artist.data.name}
-        subtitle={t('library.count', { count: artist.data.tracks_count })}
-        seed={artist.data.name}
-        glyph="🎤"
-        thumb={artist.data.image_url ?? undefined}
-      />
+      <div className="flex items-end justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <Header
+            title={artist.data.name}
+            subtitle={
+              page.data?.followers
+                ? `${t('library.count', { count: artist.data.tracks_count })} · ${t('artist.followers', { count: page.data.followers })}`
+                : t('library.count', { count: artist.data.tracks_count })
+            }
+            seed={artist.data.name}
+            glyph="🎤"
+            thumb={artist.data.image_url ?? undefined}
+          />
+        </div>
+        {page.data && <FollowButton artistId={id} following={page.data.following ?? false} />}
+      </div>
+
+      <ThisIsCard artistId={id} name={artist.data.name} image={artist.data.image_url} />
 
       {top.length > 0 && (
         <section className="mt-5">
@@ -206,6 +266,35 @@ export function ArtistScreen() {
       <h2 className="mt-5 text-[14px] font-bold">{t('artist.allTracks')}</h2>
       <TrackList tracks={tracks} thumbs={thumbs} source="library" sourceId={id} />
       <LoadMore enabled={Boolean(tracksQuery.hasNextPage)} onVisible={() => void tracksQuery.fetchNextPage()} />
+    </div>
+  );
+}
+
+/** "This Is <artist>": Last.fm's order of their best-known songs, from our archive. */
+export function ThisIsScreen() {
+  const { t } = useI18n();
+  const id = Number(useParams().id);
+  const query = useThisIs(id);
+  const items = useMemo(() => query.data?.items ?? [], [query.data]);
+  const thumbs = useThumbs(items.map((track) => track.id));
+
+  if (query.isError) return <ErrorNote onRetry={() => void query.refetch()} />;
+  if (!query.data) return <div className="grid place-items-center py-20"><Spinner /></div>;
+  const artist = query.data.artist;
+  return (
+    <div className="px-4">
+      <Header
+        title={t('thisIs.title', { name: artist.name })}
+        subtitle={
+          query.data.source === 'lastfm'
+            ? `${t('library.count', { count: items.length })} · ${t('thisIs.byLastfm')}`
+            : t('library.count', { count: items.length })
+        }
+        seed={`this-is-${artist.id}`}
+        glyph="★"
+        thumb={artist.image_url ?? undefined}
+      />
+      <TrackList tracks={items} thumbs={thumbs} source="playlist" sourceId={artist.id} />
     </div>
   );
 }

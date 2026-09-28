@@ -12,6 +12,8 @@ import {
   useRemoveChannel,
   type TrackFilters,
 } from '@/api/hooks';
+import { useFollowedArtists, useInProgress } from '@/api/listening';
+import { duration } from '@/lib/format';
 import { ChannelCard } from '@/components/ChannelCard';
 import { TrackRow } from '@/components/TrackRow';
 import { Cover, EmptyState, ErrorNote, Glass, LoadMore, Sheet, Spinner, cx } from '@/components/ui';
@@ -21,14 +23,67 @@ import { useThumbs } from '@/player/thumbs';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
 
-type Tab = 'tracks' | 'artists' | 'albums' | 'channels' | 'playlists';
+type Tab = 'tracks' | 'artists' | 'albums' | 'channels' | 'playlists' | 'long';
 const TABS: { id: Tab; label: Key }[] = [
   { id: 'tracks', label: 'library.tracks' },
   { id: 'playlists', label: 'library.playlists' },
   { id: 'artists', label: 'library.artists' },
   { id: 'albums', label: 'library.albums' },
   { id: 'channels', label: 'library.channels' },
+  { id: 'long', label: 'library.long' },
 ];
+
+/** 20 minutes and up: episodes, sets and audiobooks rather than songs. */
+const LONG_MIN_S = 20 * 60;
+
+/** Podcasts and long listens: what is half-heard first, then everything long. */
+function LongListens() {
+  const { t, lang } = useI18n();
+  const inProgress = useInProgress();
+  const longQuery = useLibraryTracks({ min_duration: LONG_MIN_S });
+  const long = useMemo(() => flatten(longQuery.data), [longQuery.data]);
+  const started = inProgress.data?.items ?? [];
+  const thumbs = useThumbs([...started, ...long].map((track) => track.id));
+  const play = usePlayer((s) => s.play);
+  return (
+    <>
+      {started.length > 0 && (
+        <>
+          <p className="mt-4 mb-2 px-1 text-[12px] font-semibold text-[var(--ink-dim)]">{t('library.long.continue')}</p>
+          <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+            {started.map((track, index) => (
+              <button
+                key={track.id}
+                type="button"
+                className="w-[140px] shrink-0 text-start transition-transform active:scale-95"
+                onClick={() => void play({ queue: started, index, source: 'library' })}
+              >
+                <Cover src={thumbs[track.id]} seed={track.id} size={140} radius={14} glyph="🎧" />
+                <p className="mt-1.5 truncate text-[12.5px] font-semibold">{track.title}</p>
+                <p className="truncate text-[11px] text-[var(--ink-faint)]">{duration(track.duration, lang)}</p>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {long.length === 0 && !longQuery.isLoading ? (
+        <EmptyState title={t('library.long.empty')} body={t('library.long.hint')} />
+      ) : (
+        <Glass className="rise mt-4 p-1.5">
+          {long.map((track, index) => (
+            <TrackRow
+              key={track.id}
+              track={track}
+              {...(thumbs[track.id] ? { thumb: thumbs[track.id] as string } : {})}
+              onPlay={() => void play({ queue: long, index, source: 'library' })}
+            />
+          ))}
+        </Glass>
+      )}
+      <LoadMore enabled={Boolean(longQuery.hasNextPage)} onVisible={() => void longQuery.fetchNextPage()} />
+    </>
+  );
+}
 
 function AddChannelSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useI18n();
@@ -106,6 +161,7 @@ export function Library() {
   const albumsQuery = useLibraryAlbums();
   const channelsQuery = useMyChannels();
   const removeChannel = useRemoveChannel();
+  const followed = useFollowedArtists();
   const toast = useUi((s) => s.toast);
 
   const tracks = useMemo(() => flatten(tracksQuery.data), [tracksQuery.data]);
@@ -187,6 +243,24 @@ export function Library() {
 
       {tab === 'artists' && (
         <>
+          {(followed.data?.length ?? 0) > 0 && (
+            <>
+              <p className="mt-4 mb-2 px-1 text-[12px] font-semibold text-[var(--ink-dim)]">{t('library.following')}</p>
+              <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+                {followed.data?.map((artist) => (
+                  <button
+                    key={artist.id}
+                    type="button"
+                    className="flex w-[76px] shrink-0 flex-col items-center gap-1.5 transition-transform active:scale-95"
+                    onClick={() => navigate(`/artist/${artist.id}`)}
+                  >
+                    <Cover src={artist.image_url} seed={artist.name} size={68} radius={999} glyph="🎤" />
+                    <span className="w-full truncate text-center text-[11.5px]">{artist.name}</span>
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <div className="mt-4 grid grid-cols-2 gap-3">
             {artists.map((artist) => (
               <Glass
@@ -229,6 +303,8 @@ export function Library() {
           {(albumsQuery.data?.length ?? 0) === 0 && !albumsQuery.isLoading && <EmptyState title={t('library.empty')} />}
         </div>
       )}
+
+      {tab === 'long' && <LongListens />}
 
       {tab === 'channels' && (
         <div className="mt-4 flex flex-col gap-2.5">

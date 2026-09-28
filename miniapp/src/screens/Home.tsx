@@ -18,6 +18,8 @@ import { JamIcon, PlayIcon } from '@/components/icons';
 import { useI18n } from '@/i18n';
 import { artistNames } from '@/lib/format';
 import { useThumbs } from '@/player/thumbs';
+import { useDaylist, usePrivateSession } from '@/api/listening';
+import { useDj } from '@/store/dj';
 import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
@@ -52,6 +54,120 @@ function ContinueCard({ track, thumb, onPlay }: { track: Track; thumb?: string; 
         <PlayIcon size={18} />
       </button>
     </Glass>
+  );
+}
+
+const DAYPART_GRADIENT: Record<string, string> = {
+  morning: 'linear-gradient(145deg, #ffb347, #ff6f61)',
+  afternoon: 'linear-gradient(145deg, #4facfe, #7f7fd5)',
+  evening: 'linear-gradient(145deg, #c471f5, #fa71cd)',
+  night: 'linear-gradient(145deg, #1f1c2c, #5b4b8a)',
+};
+
+/** One tile on the "Made for you" shelf. */
+function MadeTile({
+  title,
+  subtitle,
+  background,
+  glyph,
+  busy,
+  onClick,
+}: {
+  title: string;
+  subtitle: string;
+  background: string;
+  glyph: React.ReactNode;
+  busy?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 26 }}
+      onClick={onClick}
+      className="relative flex h-[150px] w-[140px] shrink-0 flex-col justify-end overflow-hidden rounded-[18px] p-3 text-start text-white shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+      style={{ background }}
+    >
+      <motion.span
+        aria-hidden
+        className="absolute -end-4 -top-4 text-[64px] opacity-30"
+        animate={{ rotate: [0, 8, 0], scale: [1, 1.06, 1] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        {glyph}
+      </motion.span>
+      <span className="relative text-[17px] font-extrabold leading-tight">{title}</span>
+      <span className="relative mt-0.5 line-clamp-2 text-[11.5px] leading-snug opacity-85">{busy ? '…' : subtitle}</span>
+    </motion.button>
+  );
+}
+
+/** Daylist, DJ and Blend: the things made for this listener, one tap away. */
+function MadeForYou() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const daylist = useDaylist();
+  const dj = useDj();
+  const toast = useUi((s) => s.toast);
+  const part = daylist.data?.part ?? 'evening';
+  return (
+    <>
+      <SectionHead title={t('madeForYou.title')} />
+      <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2">
+        <MadeTile
+          title={t('daylist.title')}
+          subtitle={t(`daylist.part.${part}`)}
+          background={DAYPART_GRADIENT[part] ?? DAYPART_GRADIENT.evening!}
+          glyph="☀︎"
+          busy={daylist.isLoading}
+          onClick={() => daylist.data && navigate(`/playlist/${daylist.data.playlist_id}`)}
+        />
+        <MadeTile
+          title={dj.on ? t('dj.stop') : t('dj.title')}
+          subtitle={t('dj.hint')}
+          background="linear-gradient(145deg, #0f9b8e, #1d4e89)"
+          glyph="🎙"
+          busy={dj.loading}
+          onClick={() => {
+            if (dj.on) {
+              dj.stop();
+              return;
+            }
+            void dj.start().then((started) => {
+              if (!started) toast(t('dj.empty'));
+            });
+          }}
+        />
+        <MadeTile
+          title={t('blend.title')}
+          subtitle={t('blend.headline')}
+          background="linear-gradient(145deg, var(--accent), #5e5ce6)"
+          glyph="◑"
+          onClick={() => navigate('/blend')}
+        />
+      </div>
+    </>
+  );
+}
+
+/** While a private session is on, say so where the listener looks first. */
+function PrivateBadge() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const session = usePrivateSession();
+  if (!session.data?.private_until) return null;
+  return (
+    <motion.button
+      type="button"
+      initial={{ scale: 0.6, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      aria-label={t('private.on')}
+      onClick={() => navigate('/settings')}
+      className="grid h-9 w-9 place-items-center rounded-full bg-[var(--fill)] text-[15px]"
+    >
+      🔒
+    </motion.button>
   );
 }
 
@@ -113,6 +229,7 @@ export function Home() {
           )}
         </div>
         <div className="flex shrink-0 items-center gap-2">
+          <PrivateBadge />
           <JamButton />
           {me.data && (
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffb86b] to-[#ff6b9a] text-[15px] font-bold text-[#2a1206]">
@@ -130,6 +247,8 @@ export function Home() {
           onCta={() => navigate('/library?add=1')}
         />
       )}
+
+      {hasChannels && <MadeForYou />}
 
       {hero && (
         <>
