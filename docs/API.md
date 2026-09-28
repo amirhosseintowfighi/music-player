@@ -134,6 +134,11 @@ POST /v1/telemetry/playback
 | `/v1/playlists/*`, `/v1/me/*` | پلی‌لیست، لایک، تاریخچه، وضعیت پخش | ۵ |
 | `/v1/plans`, `/v1/payments/*`, `/v1/me/subscription` | پلن‌ها، پرداخت، اشتراک | ۶ |
 | `/v1/discover`, `/v1/trending`, `/v1/tracks/{id}/similar`, `/radio` | پیشنهادها | ۷ |
+| `/v1/artists/{id}/this-is`, `/follow`, `/v1/me/artists` | «این X است» (ترتیب از Last.fm، آهنگ از آرشیو)، دنبال کردن خواننده | 0015 |
+| `/v1/tracks/{id}/lyrics`, `/hide`, `/progress`, `/v1/me/hidden`, `/v1/me/private-session`, `/v1/me/in-progress` | متن آهنگ، پنهان کردن آهنگ، جلسهٔ خصوصی، ادامهٔ فایل‌های طولانی | 0015 |
+| `/v1/recommendations/for-tracks`, `/v1/playlists/{id}/recommendations` | پیشنهاد برای یک پلی‌لیست (Enhance) و شافل هوشمند | 0015 |
+| `/v1/folders/*`, `/v1/playlists/{id}/folder` | پوشهٔ پلی‌لیست‌ها | 0015 |
+| `/v1/blends/*`, `/v1/daylist`, `/v1/dj` | بلند (پلی‌لیست دونفره)، دی‌لیست، دی‌جی | 0015 |
 | `/v1/jams/*` | جم: گوش دادن هم‌زمان با دوستان (صف و playhead مشترک در Redis) | جم |
 | `/admin/*` | پنل مدیریت (توکن نوع `admin`) | ۸ |
 | `/admin/candidates*`, `/admin/channels/import`, `/admin/crawler/*` | صف کانال‌های پیشنهادی، import دسته‌ای، سلامت کرالر/پارسر/resolver | ADR-002 |

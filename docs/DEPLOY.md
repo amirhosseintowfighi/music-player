@@ -145,6 +145,28 @@ k6 run -e BASE=https://api.example.com -e VUS=2000 \
 
 ## ۸. استقرار نسخهٔ جدید
 
+روی هر سروری که یک بار با `install.sh` نصب شده، نسخهٔ جدید با یک دستور می‌رود:
+
+```bash
+bash scripts/deploy.sh               # آخرین commit همان branch
+bash scripts/deploy.sh --ref v1.4.0  # یک tag، branch یا commit مشخص
+bash scripts/deploy.sh rollback      # برگشت به نسخهٔ قبل از آخرین استقرار
+bash scripts/deploy.sh status        # چه چیزی در حال اجراست و سالم است یا نه
+```
+
+پروفایل (`dev`/`solo`/`core`/`edge`) از روی فایل env موجود حدس زده می‌شود (یا `PROFILE=...`).
+اسکریپت به ترتیب: تغییرات و migrationهای جدید را نشان می‌دهد و یک بار تأیید می‌گیرد
+(`--yes` برای CI)، از دیتابیس dump می‌گیرد (`BACKUP_DIR`، پیش‌فرض `/var/backups/tmusic`)،
+کد را جلو می‌برد، image و فرانت‌اندها را می‌سازد، migrationها را **جدا و قبل از** کد جدید
+اجرا می‌کند، سرویس‌ها را بالا می‌آورد و منتظر `/healthz` و `/readyz` می‌ماند، و در آخر
+webhook و فهرست دستورهای بات را دوباره ثبت می‌کند.
+اگر هر مرحله‌ای بعد از checkout شکست بخورد، کد و کانتینرها خودکار به نسخهٔ قبلی
+برمی‌گردند؛ migrationها برعکس نمی‌شوند (باید backward-compatible باشند) و dump همان
+مرحله برای روز مبادا هست. روی core/edge اگر image این commit در registry نباشد، همان‌جا
+از روی checkout ساخته می‌شود.
+
+دستی، معادل همان کار:
+
 ```bash
 VERSION=$(git rev-parse --short HEAD)
 docker compose -f infra/compose/core.yml --env-file .env.core pull

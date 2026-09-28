@@ -17,21 +17,26 @@ import { useThumbs } from '@/player/thumbs';
 import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
-import { JamScreen } from '@/screens/Jam';
+
 import { Home } from '@/screens/Home';
 import { Library } from '@/screens/Library';
 import { Search } from '@/screens/Search';
-import { Discover } from '@/screens/Discover';
-import { FriendsFeedScreen, Profile } from '@/screens/Profile';
-import { Plans } from '@/screens/Plans';
-import { Settings } from '@/screens/Settings';
-import { Wrapped } from '@/screens/Wrapped';
-import { AlbumScreen, ArtistScreen, ChannelScreen, TrackScreen } from '@/screens/Detail';
+import { AlbumScreen, ArtistScreen, ChannelScreen, ThisIsScreen, TrackScreen } from '@/screens/Detail';
 import { LikedScreen, PlaylistScreen, Playlists, SharedPlaylistScreen } from '@/screens/Playlists';
 import { TrackActions } from '@/components/TrackActions';
 
 // The full-screen player is only needed once something plays.
 const FullPlayer = lazy(() => import('@/components/FullPlayer').then((m) => ({ default: m.FullPlayer })));
+// Screens most sessions never open (or not first): loaded when they are, so the
+// first paint stays inside the bundle budget.
+const Discover = lazy(() => import('@/screens/Discover').then((m) => ({ default: m.Discover })));
+const Profile = lazy(() => import('@/screens/Profile').then((m) => ({ default: m.Profile })));
+const FriendsFeedScreen = lazy(() => import('@/screens/Profile').then((m) => ({ default: m.FriendsFeedScreen })));
+const Plans = lazy(() => import('@/screens/Plans').then((m) => ({ default: m.Plans })));
+const Settings = lazy(() => import('@/screens/Settings').then((m) => ({ default: m.Settings })));
+const Wrapped = lazy(() => import('@/screens/Wrapped').then((m) => ({ default: m.Wrapped })));
+const JamScreen = lazy(() => import('@/screens/Jam').then((m) => ({ default: m.JamScreen })));
+const BlendScreen = lazy(() => import('@/screens/Blend').then((m) => ({ default: m.BlendScreen })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -247,6 +252,13 @@ function Shell() {
           animate={{ opacity: 1, y: 0, transition: { duration: 0.32, ease: [0.22, 1, 0.36, 1] } }}
           exit={{ opacity: 0, transition: { duration: 0.12 } }}
         >
+          <Suspense
+            fallback={
+              <div className="grid place-items-center py-20">
+                <Spinner />
+              </div>
+            }
+          >
           <Routes location={location}>
             <Route path="/" element={<Home />} />
             <Route path="/discover" element={<Discover />} />
@@ -255,6 +267,7 @@ function Shell() {
             <Route path="/settings" element={<Settings />} />
             <Route path="/channel/:id" element={<ChannelScreen />} />
             <Route path="/artist/:id" element={<ArtistScreen />} />
+            <Route path="/this-is/:id" element={<ThisIsScreen />} />
             <Route path="/album/:artistId/:name" element={<AlbumScreen />} />
             <Route path="/track/:id" element={<TrackScreen />} />
             <Route path="/playlists" element={<Playlists />} />
@@ -267,9 +280,12 @@ function Shell() {
             <Route path="/friends" element={<FriendsFeedScreen />} />
             <Route path="/wrapped" element={<Wrapped />} />
             <Route path="/jam" element={<JamScreen />} />
+            <Route path="/blend" element={<BlendScreen />} />
+            <Route path="/blend/:code" element={<BlendScreen />} />
             <Route path="/jam/:code" element={<JamScreen />} />
             <Route path="*" element={<EmptyState title={t('app.error')} />} />
           </Routes>
+          </Suspense>
         </motion.main>
       </AnimatePresence>
 
@@ -312,6 +328,8 @@ function Gate({ children }: { children: React.ReactNode }) {
         else if (param.startsWith('tr_')) window.location.hash = `#/track/${param.slice(3)}`;
         // A Jam invite: join it and listen along.
         else if (param.startsWith('jam_')) window.location.hash = `#/jam/${param.slice(4)}`;
+        // A Blend invite: make the Blend with whoever sent it.
+        else if (param.startsWith('bl_')) window.location.hash = `#/blend/${param.slice(3)}`;
         // The forced-join gate. It is deliberately not on the playback path: it runs
         // once here, and an unreachable check lets the listener in (the server
         // decides that, not this screen).

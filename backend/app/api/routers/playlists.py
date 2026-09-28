@@ -40,6 +40,9 @@ def _out(
         is_owner=is_owner,
         can_edit=can_edit,
         updated_at=playlist.updated_at,
+        created_at=playlist.created_at,
+        # A folder is its owner's way of filing; a collaborator sees it unfiled.
+        folder_id=playlist.folder_id if is_owner else None,
     )
 
 

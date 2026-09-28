@@ -160,6 +160,14 @@ TEXTS: dict[str, dict[Lang, str]] = {
         "fa": "این هفته {tracks} آهنگ تازه در {channels} کانالت اضافه شد.",
         "en": "{tracks} new tracks landed in {channels} of your channels this week.",
     },
+    "notify_new_release": {
+        "fa": "\U0001f195 آهنگ تازه از {artist}: «{title}»",
+        "en": "\U0001f195 New from {artist}: «{title}»",
+    },
+    "notify_new_releases": {
+        "fa": "\U0001f195 {count} آهنگ تازه از {artist}، از جمله «{title}»",
+        "en": "\U0001f195 {count} new tracks from {artist}, including «{title}»",
+    },
     "notify_discover": {
         "fa": "\u2728 «کشف هفتگی» تازه‌ات آماده است.",
         "en": "\u2728 Your new Discover Weekly is ready.",

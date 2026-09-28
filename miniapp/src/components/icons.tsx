@@ -158,3 +158,40 @@ export const LinkIcon = (p: Props) => (
     <path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" />
   </Icon>
 );
+/** A speech bubble with lines: lyrics. */
+export const LyricsIcon = (p: Props) => (
+  <Icon {...p}>
+    <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A2.5 2.5 0 0 1 3 13.5" />
+    <path d="M8 8h8M8 11.5h5" />
+  </Icon>
+);
+export const SparkleIcon = (p: Props) => (
+  <Icon {...p}>
+    <path d="M12 3.5 13.8 9l5.7 1.9-5.7 1.9L12 18.5l-1.8-5.7L4.5 10.9 10.2 9z" />
+    <path d="M19 3v3M17.5 4.5h3" />
+  </Icon>
+);
+export const FolderIcon = (p: Props) => (
+  <Icon {...p}>
+    <path d="M3.5 7.5A2 2 0 0 1 5.5 5.5h4l2 2h7a2 2 0 0 1 2 2v7.5a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2z" />
+  </Icon>
+);
+export const EyeOffIcon = (p: Props) => (
+  <Icon {...p}>
+    <path d="M3 3l18 18" />
+    <path d="M10.6 5.2A9.6 9.6 0 0 1 12 5c5 0 8.5 4.5 9.5 7a13 13 0 0 1-2.6 3.8M6.3 6.8A13 13 0 0 0 2.5 12c1 2.5 4.5 7 9.5 7a9.4 9.4 0 0 0 4.3-1" />
+    <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+  </Icon>
+);
+export const MicIcon = (p: Props) => (
+  <Icon {...p}>
+    <rect x="9" y="3" width="6" height="11" rx="3" />
+    <path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21" />
+  </Icon>
+);
+export const BlendIcon = (p: Props) => (
+  <Icon {...p}>
+    <circle cx="9" cy="12" r="5.5" />
+    <circle cx="15" cy="12" r="5.5" />
+  </Icon>
+);

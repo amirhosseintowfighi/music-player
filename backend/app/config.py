@@ -62,6 +62,12 @@ class Settings(BaseSettings):
     # Empty means the enrichment job does nothing and artists simply have no photo.
     spotify_client_id: str = ""
     spotify_client_secret: SecretStr = SecretStr("")
+    # Last.fm, for the order of an artist's best-known songs ("This Is" playlists).
+    # Only titles are read; playback is always from our own archive. Empty means the
+    # playlists are ordered by what people play here instead.
+    lastfm_api_key: SecretStr = SecretStr("")
+    # LRCLIB (lrclib.net) serves synced lyrics without a key. Empty disables lyrics.
+    lyrics_api_url: str = "https://lrclib.net"
 
     # ── payment gateway credentials (phase 6) ──
     zarinpal_merchant_id: SecretStr = SecretStr("")

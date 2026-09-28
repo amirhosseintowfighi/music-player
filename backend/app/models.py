@@ -115,6 +115,7 @@ class User(Base):
     following_count: Mapped[int] = mapped_column(Integer, server_default="0")
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
     last_seen_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    private_until: Mapped[datetime | None] = mapped_column(TS)
 
 
 class RefreshToken(Base):
@@ -220,6 +221,8 @@ class Artist(Base):
     spotify_id: Mapped[str | None] = mapped_column(Text)
     popularity: Mapped[int | None] = mapped_column(Integer)
     enriched_at: Mapped[datetime | None] = mapped_column(TS)
+    lastfm_top: Mapped[list[str] | None] = mapped_column(JSONB)
+    lastfm_fetched_at: Mapped[datetime | None] = mapped_column(TS)
 
 
 class Track(Base):
@@ -319,6 +322,9 @@ class Playlist(Base):
     tracks_count: Mapped[int] = mapped_column(Integer, server_default="0")
     duration_total: Mapped[int] = mapped_column(Integer, server_default="0")
     generated_for: Mapped[date | None] = mapped_column(Date)
+    folder_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("playlist_folders.id", ondelete="SET NULL")
+    )
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
 
@@ -558,4 +564,78 @@ class ChannelCandidate(Base):
     mention_count: Mapped[int] = mapped_column(Integer, server_default="1")
     approved_channel_id: Mapped[int | None] = mapped_column(BigInteger, ForeignKey("channels.id"))
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+# ── listening features (0015) ──
+
+
+class PlaylistFolder(Base):
+    __tablename__ = "playlist_folders"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    name: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class ArtistFollow(Base):
+    __tablename__ = "artist_follows"
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    artist_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("artists.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class HiddenTrack(Base):
+    __tablename__ = "hidden_tracks"
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    track_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True
+    )
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class TrackLyrics(Base):
+    __tablename__ = "track_lyrics"
+    track_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True
+    )
+    found: Mapped[bool] = mapped_column(Boolean)
+    synced: Mapped[str | None] = mapped_column(Text)
+    plain: Mapped[str | None] = mapped_column(Text)
+    source: Mapped[str | None] = mapped_column(Text)
+    fetched_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class Blend(Base):
+    __tablename__ = "blends"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_a: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    user_b: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    playlist_a: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("playlists.id", ondelete="SET NULL")
+    )
+    playlist_b: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("playlists.id", ondelete="SET NULL")
+    )
+    match_pct: Mapped[int] = mapped_column(Integer, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    refreshed_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class TrackProgress(Base):
+    __tablename__ = "track_progress"
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    track_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True
+    )
+    position_s: Mapped[int] = mapped_column(Integer)
+    finished: Mapped[bool] = mapped_column(Boolean, server_default="false")
     updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())

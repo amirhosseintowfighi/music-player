@@ -4,6 +4,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import { ApiError, type Track } from '@/api/client';
 import {
+  useAddToPlaylist,
   useCreatePlaylist,
   useDeletePlaylist,
   useJoinPlaylist,
@@ -15,7 +16,8 @@ import {
   useSharedPlaylist,
   useUpdatePlaylist,
 } from '@/api/playlists';
-import { ChevronIcon, PlayIcon, PlusIcon, ShuffleIcon } from '@/components/icons';
+import { useFolderActions, useFolders, usePlaylistRecommendations } from '@/api/listening';
+import { ChevronIcon, FolderIcon, PlayIcon, PlusIcon, ShuffleIcon, SparkleIcon } from '@/components/icons';
 import { TrackRow } from '@/components/TrackRow';
 import { Cover, EmptyState, Glass, Sheet, Spinner, cx } from '@/components/ui';
 import { useI18n } from '@/i18n';
@@ -82,42 +84,138 @@ export function CreatePlaylistSheet({
   );
 }
 
+type SortKey = 'recent' | 'alpha' | 'created';
+type FilterKey = 'all' | 'mine' | 'made' | 'blend';
+const MADE_FOR_YOU = new Set(['discover_weekly', 'daily_mix', 'release_radar', 'daylist']);
+
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={() => {
+        haptic('select');
+        onClick();
+      }}
+      className={cx(
+        'flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12.5px] transition-colors duration-200',
+        on ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)] text-[var(--ink-dim)]',
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function Playlists() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const navigate = useNavigate();
   const playlists = usePlaylists();
+  const folders = useFolders();
+  const { remove: removeFolder } = useFolderActions();
   const [createOpen, setCreateOpen] = useState(false);
+  const [sort, setSort] = useState<SortKey>('recent');
+  const [filter, setFilter] = useState<FilterKey>('all');
+  const [folder, setFolder] = useState<number | null>(null);
+
+  const shown = useMemo(() => {
+    const list = (playlists.data ?? []).filter((playlist) => {
+      if (folder !== null) return playlist.folder_id === folder;
+      if (filter === 'mine') return playlist.kind === 'manual' && playlist.is_owner;
+      if (filter === 'made') return MADE_FOR_YOU.has(playlist.kind);
+      if (filter === 'blend') return playlist.kind === 'blend';
+      // Filed playlists live in their folder, not at the top level.
+      return filter !== 'all' || !playlist.folder_id;
+    });
+    const collator = new Intl.Collator(lang);
+    return [...list].sort((a, b) =>
+      sort === 'alpha'
+        ? collator.compare(a.name, b.name)
+        : sort === 'created'
+          ? (b.created_at ?? '').localeCompare(a.created_at ?? '')
+          : b.updated_at.localeCompare(a.updated_at),
+    );
+  }, [playlists.data, folder, filter, sort, lang]);
+  const openFolder = folders.data?.find((item) => item.id === folder);
 
   return (
     <div className="px-4 pt-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-[21px] font-bold">{t('library.playlists')}</h1>
+        <h1 className="text-[21px] font-bold">{openFolder ? openFolder.name : t('library.playlists')}</h1>
         <button
           type="button"
           aria-label={t('playlist.new')}
           onClick={() => setCreateOpen(true)}
-          className="grid h-9 w-9 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)]"
+          className="grid h-9 w-9 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] transition-transform active:scale-90"
         >
           <PlusIcon size={18} />
         </button>
       </div>
 
-      <div className="mt-4 flex flex-col gap-2">
-        <Glass className="flex items-center gap-3 p-3" onClick={() => navigate('/likes')}>
-          <Cover seed="likes" size={48} glyph="♡" />
-          <div>
-            <p className="text-[14px] font-bold">{t('library.liked')}</p>
-            <p className="text-[11.5px] text-[var(--ink-faint)]">{t('library.likedHint')}</p>
-          </div>
-        </Glass>
+      <div className="no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+        {openFolder ? (
+          <>
+            <Chip on={false} onClick={() => setFolder(null)}>
+              <ChevronIcon size={14} className="rotate-180 rtl:rotate-0" />
+              {t('library.playlists')}
+            </Chip>
+            <Chip
+              on={false}
+              onClick={() => {
+                removeFolder.mutate(openFolder.id);
+                setFolder(null);
+              }}
+            >
+              {t('folders.delete')}
+            </Chip>
+          </>
+        ) : (
+          (['all', 'mine', 'made', 'blend'] as const).map((key) => (
+            <Chip key={key} on={filter === key} onClick={() => setFilter(key)}>
+              {t(`library.filter.${key}`)}
+            </Chip>
+          ))
+        )}
+        <span className="mx-1 w-px shrink-0 bg-[var(--separator)]" />
+        {(['recent', 'alpha', 'created'] as const).map((key) => (
+          <Chip key={key} on={sort === key} onClick={() => setSort(key)}>
+            {t(`library.sort.${key}`)}
+          </Chip>
+        ))}
+      </div>
 
-        {playlists.data?.map((playlist) => (
+      <div className="rise mt-3 flex flex-col gap-2">
+        {folder === null && filter === 'all' && (
+          <>
+            <Glass className="flex items-center gap-3 p-3" onClick={() => navigate('/likes')}>
+              <Cover seed="likes" size={48} glyph="♡" />
+              <div>
+                <p className="text-[14px] font-bold">{t('library.liked')}</p>
+                <p className="text-[11.5px] text-[var(--ink-faint)]">{t('library.likedHint')}</p>
+              </div>
+            </Glass>
+            {folders.data?.map((item) => (
+              <Glass key={`folder-${item.id}`} className="flex items-center gap-3 p-3" onClick={() => setFolder(item.id)}>
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-[12px] bg-[var(--fill-strong)] text-[var(--accent)]">
+                  <FolderIcon size={24} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[14px] font-semibold">{item.name}</p>
+                  <p className="text-[11.5px] text-[var(--ink-faint)]">{t('folders.count', { count: item.playlists })}</p>
+                </div>
+                <ChevronIcon size={18} className="text-[var(--ink-faint)] rtl:rotate-180" />
+              </Glass>
+            ))}
+          </>
+        )}
+
+        {shown.map((playlist) => (
           <Glass
             key={playlist.id}
             className="flex items-center gap-3 p-3"
             onClick={() => navigate(`/playlist/${playlist.id}`)}
           >
-            <Cover seed={playlist.name} size={48} glyph="≡" />
+            <Cover seed={playlist.name} size={48} glyph={playlist.kind === 'blend' ? '◑' : MADE_FOR_YOU.has(playlist.kind) ? '✦' : '≡'} />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[14px] font-semibold">{playlist.name}</p>
               <p className="truncate text-[11.5px] text-[var(--ink-faint)]">
@@ -130,7 +228,7 @@ export function Playlists() {
           </Glass>
         ))}
 
-        {playlists.data?.length === 0 && !playlists.isLoading && (
+        {shown.length === 0 && !playlists.isLoading && (
           <EmptyState title={t('playlist.empty')} cta={t('playlist.new')} onCta={() => setCreateOpen(true)} />
         )}
       </div>
@@ -252,6 +350,130 @@ function ReorderRow({
   );
 }
 
+/**
+ * "Recommended songs" under a playlist the listener can edit (Spotify's Enhance, in
+ * Music's clothes): songs that belong with these, one tap to add, refresh for more.
+ */
+function Recommended({ playlistId, trackIds }: { playlistId: number; trackIds: number[] }) {
+  const { t } = useI18n();
+  const recs = usePlaylistRecommendations(playlistId, trackIds.length > 0);
+  const add = useAddToPlaylist();
+  const toast = useUi((s) => s.toast);
+  const play = usePlayer((s) => s.play);
+  const [added, setAdded] = useState<number[]>([]);
+  const items = (recs.data?.items ?? []).filter((track) => !trackIds.includes(track.id));
+  const thumbs = useThumbs(items.map((track) => track.id));
+  if (items.length === 0) return null;
+  return (
+    <section className="mt-6">
+      <div className="mb-2 flex items-center justify-between px-1">
+        <h2 className="flex items-center gap-1.5 text-[16px] font-bold">
+          <SparkleIcon size={16} className="text-[var(--accent)]" />
+          {t('enhance.title')}
+        </h2>
+        <button type="button" className="text-[13px] text-[var(--accent)]" onClick={() => void recs.refetch()}>
+          {t('enhance.refresh')}
+        </button>
+      </div>
+      <p className="mb-2 px-1 text-[12px] text-[var(--ink-faint)]">{t('enhance.hint')}</p>
+      <Glass className="rise p-1.5">
+        {items.map((track, index) => (
+          <div key={track.id} className="flex items-center">
+            <div className="min-w-0 flex-1">
+              <TrackRow
+                track={track}
+                {...(thumbs[track.id] ? { thumb: thumbs[track.id] as string } : {})}
+                onPlay={() => void play({ queue: items, index, source: 'discover' })}
+              />
+            </div>
+            <button
+              type="button"
+              aria-label={t('player.addToPlaylist')}
+              disabled={added.includes(track.id)}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--accent)] transition-transform active:scale-90 disabled:opacity-40"
+              onClick={() =>
+                add.mutate(
+                  { playlistId, trackIds: [track.id] },
+                  {
+                    onSuccess: () => {
+                      haptic('success');
+                      setAdded((list) => [...list, track.id]);
+                      toast(t('enhance.added'), 'success');
+                    },
+                  },
+                )
+              }
+            >
+              {added.includes(track.id) ? '✓' : <PlusIcon size={18} />}
+            </button>
+          </div>
+        ))}
+      </Glass>
+    </section>
+  );
+}
+
+/** Filing a playlist into a folder, from the playlist's own menu. */
+function FolderPicker({ playlistId, folderId, onDone }: { playlistId: number; folderId: number | null; onDone: () => void }) {
+  const { t } = useI18n();
+  const folders = useFolders();
+  const { create, file } = useFolderActions();
+  const [name, setName] = useState('');
+  return (
+    <div className="mt-3">
+      <p className="mb-2 px-1 text-[12.5px] text-[var(--ink-dim)]">{t('folders.moveTo')}</p>
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={() => file.mutate({ playlistId, folderId: null }, { onSuccess: onDone })}
+          className={cx('rounded-full px-3 py-1.5 text-[12.5px]', folderId === null ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)]')}
+        >
+          {t('folders.none')}
+        </button>
+        {folders.data?.map((folder) => (
+          <button
+            key={folder.id}
+            type="button"
+            onClick={() => file.mutate({ playlistId, folderId: folder.id }, { onSuccess: onDone })}
+            className={cx(
+              'flex items-center gap-1 rounded-full px-3 py-1.5 text-[12.5px]',
+              folderId === folder.id ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)]',
+            )}
+          >
+            <FolderIcon size={14} />
+            {folder.name}
+          </button>
+        ))}
+      </div>
+      <div className="mt-2 flex gap-2">
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder={t('folders.new')}
+          aria-label={t('folders.new')}
+          maxLength={60}
+          className="min-w-0 flex-1 rounded-xl bg-[var(--fill)] px-3 py-2 text-[13px] outline-none"
+        />
+        <button
+          type="button"
+          disabled={!name.trim() || create.isPending}
+          className="rounded-xl bg-[var(--fill-strong)] px-3 text-[13px] disabled:opacity-50"
+          onClick={() =>
+            create.mutate(name.trim(), {
+              onSuccess: (folder) => {
+                setName('');
+                file.mutate({ playlistId, folderId: folder.id }, { onSuccess: onDone });
+              },
+            })
+          }
+        >
+          {t('folders.create')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function PlaylistScreen() {
   const { t, lang } = useI18n();
   const id = Number(useParams().id);
@@ -323,9 +545,15 @@ export function PlaylistScreen() {
         </Glass>
       )}
 
+      {playlist.can_edit && playlist.kind === 'manual' && (
+        <Recommended playlistId={playlist.id} trackIds={items.map((track) => track.id)} />
+      )}
+
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={playlist.name}>
         {playlist.is_owner && (
           <>
+            <FolderPicker playlistId={playlist.id} folderId={playlist.folder_id ?? null} onDone={() => setMenuOpen(false)} />
+            <div className="my-3 h-px bg-[var(--separator)]" />
             <button
               type="button"
               className="w-full rounded-xl bg-[var(--fill)] px-4 py-3 text-start text-[13.5px]"

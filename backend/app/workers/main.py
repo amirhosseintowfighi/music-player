@@ -66,6 +66,9 @@ class WorkerSettings:
         jobs.prewarm_resolver,
         jobs.crawler_healthcheck,
         jobs.enrich_artists,
+        jobs.enrich_lastfm,
+        jobs.notify_new_releases,
+        jobs.refresh_blends,
         jobs.warm_cache,
     ]
     cron_jobs: ClassVar[list[Any]] = [
@@ -98,11 +101,14 @@ class WorkerSettings:
         cron(jobs.warm_cache, minute=set(range(2, 60, 10)), unique=True),
         # Artist photos: small, external, and nobody is waiting for it.
         cron(jobs.enrich_artists, minute={8, 28, 48}, unique=True),
+        cron(jobs.enrich_lastfm, minute={18, 38, 58}, unique=True),
+        cron(jobs.notify_new_releases, hour={13}, minute={20}, unique=True),
         # Daily, after a full day of crawling has been recorded.
         cron(jobs.crawler_healthcheck, hour={7}, minute={0}, unique=True),
         # Wrapped is rebuilt in the first days of January.
         cron(jobs.rebuild_wrapped, month={1}, day={2}, hour={4}, unique=True),
         cron(jobs.generate_mixes, hour={2}, minute={0}, unique=True),
+        cron(jobs.refresh_blends, hour={2}, minute={40}, unique=True),
     ]
     max_jobs = 20
     job_timeout = 600

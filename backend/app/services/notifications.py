@@ -38,7 +38,15 @@ from tmusic_common.logging import get_logger
 
 log = get_logger(__name__)
 
-KINDS = ("new_tracks", "digest", "sub_expiry", "discover_ready", "payment", "system")
+KINDS = (
+    "new_tracks",
+    "digest",
+    "sub_expiry",
+    "discover_ready",
+    "payment",
+    "system",
+    "new_release",
+)
 # Money and account news default on; discovery chatter defaults on but is easy to mute;
 # the weekly digest is opt-out because it is the one people tire of first.
 DEFAULTS: dict[str, bool] = {
@@ -48,6 +56,7 @@ DEFAULTS: dict[str, bool] = {
     "discover_ready": True,
     "payment": True,
     "system": True,
+    "new_release": True,
 }
 QUIET_START_HOUR = 23
 QUIET_END_HOUR = 9
@@ -209,6 +218,15 @@ def render(kind: str, payload: dict[str, Any], lang: str) -> str:
         )
     if kind == "discover_ready":
         return t("notify_discover", lang)
+    if kind == "new_release":
+        key = "notify_new_release" if payload.get("count", 1) == 1 else "notify_new_releases"
+        return t(
+            key,
+            lang,
+            artist=payload.get("artist", ""),
+            title=payload.get("title", ""),
+            count=payload.get("count", 0),
+        )
     return str(payload.get("text", ""))
 
 

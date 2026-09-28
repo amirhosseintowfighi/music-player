@@ -1501,6 +1501,391 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/artists/{artist_id}/this-is": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** This Is */
+        get: operations["this_is_v1_artists__artist_id__this_is_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/artists/{artist_id}/follow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Follow Artist */
+        put: operations["follow_artist_v1_artists__artist_id__follow_put"];
+        post?: never;
+        /** Unfollow Artist */
+        delete: operations["unfollow_artist_v1_artists__artist_id__follow_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/artists": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Followed Artists
+         * @description The artists this user follows, newest follow first.
+         */
+        get: operations["followed_artists_v1_me_artists_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tracks/{track_id}/lyrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Track Lyrics */
+        get: operations["track_lyrics_v1_tracks__track_id__lyrics_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tracks/{track_id}/hide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Hide Track */
+        put: operations["hide_track_v1_tracks__track_id__hide_put"];
+        post?: never;
+        /** Unhide Track */
+        delete: operations["unhide_track_v1_tracks__track_id__hide_delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/hidden": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Hidden Tracks */
+        get: operations["hidden_tracks_v1_me_hidden_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/private-session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Private Session */
+        get: operations["private_session_v1_me_private_session_get"];
+        /** Set Private Session */
+        put: operations["set_private_session_v1_me_private_session_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tracks/{track_id}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Save Progress */
+        put: operations["save_progress_v1_tracks__track_id__progress_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Progress */
+        get: operations["progress_v1_me_progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/in-progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** In Progress */
+        get: operations["in_progress_v1_me_in_progress_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/recommendations/for-tracks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** For Tracks */
+        post: operations["for_tracks_v1_recommendations_for_tracks_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/playlists/{playlist_id}/recommendations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Playlist Recommendations */
+        get: operations["playlist_recommendations_v1_playlists__playlist_id__recommendations_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/folders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Folders */
+        get: operations["list_folders_v1_folders_get"];
+        put?: never;
+        /** Create Folder */
+        post: operations["create_folder_v1_folders_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/folders/{folder_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Folder */
+        delete: operations["delete_folder_v1_folders__folder_id__delete"];
+        options?: never;
+        head?: never;
+        /** Rename Folder */
+        patch: operations["rename_folder_v1_folders__folder_id__patch"];
+        trace?: never;
+    };
+    "/v1/playlists/{playlist_id}/folder": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** File Playlist */
+        put: operations["file_playlist_v1_playlists__playlist_id__folder_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/blends/invite": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Blend Invite */
+        post: operations["blend_invite_v1_blends_invite_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/blends/join/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Blend Join */
+        post: operations["blend_join_v1_blends_join__code__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/blends": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Blends */
+        get: operations["list_blends_v1_blends_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/blends/{blend_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Blend */
+        post: operations["refresh_blend_v1_blends__blend_id__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/blends/{blend_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Leave Blend */
+        delete: operations["leave_blend_v1_blends__blend_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/daylist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Daylist
+         * @description The playlist for right now; rebuilt when the part of the day changes.
+         */
+        get: operations["get_daylist_v1_daylist_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/dj": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Dj */
+        get: operations["dj_v1_dj_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tracks/{track_id}/like": {
         parameters: {
             query?: never;
@@ -2411,6 +2796,16 @@ export interface components {
              * @default []
              */
             albums: components["schemas"]["AlbumRef"][];
+            /**
+             * Following
+             * @default false
+             */
+            following: boolean;
+            /**
+             * Followers
+             * @default 0
+             */
+            followers: number;
         };
         /** ArtistRef */
         ArtistRef: {
@@ -2457,6 +2852,31 @@ export interface components {
              * @default
              */
             reason: string;
+        };
+        /** BlendInviteOut */
+        BlendInviteOut: {
+            /** Code */
+            code: string;
+            /** Share Url */
+            share_url: string;
+        };
+        /** BlendOut */
+        BlendOut: {
+            /** Id */
+            id: number;
+            /** Other User Id */
+            other_user_id: number;
+            /** Other Name */
+            other_name: string;
+            /** Playlist Id */
+            playlist_id: number | null;
+            /** Match Pct */
+            match_pct: number;
+            /**
+             * Refreshed At
+             * Format: date-time
+             */
+            refreshed_at: string;
         };
         /** BroadcastVariantIn */
         BroadcastVariantIn: {
@@ -2703,6 +3123,20 @@ export interface components {
             /** Track Ids */
             track_ids?: number[];
         };
+        /** DaylistOut */
+        DaylistOut: {
+            /** Playlist Id */
+            playlist_id: number;
+            /** Name */
+            name: string;
+            /**
+             * Part
+             * @enum {string}
+             */
+            part: "morning" | "afternoon" | "evening" | "night";
+            /** Items */
+            items: components["schemas"]["TrackOut"][];
+        };
         /** DiscountPreviewOut */
         DiscountPreviewOut: {
             /** Valid */
@@ -2723,6 +3157,26 @@ export interface components {
             /** Sections */
             sections: components["schemas"]["SectionOut"][];
         };
+        /** DjOut */
+        DjOut: {
+            /** Segments */
+            segments: components["schemas"]["DjSegmentOut"][];
+        };
+        /** DjSegmentOut */
+        DjSegmentOut: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "favorites" | "throwback" | "discovery" | "new";
+            /** Items */
+            items: components["schemas"]["TrackOut"][];
+        };
+        /** FilePlaylistIn */
+        FilePlaylistIn: {
+            /** Folder Id */
+            folder_id?: number | null;
+        };
         /** FixMetadataIn */
         FixMetadataIn: {
             /** Title */
@@ -2734,6 +3188,30 @@ export interface components {
              * @default false
              */
             apply_to_artist: boolean;
+        };
+        /** FolderIn */
+        FolderIn: {
+            /** Name */
+            name: string;
+        };
+        /** FolderOut */
+        FolderOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /**
+             * Playlists
+             * @default 0
+             */
+            playlists: number;
+        };
+        /** FollowArtistOut */
+        FollowArtistOut: {
+            /** Following */
+            following: boolean;
+            /** Followers */
+            followers: number;
         };
         /** FollowOut */
         FollowOut: {
@@ -2921,6 +3399,22 @@ export interface components {
             liked: boolean;
             /** Likes Count */
             likes_count: number;
+        };
+        /** LyricsOut */
+        LyricsOut: {
+            /** Track Id */
+            track_id: number;
+            /**
+             * Found
+             * @default true
+             */
+            found: boolean;
+            /** Synced */
+            synced?: string | null;
+            /** Plain */
+            plain?: string | null;
+            /** Source */
+            source?: string | null;
         };
         /** MeOut */
         MeOut: {
@@ -3312,7 +3806,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio";
+            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio" | "release_radar" | "blend" | "daylist";
             /** Is Public */
             is_public: boolean;
             /** Is Collaborative */
@@ -3340,6 +3834,10 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Created At */
+            created_at?: string | null;
+            /** Folder Id */
+            folder_id?: number | null;
             /** Items */
             items: components["schemas"]["TrackOut"][];
         };
@@ -3355,7 +3853,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio";
+            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio" | "release_radar" | "blend" | "daylist";
             /** Is Public */
             is_public: boolean;
             /** Is Collaborative */
@@ -3383,6 +3881,20 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Created At */
+            created_at?: string | null;
+            /** Folder Id */
+            folder_id?: number | null;
+        };
+        /** PrivateSessionIn */
+        PrivateSessionIn: {
+            /** On */
+            on: boolean;
+        };
+        /** PrivateSessionOut */
+        PrivateSessionOut: {
+            /** Private Until */
+            private_until?: string | null;
         };
         /** ProfileOut */
         ProfileOut: {
@@ -3417,6 +3929,20 @@ export interface components {
             top_tracks: components["schemas"]["TrackOut"][];
             /** Public Playlists */
             public_playlists: components["schemas"]["PublicPlaylistOut"][];
+        };
+        /** ProgressIn */
+        ProgressIn: {
+            /** Position S */
+            position_s: number;
+        };
+        /** ProgressOut */
+        ProgressOut: {
+            /** Track Id */
+            track_id: number;
+            /** Position S */
+            position_s: number;
+            /** Finished */
+            finished: boolean;
         };
         /** ProviderOut */
         ProviderOut: {
@@ -3669,6 +4195,20 @@ export interface components {
             /** Init Data */
             init_data: string;
         };
+        /**
+         * ThisIsOut
+         * @description An artist's essentials, in the order the world knows them (or ours, without Last.fm).
+         */
+        ThisIsOut: {
+            artist: components["schemas"]["ArtistOut"];
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "lastfm" | "plays";
+            /** Items */
+            items: components["schemas"]["TrackOut"][];
+        };
         /** ThumbsIn */
         ThumbsIn: {
             /** Ids */
@@ -3721,6 +4261,11 @@ export interface components {
             subscribers_count: number;
             /** Joined */
             joined: boolean;
+        };
+        /** TrackIdsIn */
+        TrackIdsIn: {
+            /** Track Ids */
+            track_ids: number[];
         };
         /** TrackOut */
         TrackOut: {
@@ -6660,6 +7205,767 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    this_is_v1_artists__artist_id__this_is_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ThisIsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    follow_artist_v1_artists__artist_id__follow_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowArtistOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unfollow_artist_v1_artists__artist_id__follow_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                artist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FollowArtistOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    followed_artists_v1_me_artists_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistOut"][];
+                };
+            };
+        };
+    };
+    track_lyrics_v1_tracks__track_id__lyrics_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LyricsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hide_track_v1_tracks__track_id__hide_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    unhide_track_v1_tracks__track_id__hide_delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    hidden_tracks_v1_me_hidden_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": number[];
+                };
+            };
+        };
+    };
+    private_session_v1_me_private_session_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateSessionOut"];
+                };
+            };
+        };
+    };
+    set_private_session_v1_me_private_session_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PrivateSessionIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PrivateSessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    save_progress_v1_tracks__track_id__progress_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ProgressIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    progress_v1_me_progress_get: {
+        parameters: {
+            query: {
+                ids: number[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ProgressOut"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    in_progress_v1_me_in_progress_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TrackOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    for_tracks_v1_recommendations_for_tracks_post: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TrackIdsIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TrackOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    playlist_recommendations_v1_playlists__playlist_id__recommendations_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                playlist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Page_TrackOut_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_folders_v1_folders_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderOut"][];
+                };
+            };
+        };
+    };
+    create_folder_v1_folders_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_folder_v1_folders__folder_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folder_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rename_folder_v1_folders__folder_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                folder_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FolderIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FolderOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    file_playlist_v1_playlists__playlist_id__folder_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FilePlaylistIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    blend_invite_v1_blends_invite_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlendInviteOut"];
+                };
+            };
+        };
+    };
+    blend_join_v1_blends_join__code__post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlendOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_blends_v1_blends_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlendOut"][];
+                };
+            };
+        };
+    };
+    refresh_blend_v1_blends__blend_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                blend_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BlendOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    leave_blend_v1_blends__blend_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                blend_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_daylist_v1_daylist_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DaylistOut"];
+                };
+            };
+        };
+    };
+    dj_v1_dj_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DjOut"];
                 };
             };
         };

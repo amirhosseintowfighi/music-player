@@ -18,7 +18,7 @@ from app.schemas import (
     ReportTrackOut,
     TrackOut,
 )
-from app.services import channels, library, reports
+from app.services import channels, follows, library, reports
 from app.services.library import TrackFilters
 
 router = APIRouter(prefix="/v1", tags=["library"])
@@ -120,6 +120,8 @@ async def artist_page(artist_id: int, claims: Claims, session: SessionDep) -> Ar
         artist=artist,
         top_tracks=top,
         albums=[AlbumRef(**album) for album in albums],
+        following=await follows.is_following(session, claims.user_id, artist.id),
+        followers=await follows.followers_count(session, artist.id),
     )
 
 
