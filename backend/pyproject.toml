@@ -83,7 +83,7 @@ known-first-party = ["app", "tmusic_common"]
 "tests/**" = ["S105", "S106", "S311", "S608", "E501", "PT018"]
 "migrations/**" = ["E501"]
 # SQL is assembled only from fixed fragments; every value is a bound parameter.
-"app/services/{library,search,history,playlists,recommendations,admin,broadcast,social}.py" = ["S608", "E501"]
+"app/services/{library,search,history,playlists,recommendations,admin,broadcast,social,blends,related}.py" = ["S608", "E501"]
 "app/workers/jobs.py" = ["S608"]
 # Prints SQL for an operator to paste; there is no database connection here.
 "app/cli.py" = ["S608"]

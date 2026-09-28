@@ -110,6 +110,7 @@ async def update_details(
     description: str | None = None,
     is_public: bool | None = None,
     is_collaborative: bool | None = None,
+    exclude_from_taste: bool | None = None,
 ) -> Playlist:
     found = await access(session, playlist_id, user_id)
     if found.playlist.user_id != user_id:
@@ -130,6 +131,8 @@ async def update_details(
         if is_collaborative and "collab_playlist" not in plan.features:
             raise LimitReached("collaboration is a Pro feature", kind="collab_playlist", limit=0)
         playlist.is_collaborative = is_collaborative
+    if exclude_from_taste is not None:
+        playlist.exclude_from_taste = exclude_from_taste
     await session.execute(
         update(Playlist).where(Playlist.id == playlist_id).values(updated_at=func.now())
     )

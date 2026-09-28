@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.errors import InvalidInput, NotFound
 from app.models import Blend, Playlist, User
-from app.services import playlists
+from app.services import playlists, taste
 
 INVITE_TTL_S = 7 * 24 * 3600
 BLEND_SIZE = 50
@@ -43,12 +43,13 @@ async def _top_tracks(session: AsyncSession, user_id: int) -> list[int]:
     """What this user plays and likes most, best first."""
     rows = await session.execute(
         text(
-            """
+            f"""
         SELECT track_id FROM (
             SELECT coalesce(t.canonical_track_id, h.track_id) AS track_id,
                    count(*) FILTER (WHERE h.completed) + 0.2 * count(*) AS score
               FROM play_history h JOIN tracks t ON t.id = h.track_id
              WHERE h.user_id = :uid AND h.played_at > now() - interval '120 days'
+               AND {taste.COUNTS_FOR_TASTE_SQL}
              GROUP BY 1
             UNION ALL
             SELECT coalesce(t.canonical_track_id, l.track_id), 5
@@ -58,7 +59,8 @@ async def _top_tracks(session: AsyncSession, user_id: int) -> list[int]:
         JOIN tracks t ON t.id = s.track_id
         WHERE NOT t.hidden
           AND NOT EXISTS (SELECT 1 FROM hidden_tracks x
-                           WHERE x.user_id = :uid AND x.track_id = s.track_id)
+                           WHERE x.user_id = :uid AND x.track_id = s.track_id
+                             AND {taste.STILL_HIDDEN_SQL})
         GROUP BY track_id ORDER BY sum(score) DESC, track_id LIMIT :limit
         """
         ).bindparams(uid=user_id, limit=TOP_PER_USER)

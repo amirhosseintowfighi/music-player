@@ -4925,6 +4925,105 @@
         }
       }
     },
+    "/v1/artists/{artist_id}/related": {
+      "get": {
+        "tags": [
+          "listening"
+        ],
+        "summary": "Related Artists",
+        "description": "Fans also like: from our similarity matrix, co-listening, then collaborators.",
+        "operationId": "related_artists_v1_artists__artist_id__related_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "artist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Artist Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ArtistOut"
+                  },
+                  "title": "Response Related Artists V1 Artists  Artist Id  Related Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tracks/{track_id}/credits": {
+      "get": {
+        "tags": [
+          "listening"
+        ],
+        "summary": "Track Credits",
+        "operationId": "track_credits_v1_tracks__track_id__credits_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Track Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreditsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/me/artists": {
       "get": {
         "tags": [
@@ -5009,6 +5108,7 @@
           "listening"
         ],
         "summary": "Hide Track",
+        "description": "Hides a song for good, or snoozes it (``snooze_days``) until it may come back.",
         "operationId": "hide_track_v1_tracks__track_id__hide_put",
         "security": [
           {
@@ -5026,9 +5126,33 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/HideIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Body"
+              }
+            }
+          }
+        },
         "responses": {
-          "204": {
-            "description": "Successful Response"
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HiddenOut"
+                }
+              }
+            }
           },
           "422": {
             "description": "Validation Error",
@@ -5099,6 +5223,37 @@
                   },
                   "type": "array",
                   "title": "Response Hidden Tracks V1 Me Hidden Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/me/hidden/tracks": {
+      "get": {
+        "tags": [
+          "listening"
+        ],
+        "summary": "Hidden Detail",
+        "description": "Hidden and snoozed songs, newest first, with when each comes back.",
+        "operationId": "hidden_detail_v1_me_hidden_tracks_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HiddenOut"
+                  },
+                  "type": "array",
+                  "title": "Response Hidden Detail V1 Me Hidden Tracks Get"
                 }
               }
             }
@@ -5922,6 +6077,287 @@
             "HTTPBearer": []
           }
         ]
+      }
+    },
+    "/v1/me/pins": {
+      "get": {
+        "tags": [
+          "listening"
+        ],
+        "summary": "List Pins",
+        "operationId": "list_pins_v1_me_pins_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PinOut"
+                  },
+                  "type": "array",
+                  "title": "Response List Pins V1 Me Pins Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/me/pins/{kind}/{ref_id}": {
+      "put": {
+        "tags": [
+          "listening"
+        ],
+        "summary": "Pin",
+        "operationId": "pin_v1_me_pins__kind___ref_id__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "playlist",
+                "artist"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "ref_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Ref Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PinOut"
+                  },
+                  "title": "Response Pin V1 Me Pins  Kind   Ref Id  Put"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "listening"
+        ],
+        "summary": "Unpin",
+        "operationId": "unpin_v1_me_pins__kind___ref_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "playlist",
+                "artist"
+              ],
+              "type": "string",
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "ref_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Ref Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PinOut"
+                  },
+                  "title": "Response Unpin V1 Me Pins  Kind   Ref Id  Delete"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/connect/heartbeat": {
+      "post": {
+        "tags": [
+          "listening"
+        ],
+        "summary": "Connect Heartbeat",
+        "operationId": "connect_heartbeat_v1_connect_heartbeat_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HeartbeatIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HeartbeatOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/connect/command": {
+      "post": {
+        "tags": [
+          "listening"
+        ],
+        "summary": "Connect Command",
+        "operationId": "connect_command_v1_connect_command_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConnectCommandIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/connect/devices/{device_id}": {
+      "delete": {
+        "tags": [
+          "listening"
+        ],
+        "summary": "Connect Forget",
+        "operationId": "connect_forget_v1_connect_devices__device_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "device_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Device Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/v1/tracks/{track_id}/like": {
@@ -9346,6 +9782,150 @@
         ],
         "title": "CheckoutOut"
       },
+      "ConnectCommandIn": {
+        "properties": {
+          "target": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 6,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Target"
+          },
+          "sender": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 6,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Sender"
+          },
+          "action": {
+            "type": "string",
+            "enum": [
+              "transfer",
+              "play",
+              "pause",
+              "next",
+              "previous",
+              "seek"
+            ],
+            "title": "Action"
+          },
+          "track_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 200,
+            "title": "Track Ids"
+          },
+          "index": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Index",
+            "default": 0
+          },
+          "position_s": {
+            "type": "number",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Position S",
+            "default": 0
+          },
+          "playing": {
+            "type": "boolean",
+            "title": "Playing",
+            "default": true
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "target",
+          "sender",
+          "action"
+        ],
+        "title": "ConnectCommandIn"
+      },
+      "ConnectCommandOut": {
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": [
+              "transfer",
+              "play",
+              "pause",
+              "next",
+              "previous",
+              "seek"
+            ],
+            "title": "Action"
+          },
+          "sender": {
+            "type": "string",
+            "title": "Sender"
+          },
+          "index": {
+            "type": "integer",
+            "title": "Index",
+            "default": 0
+          },
+          "position_s": {
+            "type": "number",
+            "title": "Position S",
+            "default": 0
+          },
+          "playing": {
+            "type": "boolean",
+            "title": "Playing",
+            "default": true
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackOut"
+            },
+            "type": "array",
+            "title": "Items",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "action",
+          "sender"
+        ],
+        "title": "ConnectCommandOut"
+      },
+      "ConnectStateIn": {
+        "properties": {
+          "track_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Track Id"
+          },
+          "position_s": {
+            "type": "number",
+            "maximum": 86400.0,
+            "minimum": 0.0,
+            "title": "Position S",
+            "default": 0
+          },
+          "playing": {
+            "type": "boolean",
+            "title": "Playing",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "ConnectStateIn"
+      },
       "ConnectionOut": {
         "properties": {
           "user_id": {
@@ -9649,6 +10229,82 @@
         ],
         "title": "CreatePlaylistIn"
       },
+      "CreditsOut": {
+        "properties": {
+          "track": {
+            "$ref": "#/components/schemas/TrackOut"
+          },
+          "genre": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Genre"
+          },
+          "file_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "File Name"
+          },
+          "mime_type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Mime Type"
+          },
+          "file_size": {
+            "type": "integer",
+            "title": "File Size",
+            "default": 0
+          },
+          "first_posted_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "First Posted At"
+          },
+          "channels": {
+            "type": "integer",
+            "title": "Channels",
+            "default": 0
+          },
+          "sources": {
+            "items": {
+              "$ref": "#/components/schemas/TrackSourceOut"
+            },
+            "type": "array",
+            "title": "Sources",
+            "default": []
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "track"
+        ],
+        "title": "CreditsOut"
+      },
       "DaylistOut": {
         "properties": {
           "playlist_id": {
@@ -9686,6 +10342,56 @@
           "items"
         ],
         "title": "DaylistOut"
+      },
+      "DeviceOut": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "tablet",
+              "desktop",
+              "web"
+            ],
+            "title": "Kind"
+          },
+          "playing": {
+            "type": "boolean",
+            "title": "Playing"
+          },
+          "position_s": {
+            "type": "number",
+            "title": "Position S"
+          },
+          "track": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrackOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "playing",
+          "position_s"
+        ],
+        "title": "DeviceOut"
       },
       "DiscountPreviewOut": {
         "properties": {
@@ -10059,6 +10765,120 @@
           "floodwait_24h_s"
         ],
         "title": "HealthOut"
+      },
+      "HeartbeatIn": {
+        "properties": {
+          "device_id": {
+            "type": "string",
+            "maxLength": 64,
+            "minLength": 6,
+            "pattern": "^[A-Za-z0-9_-]+$",
+            "title": "Device Id"
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "phone",
+              "tablet",
+              "desktop",
+              "web"
+            ],
+            "title": "Kind",
+            "default": "web"
+          },
+          "state": {
+            "$ref": "#/components/schemas/ConnectStateIn",
+            "default": {
+              "position_s": 0.0,
+              "playing": false
+            }
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "device_id",
+          "name"
+        ],
+        "title": "HeartbeatIn"
+      },
+      "HeartbeatOut": {
+        "properties": {
+          "devices": {
+            "items": {
+              "$ref": "#/components/schemas/DeviceOut"
+            },
+            "type": "array",
+            "title": "Devices"
+          },
+          "commands": {
+            "items": {
+              "$ref": "#/components/schemas/ConnectCommandOut"
+            },
+            "type": "array",
+            "title": "Commands"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "devices",
+          "commands"
+        ],
+        "title": "HeartbeatOut"
+      },
+      "HiddenOut": {
+        "properties": {
+          "track_id": {
+            "type": "integer",
+            "title": "Track Id"
+          },
+          "until": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Until"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "track_id"
+        ],
+        "title": "HiddenOut"
+      },
+      "HideIn": {
+        "properties": {
+          "snooze_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 90.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Snooze Days"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "HideIn",
+        "description": "Empty body hides for good; ``snooze_days`` brings the song back by itself."
       },
       "ImpersonateOut": {
         "properties": {
@@ -11098,6 +11918,29 @@
         ],
         "title": "PendingPaymentOut"
       },
+      "PinOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "playlist",
+              "artist"
+            ],
+            "title": "Kind"
+          },
+          "ref_id": {
+            "type": "integer",
+            "title": "Ref Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "ref_id"
+        ],
+        "title": "PinOut"
+      },
       "PlanOut": {
         "properties": {
           "code": {
@@ -11647,6 +12490,11 @@
             ],
             "title": "Folder Id"
           },
+          "exclude_from_taste": {
+            "type": "boolean",
+            "title": "Exclude From Taste",
+            "default": false
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/TrackOut"
@@ -11782,6 +12630,11 @@
               }
             ],
             "title": "Folder Id"
+          },
+          "exclude_from_taste": {
+            "type": "boolean",
+            "title": "Exclude From Taste",
+            "default": false
           }
         },
         "additionalProperties": false,
@@ -12926,6 +13779,48 @@
         ],
         "title": "TrackOut"
       },
+      "TrackSourceOut": {
+        "properties": {
+          "channel_id": {
+            "type": "integer",
+            "title": "Channel Id"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "subscribers_count": {
+            "type": "integer",
+            "title": "Subscribers Count"
+          },
+          "posted_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Posted At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "channel_id",
+          "username",
+          "title",
+          "subscribers_count",
+          "posted_at"
+        ],
+        "title": "TrackSourceOut"
+      },
       "UpdatePlaylistIn": {
         "properties": {
           "name": {
@@ -12974,6 +13869,17 @@
               }
             ],
             "title": "Is Collaborative"
+          },
+          "exclude_from_taste": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Exclude From Taste"
           }
         },
         "additionalProperties": false,

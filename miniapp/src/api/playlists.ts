@@ -66,7 +66,7 @@ export function useCreatePlaylist() {
 export function useUpdatePlaylist(id: number) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: { name?: string; is_public?: boolean; is_collaborative?: boolean }) =>
+    mutationFn: (body: { name?: string; is_public?: boolean; is_collaborative?: boolean; exclude_from_taste?: boolean }) =>
       patch<Playlist>(`/v1/playlists/${id}`, body),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: playlistKeys.all });

@@ -43,6 +43,7 @@ def _out(
         created_at=playlist.created_at,
         # A folder is its owner's way of filing; a collaborator sees it unfiled.
         folder_id=playlist.folder_id if is_owner else None,
+        exclude_from_taste=playlist.exclude_from_taste if is_owner else False,
     )
 
 
@@ -97,6 +98,7 @@ async def update_playlist(
         description=body.description,
         is_public=body.is_public,
         is_collaborative=body.is_collaborative,
+        exclude_from_taste=body.exclude_from_taste,
     )
     await session.refresh(playlist)
     return _out(playlist, settings)

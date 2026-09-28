@@ -195,3 +195,49 @@ export const BlendIcon = (p: Props) => (
     <circle cx="15" cy="12" r="5.5" />
   </Icon>
 );
+/** Connect: a screen and a speaker. */
+export const DevicesIcon = (p: Props) => (
+  <Icon {...p}>
+    <rect x="2.5" y="4" width="13" height="10" rx="1.6" />
+    <path d="M6 18h6" />
+    <rect x="17" y="8" width="4.5" height="12" rx="1.2" />
+    <circle cx="19.25" cy="16.5" r="0.9" fill="currentColor" />
+  </Icon>
+);
+export const PhoneIcon = (p: Props) => (
+  <Icon {...p}>
+    <rect x="7" y="2.5" width="10" height="19" rx="2.2" />
+    <path d="M11 18.5h2" />
+  </Icon>
+);
+export const DesktopIcon = (p: Props) => (
+  <Icon {...p}>
+    <rect x="3" y="4" width="18" height="12" rx="1.8" />
+    <path d="M9 20h6M12 16v4" />
+  </Icon>
+);
+export const PinIcon = ({ filled, ...p }: Props & { filled?: boolean }) => (
+  <Icon {...p}>
+    <path d="M9 3h6l-1 6 4 4H6l4-4z" fill={filled ? 'currentColor' : 'none'} />
+    <path d="M12 13v8" />
+  </Icon>
+);
+export const InfoIcon = (p: Props) => (
+  <Icon {...p}>
+    <circle cx="12" cy="12" r="9" />
+    <path d="M12 11v5.5" />
+    <circle cx="12" cy="7.8" r="0.9" fill="currentColor" />
+  </Icon>
+);
+export const ShareIcon = (p: Props) => (
+  <Icon {...p}>
+    <path d="M12 15V3.5M7.5 8 12 3.5 16.5 8" />
+    <path d="M5 12v7.5h14V12" />
+  </Icon>
+);
+export const SnoozeIcon = (p: Props) => (
+  <Icon {...p}>
+    <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z" />
+    <path d="M14 4h4l-4 4h4" />
+  </Icon>
+);

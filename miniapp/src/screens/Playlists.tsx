@@ -2,7 +2,7 @@ import { Reorder, useDragControls } from 'framer-motion';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { ApiError, type Track } from '@/api/client';
+import { ApiError, type Playlist, type Track } from '@/api/client';
 import {
   useAddToPlaylist,
   useCreatePlaylist,
@@ -16,8 +16,10 @@ import {
   useSharedPlaylist,
   useUpdatePlaylist,
 } from '@/api/playlists';
-import { useFolderActions, useFolders, usePlaylistRecommendations } from '@/api/listening';
-import { ChevronIcon, FolderIcon, PlayIcon, PlusIcon, ShuffleIcon, SparkleIcon } from '@/components/icons';
+import { useArtist } from '@/api/hooks';
+import { useFolderActions, useFolders, usePins, usePlaylistRecommendations } from '@/api/listening';
+import { ChevronIcon, FolderIcon, PinIcon, PlayIcon, PlusIcon, ShuffleIcon, SparkleIcon } from '@/components/icons';
+import { PinButton } from '@/components/PinButton';
 import { TrackRow } from '@/components/TrackRow';
 import { Cover, EmptyState, Glass, Sheet, Spinner, cx } from '@/components/ui';
 import { useI18n } from '@/i18n';
@@ -84,6 +86,45 @@ export function CreatePlaylistSheet({
   );
 }
 
+/** A pinned tile: compact, two to a row, above the rest of the library. */
+function PinnedTile({ title, glyph, seed, image, onClick }: { title: string; glyph: string; seed: string; image?: string | null; onClick: () => void }) {
+  return (
+    <Glass className="flex items-center gap-2.5 p-2" onClick={onClick}>
+      <Cover src={image} seed={seed} size={40} radius={glyph === '🎤' ? 20 : 8} glyph={glyph} />
+      <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{title}</span>
+      <PinIcon size={13} filled className="shrink-0 text-[var(--accent)]" />
+    </Glass>
+  );
+}
+
+function PinnedPlaylist({ playlist, playlistId }: { playlist: Playlist | undefined; playlistId: number }) {
+  const navigate = useNavigate();
+  if (!playlist) return null;
+  return (
+    <PinnedTile
+      title={playlist.name}
+      seed={playlist.name}
+      glyph={playlist.kind === 'blend' ? '◑' : MADE_FOR_YOU.has(playlist.kind) ? '✦' : '≡'}
+      onClick={() => navigate(`/playlist/${playlistId}`)}
+    />
+  );
+}
+
+function PinnedArtist({ artistId }: { artistId: number }) {
+  const navigate = useNavigate();
+  const artist = useArtist(artistId);
+  if (!artist.data) return null;
+  return (
+    <PinnedTile
+      title={artist.data.name}
+      seed={artist.data.name}
+      image={artist.data.image_url}
+      glyph="🎤"
+      onClick={() => navigate(`/artist/${artistId}`)}
+    />
+  );
+}
+
 type SortKey = 'recent' | 'alpha' | 'created';
 type FilterKey = 'all' | 'mine' | 'made' | 'blend';
 const MADE_FOR_YOU = new Set(['discover_weekly', 'daily_mix', 'release_radar', 'daylist']);
@@ -118,9 +159,18 @@ export function Playlists() {
   const [filter, setFilter] = useState<FilterKey>('all');
   const [folder, setFolder] = useState<number | null>(null);
 
+  const pins = usePins();
+  const topLevel = folder === null && filter === 'all';
+  const pinnedPlaylists = useMemo(
+    () => new Set((pins.data ?? []).filter((pin) => pin.kind === 'playlist').map((pin) => pin.ref_id)),
+    [pins.data],
+  );
+
   const shown = useMemo(() => {
     const list = (playlists.data ?? []).filter((playlist) => {
       if (folder !== null) return playlist.folder_id === folder;
+      // Pinned ones sit above everything else instead of appearing twice.
+      if (filter === 'all' && pinnedPlaylists.has(playlist.id)) return false;
       if (filter === 'mine') return playlist.kind === 'manual' && playlist.is_owner;
       if (filter === 'made') return MADE_FOR_YOU.has(playlist.kind);
       if (filter === 'blend') return playlist.kind === 'blend';
@@ -135,7 +185,7 @@ export function Playlists() {
           ? (b.created_at ?? '').localeCompare(a.created_at ?? '')
           : b.updated_at.localeCompare(a.updated_at),
     );
-  }, [playlists.data, folder, filter, sort, lang]);
+  }, [playlists.data, folder, filter, sort, lang, pinnedPlaylists]);
   const openFolder = folders.data?.find((item) => item.id === folder);
 
   return (
@@ -185,7 +235,22 @@ export function Playlists() {
       </div>
 
       <div className="rise mt-3 flex flex-col gap-2">
-        {folder === null && filter === 'all' && (
+        {topLevel && (pins.data?.length ?? 0) > 0 && (
+          <div className="grid grid-cols-2 gap-2">
+            {pins.data?.map((pin) =>
+              pin.kind === 'artist' ? (
+                <PinnedArtist key={`a-${pin.ref_id}`} artistId={pin.ref_id} />
+              ) : (
+                <PinnedPlaylist
+                  key={`p-${pin.ref_id}`}
+                  playlist={playlists.data?.find((playlist) => playlist.id === pin.ref_id)}
+                  playlistId={pin.ref_id}
+                />
+              ),
+            )}
+          </div>
+        )}
+        {topLevel && (
           <>
             <Glass className="flex items-center gap-3 p-3" onClick={() => navigate('/likes')}>
               <Cover seed="likes" size={48} glyph="♡" />
@@ -521,9 +586,12 @@ export function PlaylistScreen() {
         source="playlist"
         sourceId={playlist.id}
         actions={
-          <button type="button" aria-label={t('common.more')} onClick={() => setMenuOpen(true)} className="p-1.5">
-            ⋯
-          </button>
+          <>
+            <PinButton kind="playlist" refId={playlist.id} />
+            <button type="button" aria-label={t('common.more')} onClick={() => setMenuOpen(true)} className="p-1.5">
+              ⋯
+            </button>
+          </>
         }
       />
 
@@ -610,6 +678,41 @@ export function PlaylistScreen() {
               }
             >
               {playlist.is_collaborative ? t('playlist.collabOff') : t('playlist.collabOn')}
+            </button>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={playlist.exclude_from_taste ?? false}
+              className="mt-2 flex w-full items-center justify-between gap-3 rounded-xl bg-[var(--fill)] px-4 py-3 text-start"
+              onClick={() =>
+                update.mutate(
+                  { exclude_from_taste: !playlist.exclude_from_taste },
+                  {
+                    onSuccess: (updated) =>
+                      toast(updated.exclude_from_taste ? t('taste.excluded') : t('taste.included')),
+                    onError: () => toast(t('app.error'), 'error'),
+                  },
+                )
+              }
+            >
+              <span className="min-w-0">
+                <span className="block text-[13.5px]">{t('taste.exclude')}</span>
+                <span className="block text-[11.5px] leading-5 text-[var(--ink-faint)]">{t('taste.excludeHint')}</span>
+              </span>
+              <span
+                aria-hidden
+                className={cx(
+                  'relative h-6 w-10 shrink-0 rounded-full transition-colors',
+                  playlist.exclude_from_taste ? 'bg-[var(--accent)]' : 'bg-[var(--fill-strong)]',
+                )}
+              >
+                <span
+                  className={cx(
+                    'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all',
+                    playlist.exclude_from_taste ? 'start-[18px]' : 'start-0.5',
+                  )}
+                />
+              </span>
             </button>
             <button
               type="button"
