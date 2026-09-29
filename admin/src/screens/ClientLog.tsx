@@ -28,13 +28,18 @@ const STAGES: Record<string, string> = {
   ready: 'سالم',
 };
 
-/** WebKit on Linux that is not Chromium: Telegram Desktop's WebKitGTK. */
-function engine(ua: string): string {
+/** Which web view it was, with its version: an old one is often the whole story. */
+export function engine(ua: string): string {
+  const chrome = /Chrome\/(\d+)/.exec(ua)?.[1];
+  const android = /Android (\d+(?:\.\d+)?)/.exec(ua)?.[1];
   if (/Linux/.test(ua) && /AppleWebKit/.test(ua) && !/Chrome|Chromium|Android/.test(ua)) return 'WebKitGTK';
-  if (/Edg\//.test(ua)) return 'WebView2';
-  if (/Android/.test(ua)) return 'Android WebView';
-  if (/iPhone|iPad|Macintosh/.test(ua) && !/Chrome/.test(ua)) return 'WKWebView';
-  if (/Chrome/.test(ua)) return 'Chromium';
+  if (/Edg\//.test(ua)) return `WebView2 ${chrome ?? ''}`.trim();
+  if (/Android/.test(ua)) return `Android ${android ?? ''} · WebView ${chrome ?? '?'}`;
+  if (/iPhone|iPad|Macintosh/.test(ua) && !/Chrome/.test(ua)) {
+    const ios = /OS (\d+)[_.](\d+)/.exec(ua);
+    return ios ? `WKWebView iOS ${ios[1]}.${ios[2]}` : 'WKWebView';
+  }
+  if (chrome) return `Chromium ${chrome}`;
   return '—';
 }
 

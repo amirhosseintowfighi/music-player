@@ -194,6 +194,28 @@ describe('crawler page', () => {
     });
   });
 
+  it('deletes a channel only after its name is typed, and blocks it by default', async () => {
+    const api = mockApi({
+      ...base,
+      'DELETE /admin/crawler/channels/3': { tracks: 320, hidden: 290, blocked: 1 },
+    });
+    renderPanel(<Crawler />);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'حذف' }));
+    const confirm = screen.getByRole('button', { name: 'حذف برای همیشه' });
+    expect(confirm).toBeDisabled();
+    await userEvent.type(screen.getByLabelText('نام کانال برای تأیید'), '@MusicIrani');
+    expect(confirm).toBeEnabled();
+    await userEvent.click(confirm);
+
+    await waitFor(() => {
+      const call = api.calls.find((entry) => entry.method === 'DELETE');
+      expect(call?.url).toContain('/admin/crawler/channels/3?block=true');
+    });
+    expect(await screen.findByRole('status')).toHaveTextContent('@musicirani حذف شد');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
   it('warns loudly when the parser stops extracting', async () => {
     mockApi({
       ...base,

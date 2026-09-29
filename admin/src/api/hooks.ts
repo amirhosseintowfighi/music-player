@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
+  del,
   get,
   patch,
   post,
@@ -312,6 +313,21 @@ export function useRecrawl() {
     mutationFn: (input: { id: number; full: boolean }) =>
       post(`/admin/crawler/channels/${input.id}/recrawl${qs({ full: input.full })}`),
     onSuccess: () => client.invalidateQueries({ queryKey: ['crawl-channels'] }),
+  });
+}
+
+/** Deletes a channel; with ``block`` its username can never be added again. */
+export function useDeleteChannel() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { id: number; block: boolean }) =>
+      del<{ tracks: number; hidden: number; blocked: number }>(
+        `/admin/crawler/channels/${input.id}${qs({ block: input.block })}`,
+      ),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['crawl-channels'] });
+      void client.invalidateQueries({ queryKey: keys.crawler });
+    },
   });
 }
 

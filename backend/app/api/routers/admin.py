@@ -623,6 +623,14 @@ async def recrawl(
     return {"crawl_status": channel.crawl_status, "status": channel.status}
 
 
+@router.delete("/crawler/channels/{channel_id}")
+async def delete_channel(
+    channel_id: int, claims: Claims, session: SessionDep, block: bool = False
+) -> dict[str, int]:
+    """Deletes a channel; its songs no other channel has are hidden (see the service)."""
+    return await admin_service.delete_channel(session, claims, channel_id, block=block)
+
+
 @router.get("/crawler/parser", response_model=ParserHealthOut)
 async def parser_health(claims: Claims, session: SessionDep, days: int = 14) -> ParserHealthOut:
     return ParserHealthOut(**await admin_service.parser_health(session, claims, days))
