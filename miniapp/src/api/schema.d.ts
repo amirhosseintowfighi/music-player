@@ -955,6 +955,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/client-log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Client Log
+         * @description What the Mini App reported from listeners' devices: boots, crashes, errors.
+         */
+        get: operations["client_log_admin_client_log_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/library/channels": {
         parameters: {
             query?: never;
@@ -2724,6 +2744,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/telemetry/client": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Client Event */
+        post: operations["client_event_v1_telemetry_client_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3166,6 +3203,44 @@ export interface components {
             payload?: {
                 [key: string]: unknown;
             } | null;
+        };
+        /** ClientEventOut */
+        ClientEventOut: {
+            /** Kind */
+            kind: string;
+            /** Session */
+            session: string;
+            /** Platform */
+            platform: string;
+            /** Tg Version */
+            tg_version: string;
+            /** Ua */
+            ua: string;
+            /** App Version */
+            app_version: string;
+            /** Stage */
+            stage: string;
+            /** Message */
+            message: string;
+            /** Stack */
+            stack: string;
+            /** Path */
+            path: string;
+            /** User Id */
+            user_id?: number | null;
+            /** At */
+            at: number;
+        };
+        /** ClientLogOut */
+        ClientLogOut: {
+            /** Summary */
+            summary: {
+                [key: string]: {
+                    [key: string]: number;
+                };
+            };
+            /** Items */
+            items: components["schemas"]["ClientEventOut"][];
         };
         /** ConnectCommandIn */
         ConnectCommandIn: {
@@ -4038,7 +4113,11 @@ export interface components {
             /** Ms */
             ms?: number | null;
             /** Reason */
-            reason?: ("network" | "unavailable" | "plan_limit" | "decode" | "unknown") | null;
+            reason?: ("network" | "unavailable" | "plan_limit" | "decode" | "media" | "stall" | "unknown") | null;
+            /** Recovered */
+            recovered?: boolean | null;
+            /** Attempt */
+            attempt?: number | null;
         };
         /** PlaybackStateIn */
         PlaybackStateIn: {
@@ -6522,6 +6601,39 @@ export interface operations {
                     "application/json": {
                         [key: string]: number;
                     };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    client_log_admin_client_log_get: {
+        parameters: {
+            query?: {
+                kind?: string | null;
+                platform?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ClientLogOut"];
                 };
             };
             /** @description Validation Error */
@@ -9902,6 +10014,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
                 };
+            };
+        };
+    };
+    client_event_v1_telemetry_client_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };

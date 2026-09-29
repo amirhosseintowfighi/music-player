@@ -2915,6 +2915,89 @@
         }
       }
     },
+    "/admin/client-log": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Client Log",
+        "description": "What the Mini App reported from listeners' devices: boots, crashes, errors.",
+        "operationId": "client_log_admin_client_log_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "kind",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "name": "platform",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Platform"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 200,
+              "minimum": 1,
+              "default": 200,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClientLogOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/library/channels": {
       "get": {
         "tags": [
@@ -8521,6 +8604,20 @@
           }
         ]
       }
+    },
+    "/v1/telemetry/client": {
+      "post": {
+        "tags": [
+          "telemetry"
+        ],
+        "summary": "Client Event",
+        "operationId": "client_event_v1_telemetry_client_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -9781,6 +9878,109 @@
           "kind"
         ],
         "title": "CheckoutOut"
+      },
+      "ClientEventOut": {
+        "properties": {
+          "kind": {
+            "type": "string",
+            "title": "Kind"
+          },
+          "session": {
+            "type": "string",
+            "title": "Session"
+          },
+          "platform": {
+            "type": "string",
+            "title": "Platform"
+          },
+          "tg_version": {
+            "type": "string",
+            "title": "Tg Version"
+          },
+          "ua": {
+            "type": "string",
+            "title": "Ua"
+          },
+          "app_version": {
+            "type": "string",
+            "title": "App Version"
+          },
+          "stage": {
+            "type": "string",
+            "title": "Stage"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "stack": {
+            "type": "string",
+            "title": "Stack"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "at": {
+            "type": "number",
+            "title": "At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "kind",
+          "session",
+          "platform",
+          "tg_version",
+          "ua",
+          "app_version",
+          "stage",
+          "message",
+          "stack",
+          "path",
+          "at"
+        ],
+        "title": "ClientEventOut"
+      },
+      "ClientLogOut": {
+        "properties": {
+          "summary": {
+            "additionalProperties": {
+              "additionalProperties": {
+                "type": "integer"
+              },
+              "type": "object"
+            },
+            "type": "object",
+            "title": "Summary"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ClientEventOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "summary",
+          "items"
+        ],
+        "title": "ClientLogOut"
       },
       "ConnectCommandIn": {
         "properties": {
@@ -12222,6 +12422,8 @@
                   "unavailable",
                   "plan_limit",
                   "decode",
+                  "media",
+                  "stall",
                   "unknown"
                 ]
               },
@@ -12230,6 +12432,30 @@
               }
             ],
             "title": "Reason"
+          },
+          "recovered": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recovered"
+          },
+          "attempt": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 20.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attempt"
           }
         },
         "additionalProperties": false,

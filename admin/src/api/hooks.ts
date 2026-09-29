@@ -19,6 +19,7 @@ import {
   type MetricPoint,
   type Overview,
   type PendingPayment,
+  type ClientLog,
   type Report,
   type UserDetail,
   type UsersPage,
@@ -35,6 +36,7 @@ export const keys = {
   broadcasts: ['broadcasts'] as const,
   progress: (id: number) => ['broadcast', id] as const,
   audit: (filters: Record<string, string>) => ['audit', filters] as const,
+  clientLog: (filters: Record<string, string>) => ['client-log', filters] as const,
   health: ['health'] as const,
   candidates: (status: string) => ['candidates', status] as const,
   crawler: ['crawler'] as const,
@@ -189,6 +191,15 @@ export function useAudit(filters: { entity?: string; action?: string }) {
   return useQuery({
     queryKey: keys.audit(filters as Record<string, string>),
     queryFn: () => get<AuditEntry[]>(`/admin/audit${qs({ ...filters, limit: 100 })}`),
+  });
+}
+
+/** Boots, suspected web-view crashes and script errors reported by the Mini App. */
+export function useClientLog(filters: { kind?: string; platform?: string }) {
+  return useQuery({
+    queryKey: keys.clientLog(filters as Record<string, string>),
+    queryFn: () => get<ClientLog>(`/admin/client-log${qs({ ...filters, limit: 200 })}`),
+    refetchInterval: 30_000,
   });
 }
 

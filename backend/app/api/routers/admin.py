@@ -26,6 +26,8 @@ from app.schemas import (
     BanIn,
     CandidateOut,
     CandidatePageOut,
+    ClientEventOut,
+    ClientLogOut,
     CrawlChannelOut,
     CrawlerHealthOut,
     FixMetadataIn,
@@ -59,7 +61,7 @@ from app.security.tokens import TokenError
 from app.services import admin as admin_service
 from app.services import auth as auth_service
 from app.services import broadcast as broadcast_service
-from app.services import subscriptions
+from app.services import clientlog, subscriptions
 from tmusic_common.logging import get_logger
 
 log = get_logger(__name__)
@@ -659,3 +661,20 @@ async def fix_metadata(
         apply_to_artist=body.apply_to_artist,
     )
     return {"tracks": changed}
+
+
+@router.get("/client-log", response_model=ClientLogOut)
+async def client_log(
+    claims: Claims,
+    redis: RedisDep,
+    kind: str | None = None,
+    platform: str | None = None,
+    limit: Limit = 200,
+) -> ClientLogOut:
+    """What the Mini App reported from listeners' devices: boots, crashes, errors."""
+    admin_service.require(claims, "system.view")
+    items = await clientlog.recent(redis, kind=kind or None, platform=platform or None, limit=limit)
+    return ClientLogOut(
+        summary=await clientlog.summary(redis),
+        items=[ClientEventOut(**item) for item in items],
+    )

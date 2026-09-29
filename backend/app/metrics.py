@@ -56,3 +56,8 @@ PLAYBACK_START = Histogram(
 )
 PLAYBACK_UNDERRUNS = Counter("playback_underruns_total", "Playback stalls to rebuffer")
 PLAYBACK_ERRORS = Counter("playback_errors_total", "Playback failures seen by clients", ["kind"])
+PLAYBACK_RECOVERED = Counter(
+    "playback_recovered_total", "Mid-song failures the player got past by itself", ["kind"]
+)
+# Mini App boots, suspected web-view crashes and script errors, per Telegram platform.
+CLIENT_EVENTS = Counter("client_events_total", "Mini App diagnostics", ["kind", "platform"])

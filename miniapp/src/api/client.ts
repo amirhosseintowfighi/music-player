@@ -81,6 +81,11 @@ function storeTokens(pair: TokenPair): void {
   }
 }
 
+/** The current access token, if any — for diagnostics that go out on their own. */
+export function currentAccessToken(): string | null {
+  return accessToken;
+}
+
 export function clearTokens(): void {
   accessToken = null;
   accessExpiresAt = 0;

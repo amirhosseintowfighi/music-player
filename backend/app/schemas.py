@@ -813,7 +813,13 @@ class PlaybackEventIn(ApiModel):
     # Only for "start": milliseconds from the user's tap to the first sound.
     ms: int | None = Field(None, ge=0, le=600_000)
     # Only for "error": the client's own classification.
-    reason: Literal["network", "unavailable", "plan_limit", "decode", "unknown"] | None = None
+    reason: (
+        Literal["network", "unavailable", "plan_limit", "decode", "media", "stall", "unknown"]
+        | None
+    ) = None
+    # A failure the player got past by itself (fresh link, same second), and which try.
+    recovered: bool | None = None
+    attempt: int | None = Field(None, ge=0, le=20)
 
 
 class ReportTrackIn(ApiModel):
@@ -1093,3 +1099,38 @@ class ConnectCommandIn(ApiModel):
     index: int = Field(0, ge=0)
     position_s: float = Field(0, ge=0, le=24 * 3600)
     playing: bool = True
+
+
+class ClientEventIn(ApiModel):
+    """One diagnostic event from the Mini App (see services/clientlog)."""
+
+    kind: Literal["boot", "crash", "error"]
+    session: str = Field(min_length=4, max_length=40, pattern=r"^[A-Za-z0-9_-]+$")
+    platform: str = Field("", max_length=40)
+    tg_version: str = Field("", max_length=20)
+    ua: str = Field("", max_length=400)
+    app_version: str = Field("", max_length=40)
+    stage: str = Field("", max_length=40)
+    message: str = Field("", max_length=1000)
+    stack: str = Field("", max_length=4000)
+    path: str = Field("", max_length=200)
+
+
+class ClientEventOut(ApiModel):
+    kind: str
+    session: str
+    platform: str
+    tg_version: str
+    ua: str
+    app_version: str
+    stage: str
+    message: str
+    stack: str
+    path: str
+    user_id: int | None = None
+    at: float
+
+
+class ClientLogOut(ApiModel):
+    summary: dict[str, dict[str, int]]
+    items: list[ClientEventOut]
