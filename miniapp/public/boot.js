@@ -81,6 +81,69 @@
     }
     send({ kind: 'boot', stage: 'html' });
     window.__tmBoot = { session: session, platform: platform, version: version, send: send };
+
+    function currentStage() {
+      try {
+        return (JSON.parse(localStorage.getItem('tmusic.lastBoot') || '{}') || {}).stage || 'html';
+      } catch (e) {
+        return 'html';
+      }
+    }
+
+    // Errors before the app's own handlers exist: a bundle the web view cannot parse,
+    // a script that fails to load. File and line go with it (a cross-origin script
+    // only ever says "Script error.", which is why Telegram's bridge is now local).
+    var early = 0;
+    window.addEventListener(
+      'error',
+      function (event) {
+        if (window.__tmAppStarted || early >= 5) return;
+        early += 1;
+        var target = event.target;
+        var failed = target && target !== window && (target.src || target.href);
+        send({
+          kind: 'error',
+          stage: currentStage(),
+          message: failed
+            ? 'failed to load ' + String(failed).split('?')[0]
+            : String(event.message || 'error') + ' @ ' + String(event.filename || '').split('?')[0] + ':' + event.lineno + ':' + event.colno,
+          stack: event.error && event.error.stack ? String(event.error.stack).slice(0, 4000) : '',
+        });
+      },
+      true
+    );
+
+    // Closing the app while it is still loading is not a crash.
+    window.addEventListener('pagehide', function () {
+      if (window.__tmAppStarted) return;
+      try {
+        localStorage.setItem('tmusic.lastBoot', JSON.stringify({ session: session, stage: 'closed', at: Date.now(), path: '' }));
+      } catch (e) {
+        /* ignore */
+      }
+    });
+
+    // Still not started after a while: say what the page was waiting for.
+    setTimeout(function () {
+      if (window.__tmAppStarted) return;
+      var slow = [];
+      try {
+        var entries = performance.getEntriesByType('resource');
+        for (var i = 0; i < entries.length; i += 1) {
+          var entry = entries[i];
+          if (!/\.(js|css)(\?|$)/.test(entry.name)) continue;
+          slow.push(entry.name.split('?')[0].replace(location.origin, '') + ' ' + Math.round(entry.duration) + 'ms ' + (entry.transferSize || 0) + 'B');
+        }
+      } catch (e) {
+        /* no resource timing */
+      }
+      send({
+        kind: 'error',
+        stage: currentStage(),
+        message: 'app did not start in 15 s (readyState ' + document.readyState + ')',
+        stack: slow.join('\n').slice(0, 4000),
+      });
+    }, 15000);
   } catch (e) {
     /* diagnostics must never become the problem */
   }

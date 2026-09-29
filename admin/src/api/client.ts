@@ -110,6 +110,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export const get = <T>(path: string) => request<T>('GET', path);
 export const post = <T>(path: string, body?: unknown) => request<T>('POST', path, body);
+export const del = <T>(path: string) => request<T>('DELETE', path);
 export const put = <T>(path: string, body?: unknown) => request<T>('PUT', path, body);
 export const patch = <T>(path: string, body?: unknown) => request<T>('PATCH', path, body);
 

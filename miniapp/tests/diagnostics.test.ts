@@ -102,4 +102,20 @@ describe('boot.js (before the app bundle)', () => {
     delete (window as unknown as { __tmBoot?: unknown }).__tmBoot;
     window.location.hash = '';
   });
+
+  it('reports errors from before the app ran, and a close while loading is not a crash', async () => {
+    delete (window as unknown as { __tmAppStarted?: boolean }).__tmAppStarted;
+    await runBootScript('#tgWebAppPlatform=android&tgWebAppVersion=9.6');
+    beacons.length = 0;
+    window.dispatchEvent(new ErrorEvent('error', { message: 'SyntaxError: Unexpected token', filename: 'https://app/assets/index-abc.js?v=1', lineno: 1, colno: 42 }));
+    await flush();
+    expect(beacons[0]?.body).toMatchObject({ kind: 'error', stage: 'html' });
+    expect(beacons[0]?.body.message).toBe('SyntaxError: Unexpected token @ https://app/assets/index-abc.js:1:42');
+
+    window.dispatchEvent(new Event('pagehide'));
+    expect(JSON.parse(localStorage.getItem('tmusic.lastBoot') ?? '{}').stage).toBe('closed');
+    delete (window as unknown as { __tmBoot?: unknown }).__tmBoot;
+    (window as unknown as { __tmAppStarted?: boolean }).__tmAppStarted = true;
+    window.location.hash = '';
+  });
 });

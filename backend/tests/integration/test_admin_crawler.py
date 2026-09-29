@@ -317,3 +317,71 @@ async def test_a_channel_being_crawled_right_now_is_at_the_top(
     order = [row["username"] for row in rows]
     assert order[0] == "in_flight"
     assert order.index("in_flight") < order.index("also_broken")
+
+
+async def test_deleting_a_channel_hides_only_the_songs_nobody_else_has(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    from app.services.ingest import ingest_items
+    from tests.conftest import bearer, login
+    from tests.integration.helpers import item, subscribe
+
+    doomed = await make_channel(session, "doomedchan")
+    other = await make_channel(session, "keptchan")
+    await ingest_items(
+        session,
+        doomed,
+        [
+            item("Ebi - Only Here", msg=1, fuid="AgADonly1", duration=200),
+            item("Ebi - Everywhere", msg=2, fuid="AgADboth1", duration=210),
+        ],
+    )
+    await ingest_items(
+        session, other, [item("Ebi - Everywhere", msg=9, fuid="AgADboth1", duration=210)]
+    )
+    listener = await login(client, 78101)
+    await subscribe(session, listener["me"]["id"], doomed.id)
+    await session.commit()
+    ids = {t: i for t, i in (await session.execute(text("SELECT title, id FROM tracks"))).tuples()}
+
+    doomed_id = doomed.id
+    headers = await owner(client, session, 78100)
+    resp = await client.delete(f"/admin/crawler/channels/{doomed_id}?block=true", headers=headers)
+    assert resp.status_code == 200, resp.text
+    assert resp.json() == {"tracks": 2, "hidden": 1, "blocked": 1}
+
+    session.expire_all()
+    assert await session.get(Channel, doomed_id) is None
+    rows = dict((await session.execute(text("SELECT title, hidden FROM tracks"))).tuples().all())
+    assert rows["Only Here"] is True  # no source left anywhere
+    assert rows["Everywhere"] is False  # still carried by keptchan
+    # Gone from the listener's library, and it cannot be added back.
+    subs = await session.scalar(
+        text("SELECT count(*) FROM user_channels WHERE user_id = :u").bindparams(
+            u=listener["me"]["id"]
+        )
+    )
+    assert subs == 0
+    readd = await client.post(
+        "/v1/library/channels", json={"ref": "https://t.me/doomedchan"}, headers=bearer(listener)
+    )
+    assert readd.status_code in (403, 422), readd.text
+    audit = (await client.get("/admin/audit?action=channel.delete", headers=headers)).json()
+    assert audit[0]["payload"]["username"] == "doomedchan"
+    assert ids["Only Here"]
+
+    assert (
+        await client.delete(f"/admin/crawler/channels/{doomed_id}", headers=headers)
+    ).status_code == 404
+
+
+async def test_deleting_a_channel_needs_content_edit(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    await make_admin(session, 78102, role="support", permissions=["system.view"])
+    await session.commit()
+    channel = await make_channel(session, "safechan")
+    await session.commit()
+    headers = await admin_token(client, 78102)
+    resp = await client.delete(f"/admin/crawler/channels/{channel.id}", headers=headers)
+    assert resp.status_code == 403

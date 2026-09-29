@@ -1,8 +1,10 @@
 import { useState } from 'react';
 
+import type { CrawlChannel } from '@/api/client';
 import {
   useCrawlChannels,
   useCrawlerHealth,
+  useDeleteChannel,
   useParserHealth,
   useRecrawl,
   useResolverStatus,
@@ -111,11 +113,79 @@ function ResolverPanel() {
   );
 }
 
+/**
+ * Deleting a channel is for good: it leaves every listener's library, and the songs
+ * no other channel has disappear from the app. So it asks first, says what will go,
+ * and offers to block the username so nobody adds it back.
+ */
+function DeleteDialog({ channel, onClose }: { channel: CrawlChannel; onClose: (done?: string) => void }) {
+  const remove = useDeleteChannel();
+  const [block, setBlock] = useState(true);
+  const [typed, setTyped] = useState('');
+  const name = channel.username ?? String(channel.id);
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`حذف @${name}`}
+      className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+      onClick={() => onClose()}
+    >
+      <Card className="w-full max-w-md space-y-3">
+        <div onClick={(event) => event.stopPropagation()} className="space-y-3">
+          <h2 className="text-[15px] font-bold">حذف کانال @{name}</h2>
+          <p className="text-[12.5px] leading-6 text-[var(--color-muted)]">
+            کانال از کرالر و از کتابخانهٔ همهٔ کاربران حذف می‌شود. از {formatNumber(channel.tracks_count)} ترک
+            آن، آن‌هایی که در هیچ کانال دیگری نیستند از اپ پنهان می‌شوند (لایک‌ها و پلی‌لیست‌ها سر جایشان می‌مانند
+            ولی آن ترک‌ها دیگر پخش نمی‌شوند). این کار برگشت ندارد.
+          </p>
+          <label className="flex items-center gap-2 text-[13px]">
+            <input type="checkbox" checked={block} onChange={(event) => setBlock(event.target.checked)} />
+            نام کاربری را هم مسدود کن تا دوباره اضافه نشود
+          </label>
+          <p className="text-[12px] text-[var(--color-muted)]">برای تأیید، نام کانال را بنویس: {name}</p>
+          <input
+            aria-label="نام کانال برای تأیید"
+            value={typed}
+            onChange={(event) => setTyped(event.target.value)}
+            className="w-full rounded-lg border border-[var(--color-line)] px-3 py-2 text-[13px]"
+            dir="ltr"
+          />
+          {remove.isError && <p className="text-[12px] text-red-600">حذف نشد: {String(remove.error)}</p>}
+          <div className="flex justify-end gap-2">
+            <Button onClick={() => onClose()}>انصراف</Button>
+            <Button
+              tone="danger"
+              disabled={remove.isPending || typed.trim().replace(/^@/, '').toLowerCase() !== name.toLowerCase()}
+              onClick={() =>
+                remove.mutate(
+                  { id: channel.id, block },
+                  {
+                    onSuccess: (result) =>
+                      onClose(
+                        `@${name} حذف شد · ${formatNumber(result.hidden)} ترک پنهان شد` +
+                          (result.blocked ? ' · مسدود شد' : ''),
+                      ),
+                  },
+                )
+              }
+            >
+              {remove.isPending ? 'در حال حذف…' : 'حذف برای همیشه'}
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export function Crawler() {
   const [filter, setFilter] = useState('');
   const health = useCrawlerHealth();
   const channels = useCrawlChannels(filter);
   const recrawl = useRecrawl();
+  const [deleting, setDeleting] = useState<CrawlChannel | null>(null);
+  const [notice, setNotice] = useState('');
 
   return (
     <div>
@@ -211,6 +281,9 @@ export function Crawler() {
                       >
                         از ابتدا
                       </Button>
+                      <Button tone="danger" onClick={() => setDeleting(channel)}>
+                        حذف
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -218,6 +291,20 @@ export function Crawler() {
             </tbody>
           </table>
         </Card>
+      )}
+      {notice && (
+        <p role="status" className="mt-3 text-[12.5px] text-emerald-700">
+          {notice}
+        </p>
+      )}
+      {deleting && (
+        <DeleteDialog
+          channel={deleting}
+          onClose={(done) => {
+            setDeleting(null);
+            if (done) setNotice(done);
+          }}
+        />
       )}
     </div>
   );

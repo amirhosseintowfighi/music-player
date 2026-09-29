@@ -145,16 +145,25 @@ export function markStage(next: Stage): void {
   if (next === 'shell') setTimeout(() => writeNote('ready'), READY_AFTER_MS);
 }
 
-export function reportError(error: unknown, where = 'window'): void {
+export function reportError(error: unknown, where = 'window', source = ''): void {
   if (errorsSent >= MAX_ERRORS) return;
   errorsSent += 1;
   const err = error instanceof Error ? error : new Error(String(error));
-  send({ kind: 'error', message: `${where}: ${err.name}: ${err.message}`, stack: err.stack ?? '' });
+  const at = source ? ` @ ${source}` : '';
+  send({ kind: 'error', message: `${where}: ${err.name}: ${err.message}${at}`, stack: err.stack ?? '' });
 }
 
 /** Runs once, at import: the crash check for the previous start, then this boot. */
 export function startDiagnostics(): void {
-  window.addEventListener('error', (event) => reportError(event.error ?? event.message, 'error'));
+  // Tells boot.js the app is running: its early handlers stand down from here.
+  (window as { __tmAppStarted?: boolean }).__tmAppStarted = true;
+  window.addEventListener('error', (event) =>
+    reportError(
+      event.error ?? event.message,
+      'error',
+      event.filename ? `${event.filename.split('?')[0]}:${event.lineno}:${event.colno}` : '',
+    ),
+  );
   window.addEventListener('unhandledrejection', (event) => reportError(event.reason, 'promise'));
   // Closing the app normally is not a crash, even in its first seconds.
   window.addEventListener('pagehide', () => {

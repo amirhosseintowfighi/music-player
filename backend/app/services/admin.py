@@ -946,6 +946,99 @@ async def recrawl(
     return channel
 
 
+async def delete_channel(
+    session: AsyncSession, claims: AdminClaims, channel_id: int, *, block: bool = False
+) -> dict[str, int]:
+    """Removes a channel from the catalogue, for good.
+
+    The channel row goes, and with it (by cascade) every listener's subscription and
+    every post it contributed. A song that no other channel carries is left with no
+    source at all: it is hidden rather than deleted, because likes, playlists and
+    history still point at it, and search drops it on its next sync. A song another
+    channel also has keeps playing from there.
+
+    ``block`` also blacklists the username, so neither a listener nor the crawler's
+    discovery can bring the channel back.
+    """
+    require(claims, "content.edit")
+    channel = await session.get(Channel, channel_id)
+    if channel is None:
+        raise NotFound("channel not found")
+    username = channel.username
+    track_ids = [
+        int(row[0])
+        for row in await session.execute(
+            text("SELECT DISTINCT track_id FROM channel_tracks WHERE channel_id = :c").bindparams(
+                c=channel_id
+            )
+        )
+    ]
+    await session.delete(channel)
+    await session.flush()
+
+    hidden = 0
+    if track_ids:
+        # Orphaned: no post left anywhere, and (for a group's root) no copy with one.
+        result = await session.execute(
+            text(
+                """
+            UPDATE tracks t SET hidden = true, hidden_reason = 'channel_deleted',
+                                updated_at = now()
+             WHERE t.id = ANY(:ids) AND NOT t.hidden
+               AND NOT EXISTS (SELECT 1 FROM channel_tracks ct WHERE ct.track_id = t.id)
+               AND NOT EXISTS (
+                   SELECT 1 FROM tracks c JOIN channel_tracks ct ON ct.track_id = c.id
+                    WHERE c.canonical_track_id = t.id
+               )
+            RETURNING t.id
+            """
+            ).bindparams(ids=track_ids)
+        )
+        hidden = len(result.all())
+        await ingest.refresh_group_counts(session, track_ids)
+        await session.execute(
+            text(
+                """
+            UPDATE artists a SET tracks_count = (
+                SELECT count(*) FROM track_artists ta JOIN tracks t ON t.id = ta.track_id
+                 WHERE ta.artist_id = a.id AND NOT t.hidden
+            )
+             WHERE a.id IN (SELECT artist_id FROM track_artists WHERE track_id = ANY(:ids))
+            """
+            ).bindparams(ids=track_ids)
+        )
+
+    blocked = 0
+    if block and username:
+        exists = await session.scalar(
+            select(Blacklist.id).where(
+                Blacklist.entity_type == "channel_username",
+                func.lower(Blacklist.value) == username.lower(),
+            )
+        )
+        if exists is None:
+            session.add(
+                Blacklist(
+                    entity_type="channel_username",
+                    value=username.lower(),
+                    reason="deleted from the crawler by an admin",
+                    created_by=claims.admin_id,
+                )
+            )
+            blocked = 1
+
+    summary = {"tracks": len(track_ids), "hidden": hidden, "blocked": blocked}
+    await audit(
+        session,
+        claims,
+        "channel.delete",
+        "channel",
+        channel_id,
+        {"username": username, **summary},
+    )
+    return summary
+
+
 async def parser_health(
     session: AsyncSession, claims: AdminClaims, days: int = 14
 ) -> dict[str, Any]:
