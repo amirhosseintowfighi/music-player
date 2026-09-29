@@ -8,6 +8,11 @@
     />
     <meta name="theme-color" content="#07080c" />
     <title>Music</title>
+    <!-- Where the app's API lives, for boot.js (Vite fills it in at build time). -->
+    <meta name="tm-api" content="%VITE_API_URL%" />
+    <!-- First, before anything that could take the page down: reports this start,
+         and a crash of the last one (see public/boot.js). -->
+    <script src="/boot.js"></script>
     <!-- Telegram's own script: the SDK falls back to it, and it is what actually
          exposes initData inside the Telegram WebView. -->
     <script src="https://telegram.org/js/telegram-web-app.js?58"></script>

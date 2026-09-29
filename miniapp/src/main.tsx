@@ -29,4 +29,8 @@ if (root) {
       <App />
     </StrictMode>,
   );
+  // Two frames later the first screen has been painted — whatever screen it is (the
+  // app, a login error, "open this inside Telegram"). If it still stands a few seconds
+  // after that, this start counts as "ready".
+  requestAnimationFrame(() => requestAnimationFrame(() => markStage('shell')));
 }

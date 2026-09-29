@@ -21,6 +21,7 @@ const KINDS = [
 ] as const;
 
 const STAGES: Record<string, string> = {
+  html: 'قبل از اجرای کد برنامه',
   boot: 'قبل از رندر',
   render: 'حین رندر اول',
   shell: 'بعد از نمایش صفحه',

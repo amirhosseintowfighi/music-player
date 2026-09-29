@@ -16,7 +16,7 @@
  */
 import { currentAccessToken } from '@/api/client';
 
-type Stage = 'boot' | 'render' | 'shell' | 'ready' | 'closed';
+type Stage = 'html' | 'boot' | 'render' | 'shell' | 'ready' | 'closed';
 
 const NOTE = 'tmusic.lastBoot';
 const READY_AFTER_MS = 10_000;
@@ -37,7 +37,18 @@ interface TelegramInfo {
 }
 
 function telegram(): TelegramInfo {
-  return (globalThis as { Telegram?: { WebApp?: TelegramInfo } }).Telegram?.WebApp ?? {};
+  const app = (globalThis as { Telegram?: { WebApp?: TelegramInfo } }).Telegram?.WebApp ?? {};
+  const early = earlyBoot();
+  return { platform: app.platform || early?.platform, version: app.version || early?.version };
+}
+
+/**
+ * The app's route, and only that. The launch URL's fragment carries Telegram's
+ * initData — a login credential — until main.tsx replaces it, so anything that is not
+ * a route ("#/…") is never sent or stored.
+ */
+export function safePath(hash: string = location.hash): string {
+  return hash.startsWith('#/') ? (hash.split('?')[0] ?? '').slice(0, 200) : '';
 }
 
 function randomId(): string {
@@ -50,7 +61,18 @@ function randomId(): string {
   return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export const session = randomId();
+interface EarlyBoot {
+  session: string;
+  platform: string;
+  version: string;
+}
+
+/** What public/boot.js already did, if it ran (it does in every real build). */
+function earlyBoot(): EarlyBoot | undefined {
+  return (globalThis as { __tmBoot?: EarlyBoot }).__tmBoot;
+}
+
+export const session = earlyBoot()?.session ?? randomId();
 let errorsSent = 0;
 let stage: Stage = 'boot';
 
@@ -66,7 +88,7 @@ function readNote(): Note | null {
 function writeNote(next: Stage): void {
   stage = next;
   try {
-    localStorage.setItem(NOTE, JSON.stringify({ session, stage: next, at: Date.now(), path: location.hash }));
+    localStorage.setItem(NOTE, JSON.stringify({ session, stage: next, at: Date.now(), path: safePath() }));
   } catch {
     /* no storage: no crash detection, the rest still works */
   }
@@ -92,7 +114,7 @@ function payload(event: ClientEvent): string {
     stage: (event.stage ?? stage).slice(0, 40),
     message: (event.message ?? '').slice(0, 1000),
     stack: (event.stack ?? '').slice(0, 4000),
-    path: location.hash.slice(0, 200),
+    path: safePath(),
   });
 }
 
@@ -132,6 +154,17 @@ export function reportError(error: unknown, where = 'window'): void {
 
 /** Runs once, at import: the crash check for the previous start, then this boot. */
 export function startDiagnostics(): void {
+  window.addEventListener('error', (event) => reportError(event.error ?? event.message, 'error'));
+  window.addEventListener('unhandledrejection', (event) => reportError(event.reason, 'promise'));
+  // Closing the app normally is not a crash, even in its first seconds.
+  window.addEventListener('pagehide', () => {
+    if (stage !== 'ready') writeNote('closed');
+  });
+  // boot.js has already reported the boot and any crash of the last start: carry on.
+  if (earlyBoot()) {
+    writeNote('boot');
+    return;
+  }
   const previous = readNote();
   if (previous && previous.stage !== 'ready' && previous.stage !== 'closed' && Date.now() - previous.at < 86_400_000) {
     send({
@@ -142,12 +175,6 @@ export function startDiagnostics(): void {
   }
   writeNote('boot');
   send({ kind: 'boot' }, true);
-  window.addEventListener('error', (event) => reportError(event.error ?? event.message, 'error'));
-  window.addEventListener('unhandledrejection', (event) => reportError(event.reason, 'promise'));
-  // Closing the app normally is not a crash, even in its first seconds.
-  window.addEventListener('pagehide', () => {
-    if (stage !== 'ready') writeNote('closed');
-  });
 }
 
 if (typeof window !== 'undefined' && import.meta.env.MODE !== 'test') startDiagnostics();

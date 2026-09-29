@@ -754,6 +754,27 @@ async def test_client_diagnostics_reach_the_admin_panel(
     assert len(crashes["items"]) == 1
 
 
+async def test_the_launch_fragment_is_never_stored(client: httpx.AsyncClient, redis: Any) -> None:
+    """Telegram's launch fragment carries initData, a login credential."""
+    resp = await client.post(
+        "/v1/telemetry/client",
+        json={
+            "kind": "boot",
+            "session": "leak1",
+            "platform": "tdesktop",
+            "path": "#tgWebAppData=user%3D%257B%2522id%2522%253A1&hash=abc",
+            "message": "stopped on #tgWebAppData=user%3D1",
+        },
+    )
+    assert resp.status_code == 204
+    kept = (await redis.lrange("clientlog", 0, 0))[0]
+    assert "tgWebApp" not in kept and "hash=abc" not in kept
+    await client.post(
+        "/v1/telemetry/client", json={"kind": "boot", "session": "okay1", "path": "#/library?tab=x"}
+    )
+    assert '"path": "#/library?tab=x"' in (await redis.lrange("clientlog", 0, 0))[0]
+
+
 async def test_recovered_playback_failures_are_counted_apart(client: httpx.AsyncClient) -> None:
     headers = bearer(await login(client, 77902))
     for body in (

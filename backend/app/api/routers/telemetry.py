@@ -57,6 +57,10 @@ async def client_event(request: Request, redis: RedisDep, settings: SettingsDep)
             user_id = None
 
     platform = body.platform if body.platform in KNOWN_PLATFORMS else "unknown"
+    # Only an app route is kept. Telegram's launch fragment carries initData, a login
+    # credential; an older build sent it along, and nothing like it is ever stored.
+    path = body.path if body.path.startswith("#/") and "tgWebApp" not in body.path else ""
+    message = "" if "tgWebApp" in body.message else body.message
     metrics.CLIENT_EVENTS.labels(body.kind, platform).inc()
     await clientlog.record(
         redis,
@@ -68,9 +72,9 @@ async def client_event(request: Request, redis: RedisDep, settings: SettingsDep)
             ua=body.ua,
             app_version=body.app_version,
             stage=body.stage,
-            message=body.message,
+            message=message,
             stack=body.stack,
-            path=body.path,
+            path=path,
             user_id=user_id,
             at=time.time(),
         ),
