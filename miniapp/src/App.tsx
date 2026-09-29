@@ -11,7 +11,6 @@ import { TabBar } from '@/components/TabBar';
 import { Credit, EmptyState, Glass, Sheet, Spinner, Toasts } from '@/components/ui';
 import { I18nProvider, useI18n } from '@/i18n';
 import { applyPalette, DEFAULT_PALETTE, paletteFromUrl, parsePalette } from '@/lib/color';
-import { markStage } from '@/lib/diagnostics';
 import { applyPerf, watchFrameRate } from '@/lib/perf';
 import { initTelegram, openTelegramLink } from '@/lib/telegram';
 import { useThumbs } from '@/player/thumbs';
@@ -234,9 +233,6 @@ function Shell() {
   }, [currentThumb]);
 
   useEffect(() => usePlayer.getState().attach(), []);
-
-  // The app is on screen; if it is still standing in a few seconds this start is "ready".
-  useEffect(() => markStage('shell'), []);
 
   // Connect: tell this listener's other devices we are here, and take their commands.
   useEffect(() => useConnect.getState().start(), []);
