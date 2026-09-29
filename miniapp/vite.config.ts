@@ -15,7 +15,9 @@ export default defineConfig({
     proxy: { '/v1': { target: process.env.VITE_API_PROXY ?? 'http://localhost:8000', changeOrigin: true } },
   },
   build: {
-    target: 'es2022',
+    // Old Android phones run old system WebViews, and a bundle their parser rejects
+    // never runs at all (ES2022 needed Chrome 94). The device log names the version.
+    target: ['chrome91', 'safari15', 'firefox90', 'edge91'],
     sourcemap: true,
     rollupOptions: {
       output: {

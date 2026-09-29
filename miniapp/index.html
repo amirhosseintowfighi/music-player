@@ -13,15 +13,10 @@
     <!-- First, before anything that could take the page down: reports this start,
          and a crash of the last one (see public/boot.js). -->
     <script src="/boot.js"></script>
-    <!-- Telegram's own script: the SDK falls back to it, and it is what actually
-         exposes initData inside the Telegram WebView. -->
-    <script src="https://telegram.org/js/telegram-web-app.js?58"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;700&display=swap"
-      rel="stylesheet"
-    />
+    <!-- Telegram's bridge (it exposes initData), from our own origin: telegram.org is
+         filtered in Iran and a blocking script from it stalled the whole page. The
+         Google Fonts stylesheet went for the same reason (and the CSP blocked it anyway). -->
+    <script src="/telegram-web-app.js"></script>
   </head>
   <body>
     <div id="root"></div>
