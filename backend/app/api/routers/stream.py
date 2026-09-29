@@ -55,5 +55,7 @@ async def playback_telemetry(body: PlaybackEventIn, claims: Claims) -> None:
         metrics.PLAYBACK_START.observe(min(body.ms, 60_000) / 1000)
     elif body.kind == "underrun":
         metrics.PLAYBACK_UNDERRUNS.inc()
+    elif body.kind == "error" and body.recovered:
+        metrics.PLAYBACK_RECOVERED.labels(body.reason or "unknown").inc()
     elif body.kind == "error":
         metrics.PLAYBACK_ERRORS.labels(body.reason or "unknown").inc()

@@ -703,3 +703,62 @@ async def test_the_cli_can_make_the_first_owner(session: AsyncSession) -> None:
         await session.execute(sql("SELECT role, is_active FROM admin_users WHERE tg_id = 90501"))
     ).one()
     assert (again.role, again.is_active) == ("owner", True)
+
+
+async def test_client_diagnostics_reach_the_admin_panel(
+    client: httpx.AsyncClient, session: AsyncSession
+) -> None:
+    """A web view that dies takes its logs with it; the app reports boots and crashes."""
+    ua = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko)"
+    # A beacon: text/plain, no token (the app has not logged in yet).
+    boot = await client.post(
+        "/v1/telemetry/client",
+        content=f'{{"kind":"boot","session":"s1abc","platform":"tdesktop","ua":"{ua}"}}',
+        headers={"Content-Type": "text/plain"},
+    )
+    assert boot.status_code == 204
+    user = await login(client, 77901)
+    crash = await client.post(
+        "/v1/telemetry/client",
+        json={
+            "kind": "crash",
+            "session": "s2abc",
+            "platform": "tdesktop",
+            "stage": "render",
+            "message": "previous session never became ready",
+        },
+        headers=bearer(user),
+    )
+    assert crash.status_code == 204
+    weird = await client.post(
+        "/v1/telemetry/client", json={"kind": "error", "session": "s3abc", "platform": "toaster"}
+    )
+    assert weird.status_code == 204
+    assert (await client.post("/v1/telemetry/client", content=b"not json")).status_code == 422
+    assert (
+        await client.post("/v1/telemetry/client", json={"kind": "boot", "session": "x"})
+    ).status_code == 422
+
+    # Only admins read it; newest first, with who it was when they were logged in.
+    assert (await client.get("/admin/client-log", headers=bearer(user))).status_code == 401
+    await make_admin(session, OWNER_TG)
+    await session.commit()
+    headers = await admin_token(client, OWNER_TG)
+    log = (await client.get("/admin/client-log", headers=headers)).json()
+    assert [item["kind"] for item in log["items"]] == ["error", "crash", "boot"]
+    assert log["items"][0]["platform"] == "unknown"
+    assert log["items"][1]["user_id"] == user["me"]["id"] and log["items"][1]["stage"] == "render"
+    assert log["items"][2]["user_id"] is None and "Linux" in log["items"][2]["ua"]
+    assert log["summary"]["tdesktop"] == {"boot": 1, "crash": 1, "error": 0}
+    crashes = (await client.get("/admin/client-log?kind=crash", headers=headers)).json()
+    assert len(crashes["items"]) == 1
+
+
+async def test_recovered_playback_failures_are_counted_apart(client: httpx.AsyncClient) -> None:
+    headers = bearer(await login(client, 77902))
+    for body in (
+        {"kind": "error", "reason": "media", "recovered": True, "attempt": 1},
+        {"kind": "error", "reason": "stall"},
+    ):
+        resp = await client.post("/v1/telemetry/playback", json=body, headers=headers)
+        assert resp.status_code == 204, resp.text

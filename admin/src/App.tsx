@@ -6,6 +6,7 @@ import { fetchMe, saveToken, setUnauthorizedHandler, type AdminMe } from '@/api/
 import { Spinner, cx } from '@/components/ui';
 import { Broadcasts } from '@/screens/Broadcasts';
 import { Candidates } from '@/screens/Candidates';
+import { ClientLog } from '@/screens/ClientLog';
 import { Crawler } from '@/screens/Crawler';
 import { Metadata } from '@/screens/Metadata';
 import { Dashboard } from '@/screens/Dashboard';
@@ -26,6 +27,7 @@ const NAV = [
   { to: '/health', label: 'سلامت', permission: 'system.view' },
   { to: '/settings', label: 'تنظیمات', permission: 'system.edit' },
   { to: '/audit', label: 'لاگ', permission: 'system.view' },
+  { to: '/client-log', label: 'لاگ دستگاه‌ها', permission: 'system.view' },
 ];
 
 function allowed(me: AdminMe | null, permission: string): boolean {
@@ -81,6 +83,7 @@ function Shell({ me, onLogout }: { me: AdminMe; onLogout: () => void }) {
         <Route path="/health" element={<Health />} />
         <Route path="/settings" element={<Settings me={me} />} />
         <Route path="/audit" element={<Audit />} />
+        <Route path="/client-log" element={<ClientLog />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>

@@ -29,6 +29,7 @@ from app.api.routers import (
     social,
     stream,
     telegram,
+    telemetry,
 )
 from app.api.state import AppState
 from app.config import Settings, get_settings
@@ -152,6 +153,7 @@ def create_app(settings: Settings | None = None, state: AppState | None = None) 
         search,
         social,
         stream,
+        telemetry,
         internal,
         telegram,
     ):

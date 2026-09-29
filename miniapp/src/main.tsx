@@ -1,3 +1,5 @@
+// First: reports this start (and a crash of the last one) before anything heavy runs.
+import { markStage } from '@/lib/diagnostics';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 
@@ -21,6 +23,7 @@ if (fragment && !fragment.startsWith('/')) {
 
 const root = document.getElementById('root');
 if (root) {
+  markStage('render');
   createRoot(root).render(
     <StrictMode>
       <App />
