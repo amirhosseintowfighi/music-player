@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, Reorder } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 
 import type { Track } from '@/api/client';
 import { CreditsSheet } from '@/components/Credits';
@@ -32,6 +32,8 @@ import {
   cx,
   easeOut,
   spring,
+  useScrollLock,
+  FOCUSABLE_SELECTOR,
 } from '@/components/ui';
 import { useI18n } from '@/i18n';
 import { artistNames, duration } from '@/lib/format';
@@ -49,7 +51,7 @@ const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const SLEEP_OPTIONS = [null, 15, 30, 60] as const;
 
 function Scrubber() {
-  const { lang } = useI18n();
+  const { lang, t } = useI18n();
   const position = usePlayer((s) => s.position);
   const buffered = usePlayer((s) => s.buffered);
   const total = usePlayer((s) => s.duration || s.current?.duration || 0);
@@ -74,7 +76,7 @@ function Scrubber() {
         ref={bar}
         role="slider"
         tabIndex={0}
-        aria-label="seek"
+        aria-label={t('player.seek')}
         aria-valuemin={0}
         aria-valuemax={Math.round(total)}
         aria-valuenow={Math.round(shown)}
@@ -386,6 +388,40 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
     window.location.hash = '#/jam';
   };
 
+  const fullTitleId = useId();
+  const fullPanelRef = useRef<HTMLDivElement>(null);
+  useScrollLock(open);
+
+  useEffect(() => {
+    if (!open) return;
+    requestAnimationFrame(() => {
+      const panel = fullPanelRef.current;
+      if (!panel) return;
+      const focusable = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+      if (focusable.length) focusable[0].focus();
+      else panel.focus();
+    });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Tab') {
+        const panel = fullPanelRef.current;
+        if (!panel) return;
+        const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+        if (focusable.length === 0) { event.preventDefault(); return; }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (event.shiftKey) { if (active === first) { event.preventDefault(); last.focus(); } }
+        else if (active === last) { event.preventDefault(); first.focus(); }
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open]);
+
   useEffect(() => {
     if (!open) return undefined;
     backButton(() => setOpen(false));
@@ -398,11 +434,16 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
     <AnimatePresence>
       {open && (
         <motion.div
+          ref={fullPanelRef}
+          tabIndex={-1}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={fullTitleId}
           className="fixed inset-0 z-50 overflow-y-auto"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          style={{ background: 'var(--bg-0)' }}
+          style={{ background: 'var(--bg-0)', overscrollBehavior: 'contain' }}
         >
           {/* The one screen Music lets the artwork colour: a soft wash of the cover's
               own palette behind the art, and a solid page everywhere else. */}
@@ -491,7 +532,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                   exit={{ opacity: 0, x: -24 }}
                   transition={{ duration: 0.32, ease: easeOut }}
                 >
-                  <h1 className="truncate text-[23px] font-bold tracking-tight">{track.title}</h1>
+                  <h1 id={fullTitleId} className="truncate text-[23px] font-bold tracking-tight">{track.title}</h1>
                   <p className="mt-1 truncate text-[14px] text-[var(--ink-dim)]">{artistNames(track)}</p>
                   <ChannelChip track={track} />
                 </motion.div>
