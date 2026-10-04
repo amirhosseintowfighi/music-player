@@ -198,7 +198,8 @@ export function Library() {
       </div>
 
       <div className="no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
-        {TABS.map((item) => (
+        /*tour*/
+          {TABS.map((item) => (
           <button
             key={item.id}
             type="button"
