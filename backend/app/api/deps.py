@@ -98,7 +98,7 @@ async def _hit(redis: Redis, key: str, limit: int) -> None:
         return
     except RateLimited:
         raise
-    except Exception:
+    except Exception:  # noqa: BLE001
         # Fallback for fakeredis or Redis without EVAL support: fixed window
         bucket = cur_bucket
         count = await resolve(redis.incr(bucket))
@@ -130,7 +130,7 @@ async def maintenance_gate(request: Request, state: State) -> None:
     # 2. Redis
     try:
         raw = await resolve(state.redis.get(MAINTENANCE_REDIS_KEY))
-    except Exception:
+    except Exception:  # noqa: BLE001
         raw = None
     if raw is not None:
         # Redis stores "1"/"0" with EX 60
@@ -148,7 +148,7 @@ async def maintenance_gate(request: Request, state: State) -> None:
         # populate both caches
         try:
             await resolve(state.redis.set(MAINTENANCE_REDIS_KEY, "1" if is_on else "0", ex=60))
-        except Exception:
+        except Exception:  # noqa: BLE001
             pass
         state.maintenance_cache_set(is_on)
         if is_on:

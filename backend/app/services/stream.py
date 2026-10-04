@@ -149,9 +149,6 @@ local n = redis.call('SCARD', KEYS[1])
 if n > tonumber(ARGV[2]) then redis.call('SREM', KEYS[1], ARGV[1]); return 0 end
 return 1
 """
-_COUNT_PLAY_LUA = _count_play_lua
-
-
 async def _count_play(redis: Redis, user_id: int, track_id: int, limit: int) -> None:
     """Free-plan daily cap, counted as distinct tracks per UTC day."""
     if limit < 0:
@@ -167,7 +164,7 @@ async def _count_play(redis: Redis, user_id: int, track_id: int, limit: int) -> 
         return
     except LimitReached:
         raise
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     # Try alternate eval signature (fakeredis keys/args kwargs)
     try:
@@ -181,7 +178,7 @@ async def _count_play(redis: Redis, user_id: int, track_id: int, limit: int) -> 
         return
     except LimitReached:
         raise
-    except Exception:
+    except Exception:  # noqa: BLE001
         pass
     # Ultimate fallback (non-atomic, best-effort)
     added = await resolve(redis.sadd(key, str(track_id)))

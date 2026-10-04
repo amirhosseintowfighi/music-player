@@ -122,7 +122,7 @@ class Settings(BaseSettings):
             padded = k + "=" * (-len(k) % 4)
             try:
                 decoded = base64.urlsafe_b64decode(padded)
-            except Exception as exc:
+            except Exception as exc:  # noqa: BLE001
                 raise ValueError("signing key must be valid base64url") from exc
             if len(decoded) < 16:
                 raise ValueError("signing key decoded must be at least 16 bytes")
