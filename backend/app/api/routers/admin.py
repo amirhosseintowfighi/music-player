@@ -488,9 +488,9 @@ async def put_setting(
 
 @router.put("/flags/{key}")
 async def put_flag(
-    key: str, body: SettingIn, claims: Claims, session: SessionDep
+    key: str, body: SettingIn, claims: Claims, session: SessionDep, redis: RedisDep
 ) -> dict[str, Any]:
-    return await admin_service.set_flag(session, claims, key, body.value)
+    return await admin_service.set_flag(session, claims, key, body.value, redis=redis)
 
 
 @router.patch("/providers/{code}")

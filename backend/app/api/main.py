@@ -61,6 +61,8 @@ def build_state(settings: Settings) -> AppState:
 
 def create_app(settings: Settings | None = None, state: AppState | None = None) -> FastAPI:
     settings = settings or get_settings()
+    if len(settings.signing_keys) < 1:
+        raise RuntimeError("stream_signing_keys must contain at least 1 valid key")
     configure_logging("api", settings.log_level, settings.log_json)
 
     @asynccontextmanager

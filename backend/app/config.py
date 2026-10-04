@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import re
 from functools import lru_cache
 from typing import Literal
 
@@ -83,6 +85,7 @@ class Settings(BaseSettings):
     cors_origins: list[str] = []
     rate_limit_user_per_min: int = 240
     rate_limit_ip_per_min: int = 600
+    rate_limit_auth_per_min: int = 10
 
     @field_validator("database_url", "migration_database_url")
     @classmethod
@@ -96,9 +99,33 @@ class Settings(BaseSettings):
     @field_validator("jwt_public_key", "jwt_private_key", mode="before")
     @classmethod
     def _pem_newlines(cls, v: object) -> object:
-        # .env files keep PEM on one line with literal "\n" separators.
+        # .env files keep PEM on one line with literal "\\n" separators.
         if isinstance(v, str):
             return v.replace("\\n", "\n")
+        return v
+
+    @field_validator("stream_signing_keys", mode="before")
+    @classmethod
+    def _validate_signing_keys(cls, v: object) -> object:
+        raw = v.get_secret_value() if isinstance(v, SecretStr) else v
+        if not isinstance(raw, str):
+            return v
+        keys = [k.strip() for k in raw.split(",") if k.strip()]
+        if not keys:
+            raise ValueError("at least 1 signing key required")
+        pattern = re.compile(r"^[A-Za-z0-9_-]+={0,2}$")
+        for k in keys:
+            if len(k) < 32:
+                raise ValueError("signing key must be at least 32 characters")
+            if not pattern.match(k):
+                raise ValueError("signing key must be base64url (^[A-Za-z0-9_-]+={0,2}$)")
+            padded = k + "=" * (-len(k) % 4)
+            try:
+                decoded = base64.urlsafe_b64decode(padded)
+            except Exception as exc:
+                raise ValueError("signing key must be valid base64url") from exc
+            if len(decoded) < 16:
+                raise ValueError("signing key decoded must be at least 16 bytes")
         return v
 
     @property
@@ -107,7 +134,7 @@ class Settings(BaseSettings):
         return [k for k in keys if k]
 
     def provider_secret(self, provider_code: str) -> str:
-        """Gateway credential for a provider; secrets never live in the database."""
+        """"Gateway credential for a provider; secrets never live in the database."""
         mapping = {
             "zarinpal": self.zarinpal_merchant_id,
             "idpay": self.idpay_api_key,
