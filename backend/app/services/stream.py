@@ -159,7 +159,9 @@ async def _count_play(redis: Redis, user_id: int, track_id: int, limit: int) -> 
     key = f"plays:{user_id}:{datetime.now(UTC):%Y%m%d}"
     # Atomic via Lua; fallback for fakeredis / missing EVAL
     try:
-        res = await resolve(redis.eval(_count_play_lua, 1, key, str(track_id), str(limit), str(2 * 86400)))
+        res = await resolve(
+            redis.eval(_count_play_lua, 1, key, str(track_id), str(limit), str(2 * 86400))
+        )
         if int(res) == 0:
             raise LimitReached("daily play limit reached", kind="daily_plays", limit=limit)
         return
@@ -169,7 +171,11 @@ async def _count_play(redis: Redis, user_id: int, track_id: int, limit: int) -> 
         pass
     # Try alternate eval signature (fakeredis keys/args kwargs)
     try:
-        res = await resolve(redis.eval(_count_play_lua, keys=[key], args=[str(track_id), str(limit), str(2 * 86400)]))  # type: ignore[call-arg]
+        res = await resolve(
+            redis.eval(  # type: ignore[call-arg]
+                _count_play_lua, keys=[key], args=[str(track_id), str(limit), str(2 * 86400)]
+            )
+        )
         if int(res) == 0:
             raise LimitReached("daily play limit reached", kind="daily_plays", limit=limit)
         return
