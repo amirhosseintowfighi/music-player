@@ -189,6 +189,7 @@ export function Library() {
         <h1 className="text-[21px] font-bold">{t('tab.library')}</h1>
         <button
           type="button"
+          data-tour="add-channel"
           aria-label={t('channel.add.title')}
           onClick={() => setAddOpen(true)}
           className="grid h-9 w-9 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)]"
@@ -197,7 +198,7 @@ export function Library() {
         </button>
       </div>
 
-      <div className="no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+      <div data-tour="library-tabs" className="no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
         {TABS.map((item) => (
           <button
             key={item.id}

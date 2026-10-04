@@ -49,7 +49,7 @@ export function Search() {
 
   return (
     <div className="px-4 pt-4">
-      <Glass className="flex items-center gap-2.5 rounded-full px-4 py-2.5" spec={0.35}>
+      <div data-tour="search-input"><Glass className="flex items-center gap-2.5 rounded-full px-4 py-2.5" spec={0.35}>
         <SearchIcon size={18} className="text-[var(--ink-faint)]" />
         <input
           ref={inputRef}
@@ -67,7 +67,7 @@ export function Search() {
             <CloseIcon size={16} />
           </button>
         )}
-      </Glass>
+      </Glass></div>
 
       <div className="mt-3 flex gap-2">
         {(['library', 'global'] as const).map((value) => (

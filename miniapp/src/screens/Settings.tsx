@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { useMe, useSetLanguage } from '@/api/hooks';
 import {
@@ -12,6 +13,7 @@ import { Credit, Glass, cx } from '@/components/ui';
 import { useI18n, type Key } from '@/i18n';
 import { EQ_PRESETS, useAudioSettings, type EqPreset } from '@/store/audio';
 import { useUi } from '@/store/ui';
+import { resetTour } from '@/lib/tour';
 
 function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
@@ -176,6 +178,7 @@ function PlaybackSettings() {
 }
 
 export function Settings() {
+  const navigate = useNavigate();
   const { t } = useI18n();
   const me = useMe();
   const setLanguage = useSetLanguage();
@@ -297,6 +300,22 @@ export function Settings() {
             </button>
           </Row>
         )}
+      </Glass>
+      <Glass className="mt-4">
+        <Row label={t('tour.replay')} hint={t('tour.replay.hint')}>
+          <button
+            type="button"
+            className="rounded-full bg-[var(--fill)] px-3 py-1.5 text-[12px]"
+            onClick={() => {
+              resetTour();
+              useUi.getState().toast(t('tour.replayed'), 'success');
+              navigate('/');
+              setTimeout(() => window.location.reload(), 300);
+            }}
+          >
+            {t('tour.replay')}
+          </button>
+        </Row>
       </Glass>
       <Credit />
     </div>

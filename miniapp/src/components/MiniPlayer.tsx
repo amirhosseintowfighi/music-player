@@ -84,6 +84,7 @@ export function MiniPlayer({ thumb }: { thumb?: string | null }) {
           }}
           // Music stacks the now-playing bar straight onto the tab bar, full width,
           // with one hairline above it. No gap, no corners, nothing floating.
+          data-tour="miniplayer"
           className="glass glass-strong relative flex items-center gap-1 overflow-hidden border-t border-[var(--separator)] py-2 ps-3 pe-1.5"
           style={{ ['--spec' as string]: 0.55 }}
         >

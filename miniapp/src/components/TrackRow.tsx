@@ -29,6 +29,7 @@ export const TrackRow = memo(function TrackRow({ track, thumb, trailing, onPlay,
     // Music's row: artwork, two lines, controls at the trailing edge, and a
     // hairline that starts where the text starts — never under the artwork.
     <div
+      data-tour="track-row"
       className={cx(
         'group relative flex items-center gap-3 px-3 py-2 transition-colors duration-300 active:bg-[var(--fill)]',
         "after:pointer-events-none after:absolute after:bottom-0 after:end-3 after:h-px after:bg-[var(--separator)] after:content-['']",

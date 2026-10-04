@@ -18,6 +18,7 @@ export function TabBar() {
   const { t } = useI18n();
   return (
     <nav
+      data-tour="tabbar"
       // Music's tab bar is a material with a hairline on top, edge to edge — not a
       // floating pill. The hairline is what separates it from the list behind it.
       className="glass glass-strong flex justify-around border-t border-[var(--separator)] px-2 pt-2"
@@ -27,6 +28,7 @@ export function TabBar() {
         <NavLink
           key={to}
           to={to}
+          data-tour={to === '/' ? 'tab-home' : to === '/search' ? 'tab-search' : to === '/library' ? 'tab-library' : undefined}
           end={to === '/'}
           onClick={() => haptic('select')}
           className={({ isActive }) =>

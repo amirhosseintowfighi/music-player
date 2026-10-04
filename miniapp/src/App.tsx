@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
 
@@ -25,6 +25,7 @@ import { Search } from '@/screens/Search';
 import { AlbumScreen, ArtistScreen, ChannelScreen, ThisIsScreen, TrackScreen } from '@/screens/Detail';
 import { LikedScreen, PlaylistScreen, Playlists, SharedPlaylistScreen } from '@/screens/Playlists';
 import { TrackActions } from '@/components/TrackActions';
+import Tour from '@/components/Tour';
 
 // The full-screen player is only needed once something plays.
 const FullPlayer = lazy(() => import('@/components/FullPlayer').then((m) => ({ default: m.FullPlayer })));
@@ -306,6 +307,7 @@ function Shell() {
       <Paywall />
       <TrackActions track={actionTrack} open={Boolean(actionTrack)} onClose={() => setActionTrack(null)} />
       <Toasts />
+      <Tour />
     </div>
   );
 }
@@ -502,7 +504,9 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <I18nProvider lang={lang}>{content}</I18nProvider>
+      <MotionConfig reducedMotion="user">
+        <I18nProvider lang={lang}>{content}</I18nProvider>
+      </MotionConfig>
     </QueryClientProvider>
   );
 }
