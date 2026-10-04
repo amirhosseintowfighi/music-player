@@ -217,7 +217,7 @@ export function Home() {
 
   return (
     <div className="px-4">
-      <header className="flex items-center justify-between py-4">
+      <header data-tour="home-header" className="flex items-center justify-between py-4">
         <div className="min-w-0">
           <h1 className="truncate text-[21px] font-bold">
             {t(greetingKey(), { name: me.data?.first_name ?? '' })}
@@ -251,14 +251,14 @@ export function Home() {
       {hasChannels && <MadeForYou />}
 
       {hero && (
-        <>
+        <div data-tour="home-continue">
           <SectionHead title={t('home.continue')} />
           <ContinueCard
             track={hero}
             {...(thumbs[hero.id] ? { thumb: thumbs[hero.id] as string } : {})}
             onPlay={() => void play({ queue: tracks.length ? tracks : [hero], index: Math.max(0, tracks.findIndex((x) => x.id === hero.id)), source: 'library' })}
           />
-        </>
+        </div>
       )}
 
       {played.length > 0 && (
@@ -282,14 +282,14 @@ export function Home() {
       )}
 
       {hasChannels && (
-        <>
+        <div data-tour="home-channels">
           <SectionHead title={t('home.yourChannels')} action={t('home.manage')} onAction={() => navigate('/library?tab=channels')} />
           <div className="no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
             {channels.data?.map((channel) => (
               <ChannelCard key={channel.id} channel={channel} onClick={() => navigate(`/channel/${channel.id}`)} />
             ))}
           </div>
-        </>
+        </div>
       )}
 
       {tracks.length > 0 && (
@@ -308,13 +308,13 @@ export function Home() {
         </>
       )}
 
-      <SectionHead title={t('home.featured')} />
+      <div data-tour="home-featured"><SectionHead title={t('home.featured')} />
       <div className="no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
         {flatten(featured.data).map((channel) => (
           <ChannelCard key={channel.id} channel={channel} onClick={() => navigate(`/channel/${channel.id}`)} />
         ))}
         {featured.isLoading && <Spinner />}
-      </div>
+      </div></div>
       <LoadMore enabled={Boolean(featured.hasNextPage)} onVisible={() => void featured.fetchNextPage()} />
     </div>
   );
