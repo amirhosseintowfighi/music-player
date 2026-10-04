@@ -93,6 +93,7 @@ export const fa = {
   'player.sleep.off': 'خاموش',
   'player.sleep.minutes': '{count} دقیقه',
   'player.sleep.endOfTrack': 'تا پایان آهنگ',
+  'player.seek': 'جستجو در آهنگ',
   'player.unavailable': 'این آهنگ الان قابل پخش نیست',
   'player.fromChannel': 'از {name}',
   'player.joinChannel': 'عضویت در {name}',
