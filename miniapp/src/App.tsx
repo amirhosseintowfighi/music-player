@@ -26,6 +26,7 @@ import { AlbumScreen, ArtistScreen, ChannelScreen, ThisIsScreen, TrackScreen } f
 import { LikedScreen, PlaylistScreen, Playlists, SharedPlaylistScreen } from '@/screens/Playlists';
 import { TrackActions } from '@/components/TrackActions';
 import Tour from '@/components/Tour';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // The full-screen player is only needed once something plays.
 const FullPlayer = lazy(() => import('@/components/FullPlayer').then((m) => ({ default: m.FullPlayer })));
@@ -504,9 +505,11 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <MotionConfig reducedMotion="user">
-        <I18nProvider lang={lang}>{content}</I18nProvider>
-      </MotionConfig>
+      <ErrorBoundary>
+        <MotionConfig reducedMotion="user">
+          <I18nProvider lang={lang}>{content}</I18nProvider>
+        </MotionConfig>
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }
