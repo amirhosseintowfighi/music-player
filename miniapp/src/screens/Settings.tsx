@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
 
 import { useMe, useSetLanguage } from '@/api/hooks';
@@ -15,11 +16,11 @@ import { EQ_PRESETS, useAudioSettings, type EqPreset } from '@/store/audio';
 import { useUi } from '@/store/ui';
 import { resetTour } from '@/lib/tour';
 
-function Row({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Row({ label, hint, children, labelId }: { label: string; hint?: string; children: React.ReactNode; labelId?: string }) {
   return (
     <div className="flex items-center justify-between gap-3 px-3.5 py-3">
       <div className="min-w-0">
-        <p className="text-[14px]">{label}</p>
+        <p id={labelId} className="text-[14px]">{label}</p>
         {hint && <p className="mt-0.5 text-[11.5px] text-[var(--ink-faint)]">{hint}</p>}
       </div>
       <div className="shrink-0">{children}</div>
@@ -28,12 +29,14 @@ function Row({ label, hint, children }: { label: string; hint?: string; children
 }
 
 /** A plain on/off switch; the panel has enough chrome already. */
-function Toggle({ on, onChange }: { on: boolean; onChange: (next: boolean) => void }) {
+function Toggle({ on, onChange, label, labelId }: { on: boolean; onChange: (next: boolean) => void; label?: string; labelId?: string }) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
+      aria-label={labelId ? undefined : label}
+      aria-labelledby={labelId}
       onClick={() => onChange(!on)}
       className={cx(
         'h-6 w-11 rounded-full p-0.5 transition-colors',
@@ -139,10 +142,10 @@ function PlaybackSettings() {
           <p className="mt-0.5 text-[11.5px] text-[var(--ink-faint)]">{t('audio.crossfade.hint', { max: n(12) })}</p>
         </div>
         <Row label={t('audio.gapless')} hint={t('audio.gapless.hint')}>
-          <Toggle on={audio.gapless} onChange={(gapless) => audio.set({ gapless })} />
+          <Toggle on={audio.gapless} onChange={(gapless) => audio.set({ gapless })} label={t('audio.gapless')} />
         </Row>
         <Row label={t('audio.normalize')} hint={t('audio.normalize.hint')}>
-          <Toggle on={audio.normalize} onChange={(normalize) => audio.set({ normalize })} />
+          <Toggle on={audio.normalize} onChange={(normalize) => audio.set({ normalize })} label={t('audio.normalize')} />
         </Row>
         <div className="px-3.5 py-3">
           <p className="text-[14px]">{t('audio.eq')}</p>
@@ -167,10 +170,10 @@ function PlaybackSettings() {
           </div>
         </div>
         <Row label={t('audio.canvas')} hint={t('audio.canvas.hint')}>
-          <Toggle on={audio.canvas} onChange={(canvas) => audio.set({ canvas })} />
+          <Toggle on={audio.canvas} onChange={(canvas) => audio.set({ canvas })} label={t('audio.canvas')} />
         </Row>
         <Row label={t('private.title')} hint={t('private.hint')}>
-          <Toggle on={privateOn} onChange={(on) => setPrivate.mutate(on)} />
+          <Toggle on={privateOn} onChange={(on) => setPrivate.mutate(on)} label={t('private.title')} />
         </Row>
       </Glass>
     </>
@@ -249,6 +252,7 @@ export function Settings() {
           <Toggle
             on={me.data?.public_profile ?? true}
             onChange={(next) => setPublic.mutate(next)}
+            label={t('settings.privacy')}
           />
         </Row>
         {NOTIFY_KEYS.map((key) => (
@@ -256,6 +260,7 @@ export function Settings() {
             <Toggle
               on={notify.data?.prefs[key] ?? true}
               onChange={(next) => setNotify.mutate({ [key]: next })}
+              label={t(NOTIFY_LABEL[key])}
             />
           </Row>
         ))}
