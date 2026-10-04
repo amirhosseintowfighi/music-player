@@ -12,7 +12,7 @@ from app.api.deps import (
     SessionDep,
     SettingsDep,
     WritableClaims,
-    rate_limit_ip,
+    rate_limit_auth,
 )
 from app.errors import NotFound
 from app.models import User
@@ -49,7 +49,7 @@ async def _me(session: SessionDep, user: User) -> MeOut:
     )
 
 
-@router.post("/auth/telegram", response_model=TokenOut, dependencies=[Depends(rate_limit_ip)])
+@router.post("/auth/telegram", response_model=TokenOut, dependencies=[Depends(rate_limit_auth)])
 async def login_telegram(
     body: TelegramLoginIn, session: SessionDep, settings: SettingsDep, ua: UserAgent = None
 ) -> TokenOut:
@@ -64,7 +64,7 @@ async def login_telegram(
     )
 
 
-@router.post("/auth/refresh", response_model=TokenOut, dependencies=[Depends(rate_limit_ip)])
+@router.post("/auth/refresh", response_model=TokenOut, dependencies=[Depends(rate_limit_auth)])
 async def refresh_token(
     body: RefreshIn, session: SessionDep, settings: SettingsDep, ua: UserAgent = None
 ) -> TokenOut:
@@ -78,7 +78,7 @@ async def refresh_token(
     )
 
 
-@router.post("/auth/logout", status_code=204, dependencies=[Depends(rate_limit_ip)])
+@router.post("/auth/logout", status_code=204, dependencies=[Depends(rate_limit_auth)])
 async def logout(body: RefreshIn, session: SessionDep) -> None:
     await auth.logout(session, body.refresh_token)
 
