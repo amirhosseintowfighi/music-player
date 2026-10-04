@@ -122,7 +122,7 @@ class Settings(BaseSettings):
             padded = k + "=" * (-len(k) % 4)
             try:
                 decoded = base64.urlsafe_b64decode(padded)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 raise ValueError("signing key must be valid base64url") from exc
             if len(decoded) < 16:
                 raise ValueError("signing key decoded must be at least 16 bytes")
@@ -134,7 +134,7 @@ class Settings(BaseSettings):
         return [k for k in keys if k]
 
     def provider_secret(self, provider_code: str) -> str:
-        """"Gateway credential for a provider; secrets never live in the database."""
+        """Gateway credential for a provider; secrets never live in the database."""
         mapping = {
             "zarinpal": self.zarinpal_merchant_id,
             "idpay": self.idpay_api_key,
