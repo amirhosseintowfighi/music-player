@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
 import { fetchMe, saveToken, setUnauthorizedHandler, type AdminMe } from '@/api/client';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Spinner, cx } from '@/components/ui';
 import { Broadcasts } from '@/screens/Broadcasts';
 import { Candidates } from '@/screens/Candidates';
@@ -116,27 +117,31 @@ export function App() {
 
   if (loading) {
     return (
-      <div className="grid min-h-screen place-items-center">
-        <Spinner />
-      </div>
+      <ErrorBoundary>
+        <div className="grid min-h-screen place-items-center">
+          <Spinner />
+        </div>
+      </ErrorBoundary>
     );
   }
 
   return (
-    <QueryClientProvider client={client}>
-      {me ? (
-        <HashRouter>
-          <Shell
-            me={me}
-            onLogout={() => {
-              saveToken(null);
-              setMe(null);
-            }}
-          />
-        </HashRouter>
-      ) : (
-        <Login onLoggedIn={reload} />
-      )}
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={client}>
+        {me ? (
+          <HashRouter>
+            <Shell
+              me={me}
+              onLogout={() => {
+                saveToken(null);
+                setMe(null);
+              }}
+            />
+          </HashRouter>
+        ) : (
+          <Login onLoggedIn={reload} />
+        )}
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

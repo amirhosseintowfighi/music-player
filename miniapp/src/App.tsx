@@ -1,11 +1,12 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
 import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
 import { HashRouter, Route, Routes, useLocation } from 'react-router-dom';
 
 import { ApiError, get, login, post, put, setUnauthorizedHandler } from '@/api/client';
 import { useRecordPlay, useSavePlayback, useStoredPlayback } from '@/api/playlists';
 import { useMe } from '@/api/hooks';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { MiniPlayer } from '@/components/MiniPlayer';
 import { TabBar } from '@/components/TabBar';
 import { Credit, EmptyState, Glass, Sheet, Spinner, Toasts } from '@/components/ui';
@@ -501,8 +502,12 @@ export function App() {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <I18nProvider lang={lang}>{content}</I18nProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <MotionConfig reducedMotion="user">
+          <I18nProvider lang={lang}>{content}</I18nProvider>
+        </MotionConfig>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }

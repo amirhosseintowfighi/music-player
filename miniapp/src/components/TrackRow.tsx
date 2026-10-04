@@ -38,6 +38,7 @@ export const TrackRow = memo(function TrackRow({ track, thumb, trailing, onPlay,
     >
       <button
         type="button"
+        aria-label={`${t('common.play')} ${track.title}`}
         className="flex min-w-0 flex-1 items-center gap-3 text-start transition-transform duration-150 active:scale-[0.985]"
         onClick={onPlay}
       >

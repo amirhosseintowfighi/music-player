@@ -95,6 +95,7 @@ export const en: Record<keyof typeof fa, string> = {
   'player.sleep.off': 'Off',
   'player.sleep.minutes': '{count} minutes',
   'player.sleep.endOfTrack': 'End of track',
+  'player.seek': 'Seek',
   'player.unavailable': "This track can't be played right now",
   'player.fromChannel': 'From {name}',
   'player.joinChannel': 'Join {name}',

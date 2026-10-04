@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type CSSProperties,
@@ -196,6 +197,27 @@ export function EmptyState({ title, body, cta, onCta }: { title: string; body?: 
   );
 }
 
+const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function useScrollLock(locked: boolean) {
+  useEffect(() => {
+    if (!locked) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.documentElement.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overscrollBehavior = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.documentElement.style.overscrollBehavior = prevOverscroll;
+    };
+  }, [locked]);
+}
+
+export function useSheetScrollLock(open: boolean): void {
+  useScrollLock(open);
+}
+
 /** Bottom sheet used for filters, the queue, track actions and the paywall. */
 export function Sheet({
   open,
@@ -208,10 +230,53 @@ export function Sheet({
   title?: string;
   children: ReactNode;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  const titleId = useId();
+  useScrollLock(open);
+
+  useEffect(() => {
+    if (open) {
+      triggerRef.current = document.activeElement as HTMLElement | null;
+      requestAnimationFrame(() => {
+        const panel = panelRef.current;
+        if (!panel) return;
+        const first = panel.querySelector<HTMLElement>(FOCUSABLE_SELECTOR);
+        (first ?? panel).focus();
+      });
+    } else {
+      triggerRef.current?.focus();
+    }
+  }, [open]);
+
   useEffect(() => {
     if (!open) return undefined;
+    const panel = panelRef.current;
+    if (!panel) return undefined;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== 'Tab' || !panel) return;
+      const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+      if (nodes.length === 0) {
+        event.preventDefault();
+        return;
+      }
+      const first = nodes[0]!;
+      const last = nodes[nodes.length - 1]!;
+      const active = document.activeElement as HTMLElement | null;
+      if (event.shiftKey) {
+        if (active === first) {
+          event.preventDefault();
+          last.focus();
+        }
+      } else if (active === last) {
+        event.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -229,13 +294,15 @@ export function Sheet({
             onClick={onClose}
           />
           <motion.div
+            ref={panelRef}
             role="dialog"
             aria-modal="true"
-            aria-label={title}
+            aria-labelledby={title ? titleId : undefined}
+            tabIndex={-1}
             // A sheet is content, not chrome: solid, so the list inside it is read
             // against a known colour instead of against whatever it covers.
-            className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-[var(--radius-glass-lg)] bg-[var(--card)] px-4 pt-3 shadow-[0_-8px_30px_rgba(0,0,0,0.18)]"
-            style={{ paddingBottom: 'calc(20px + var(--safe-bottom))' }}
+            className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-[var(--radius-glass-lg)] bg-[var(--card)] px-4 pt-3 shadow-[0_-8px_30px_rgba(0,0,0,0.18)] outline-none"
+            style={{ paddingBottom: 'calc(20px + var(--safe-bottom))', overscrollBehavior: 'contain' }}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -248,7 +315,11 @@ export function Sheet({
             }}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--fill-strong)]" />
-            {title && <h3 className="mb-3 px-1 text-[15px] font-bold">{title}</h3>}
+            {title && (
+              <h3 id={titleId} className="mb-3 px-1 text-[15px] font-bold">
+                {title}
+              </h3>
+            )}
             {children}
           </motion.div>
         </>

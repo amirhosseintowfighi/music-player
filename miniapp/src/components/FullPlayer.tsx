@@ -1,5 +1,7 @@
 import { AnimatePresence, motion, Reorder } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
+
+import { useSheetScrollLock } from '@/components/ui';
 
 import type { Track } from '@/api/client';
 import { CreditsSheet } from '@/components/Credits';
@@ -49,7 +51,7 @@ const SPEEDS = [0.75, 1, 1.25, 1.5, 2];
 const SLEEP_OPTIONS = [null, 15, 30, 60] as const;
 
 function Scrubber() {
-  const { lang } = useI18n();
+  const { t, lang } = useI18n();
   const position = usePlayer((s) => s.position);
   const buffered = usePlayer((s) => s.buffered);
   const total = usePlayer((s) => s.duration || s.current?.duration || 0);
@@ -74,7 +76,7 @@ function Scrubber() {
         ref={bar}
         role="slider"
         tabIndex={0}
-        aria-label="seek"
+        aria-label={t('player.seek')}
         aria-valuemin={0}
         aria-valuemax={Math.round(total)}
         aria-valuenow={Math.round(shown)}
@@ -386,10 +388,64 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
     window.location.hash = '#/jam';
   };
 
+  const dialogTitleId = useId();
+  const focusTrapRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  useSheetScrollLock(open);
+
   useEffect(() => {
     if (!open) return undefined;
     backButton(() => setOpen(false));
     return () => backButton(null);
+  }, [open, setOpen]);
+
+  useEffect(() => {
+    if (open) triggerRef.current = document.activeElement as HTMLElement | null;
+    else triggerRef.current?.focus();
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    requestAnimationFrame(() => {
+      const el = focusTrapRef.current?.querySelector<HTMLElement>(
+        'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), [role="slider"]',
+      );
+      (el ?? focusTrapRef.current)?.focus();
+    });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const root = focusTrapRef.current;
+    if (!root) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false);
+        return;
+      }
+      if (e.key !== 'Tab' || !root) return;
+      const nodes = Array.from(
+        root.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"]), [role="slider"]',
+        ),
+      );
+      if (nodes.length === 0) {
+        e.preventDefault();
+        return;
+      }
+      const first = nodes[0]!;
+      const last = nodes[nodes.length - 1]!;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
   }, [open, setOpen]);
 
   if (!track) return null;
@@ -398,11 +454,16 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 overflow-y-auto"
+          ref={focusTrapRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={dialogTitleId}
+          tabIndex={-1}
+          className="fixed inset-0 z-50 overflow-y-auto outline-none"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          style={{ background: 'var(--bg-0)' }}
+          style={{ background: 'var(--bg-0)', overscrollBehavior: 'contain' }}
         >
           {/* The one screen Music lets the artwork colour: a soft wash of the cover's
               own palette behind the art, and a solid page everywhere else. */}
@@ -491,7 +552,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                   exit={{ opacity: 0, x: -24 }}
                   transition={{ duration: 0.32, ease: easeOut }}
                 >
-                  <h1 className="truncate text-[23px] font-bold tracking-tight">{track.title}</h1>
+                  <h1 id={dialogTitleId} className="truncate text-[23px] font-bold tracking-tight">{track.title}</h1>
                   <p className="mt-1 truncate text-[14px] text-[var(--ink-dim)]">{artistNames(track)}</p>
                   <ChannelChip track={track} />
                 </motion.div>
