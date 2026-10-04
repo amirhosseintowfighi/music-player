@@ -10,7 +10,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.state import AppState, MAINTENANCE_REDIS_KEY
+from app.api.state import MAINTENANCE_REDIS_KEY, AppState
 from app.config import Settings
 from app.db import session_scope
 from app.errors import Forbidden, RateLimited, Unauthorized, Unavailable
@@ -98,14 +98,14 @@ async def _hit(redis: Redis, key: str, limit: int) -> None:
         return
     except RateLimited:
         raise
-    except Exception:
+    except Exception:  # noqa: BLE001
         # Fallback for fakeredis or Redis without EVAL support: fixed window
         bucket = cur_bucket
         count = await resolve(redis.incr(bucket))
         if count == 1:
             await resolve(redis.expire(bucket, 65))
         if count > limit:
-            raise RateLimited("too many requests", retry_after=60 - int(time.time()) % 60)
+            raise RateLimited("too many requests", retry_after=60 - int(time.time()) % 60) from None
 
 
 async def rate_limit_ip(request: Request, redis: RedisDep, settings: SettingsDep) -> None:
@@ -130,7 +130,7 @@ async def maintenance_gate(request: Request, state: State) -> None:
     # 2. Redis
     try:
         raw = await resolve(state.redis.get(MAINTENANCE_REDIS_KEY))
-    except Exception:
+    except Exception:  # noqa: BLE001
         raw = None
     if raw is not None:
         # Redis stores "1"/"0" with EX 60
@@ -146,9 +146,9 @@ async def maintenance_gate(request: Request, state: State) -> None:
         flag = await plans.get_flag(session, "maintenance_mode", False)
         is_on = bool(flag)
         # populate both caches
-        try:
+        try:  # noqa: SIM105
             await resolve(state.redis.set(MAINTENANCE_REDIS_KEY, "1" if is_on else "0", ex=60))
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
         state.maintenance_cache_set(is_on)
         if is_on:

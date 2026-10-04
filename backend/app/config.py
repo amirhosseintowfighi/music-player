@@ -134,7 +134,7 @@ class Settings(BaseSettings):
         return [k for k in keys if k]
 
     def provider_secret(self, provider_code: str) -> str:
-        """"Gateway credential for a provider; secrets never live in the database."""
+        """Gateway credential for a provider; secrets never live in the database."""
         mapping = {
             "zarinpal": self.zarinpal_merchant_id,
             "idpay": self.idpay_api_key,

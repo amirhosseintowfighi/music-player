@@ -693,7 +693,7 @@ async def set_flag(
         try:
             flag_val = "1" if bool(value) else "0"
             await resolve(redis.set("flag:maintenance_mode", flag_val, ex=60))
-        except Exception:
+        except Exception:  # noqa: BLE001, S110
             pass
     await audit(session, claims, "flag.update", "flag", key, {"value": value})
     return {"key": key, "value": value}
