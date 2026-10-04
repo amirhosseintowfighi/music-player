@@ -425,7 +425,7 @@ export const en: Record<keyof typeof fa, string> = {
   'taste.excludeHint': 'What you play from this playlist won’t shape your recommendations and mixes.',
   'taste.excluded': 'This playlist no longer shapes your recommendations',
   'taste.included': 'This playlist counts towards your taste again',
-,  'tour.welcome.title': 'Welcome to Music Player! 🎧',
+  'tour.welcome.title': 'Welcome to Music Player! 🎧',
   'tour.welcome.body': 'All your channel tracks in one place — Persian, Finglish, queue & Jam',
   'tour.home.title': 'This is your home',
   'tour.home.body': 'Pick up right where you left off',
