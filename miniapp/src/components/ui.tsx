@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   useEffect,
+  useId,
   useRef,
   useState,
   type CSSProperties,
@@ -18,6 +19,23 @@ export const spring = { type: 'spring', stiffness: 380, damping: 34, mass: 0.9 }
 export const bouncy = { type: 'spring', stiffness: 520, damping: 22, mass: 0.7 } as const;
 /** Apple's standard ease-out, for anything that fades rather than moves. */
 export const easeOut = [0.22, 1, 0.36, 1] as const;
+
+export const FOCUSABLE_SELECTOR =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"]), [role="slider"], [role="button"]';
+
+export function useScrollLock(active: boolean): void {
+  useEffect(() => {
+    if (!active) return;
+    const prevOverflow = document.body.style.overflow;
+    const prevOverscroll = document.documentElement.style.overscrollBehavior;
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overscrollBehavior = 'none';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      document.documentElement.style.overscrollBehavior = prevOverscroll;
+    };
+  }, [active]);
+}
 
 /**
  * Play and pause are one control, so the glyph turns into the other one instead of
@@ -208,10 +226,55 @@ export function Sheet({
   title?: string;
   children: ReactNode;
 }) {
+  const titleId = useId();
+  const panelRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLElement | null>(null);
+  useScrollLock(open);
+
+  useEffect(() => {
+    if (open) {
+      triggerRef.current = document.activeElement as HTMLElement | null;
+      requestAnimationFrame(() => {
+        const panel = panelRef.current;
+        if (!panel) return;
+        const focusable = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+        if (focusable.length) focusable[0].focus();
+        else panel.focus();
+      });
+    } else if (triggerRef.current) {
+      triggerRef.current.focus();
+      triggerRef.current = null;
+    }
+  }, [open]);
+
   useEffect(() => {
     if (!open) return undefined;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') {
+        onClose();
+        return;
+      }
+      if (event.key === 'Tab') {
+        const panel = panelRef.current;
+        if (!panel) return;
+        const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
+        if (focusable.length === 0) {
+          event.preventDefault();
+          return;
+        }
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (event.shiftKey) {
+          if (active === first) {
+            event.preventDefault();
+            last.focus();
+          }
+        } else if (active === last) {
+          event.preventDefault();
+          first.focus();
+        }
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
@@ -229,13 +292,15 @@ export function Sheet({
             onClick={onClose}
           />
           <motion.div
+            ref={panelRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
-            aria-label={title}
+            aria-labelledby={title ? titleId : undefined}
             // A sheet is content, not chrome: solid, so the list inside it is read
             // against a known colour instead of against whatever it covers.
             className="fixed inset-x-0 bottom-0 z-50 max-h-[85vh] overflow-y-auto rounded-t-[var(--radius-glass-lg)] bg-[var(--card)] px-4 pt-3 shadow-[0_-8px_30px_rgba(0,0,0,0.18)]"
-            style={{ paddingBottom: 'calc(20px + var(--safe-bottom))' }}
+            style={{ paddingBottom: 'calc(20px + var(--safe-bottom))', overscrollBehavior: 'contain' as const }}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
@@ -248,7 +313,7 @@ export function Sheet({
             }}
           >
             <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-[var(--fill-strong)]" />
-            {title && <h3 className="mb-3 px-1 text-[15px] font-bold">{title}</h3>}
+            {title && <h3 id={titleId} className="mb-3 px-1 text-[15px] font-bold">{title}</h3>}
             {children}
           </motion.div>
         </>
