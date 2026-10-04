@@ -25,7 +25,6 @@ import { Search } from '@/screens/Search';
 import { AlbumScreen, ArtistScreen, ChannelScreen, ThisIsScreen, TrackScreen } from '@/screens/Detail';
 import { LikedScreen, PlaylistScreen, Playlists, SharedPlaylistScreen } from '@/screens/Playlists';
 import { TrackActions } from '@/components/TrackActions';
-import Tour from '@/components/Tour';
 
 // The full-screen player is only needed once something plays.
 const FullPlayer = lazy(() => import('@/components/FullPlayer').then((m) => ({ default: m.FullPlayer })));
@@ -39,6 +38,7 @@ const Settings = lazy(() => import('@/screens/Settings').then((m) => ({ default:
 const Wrapped = lazy(() => import('@/screens/Wrapped').then((m) => ({ default: m.Wrapped })));
 const JamScreen = lazy(() => import('@/screens/Jam').then((m) => ({ default: m.JamScreen })));
 const BlendScreen = lazy(() => import('@/screens/Blend').then((m) => ({ default: m.BlendScreen })));
+const Tour = lazy(() => import('@/components/Tour'));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -307,7 +307,9 @@ function Shell() {
       <Paywall />
       <TrackActions track={actionTrack} open={Boolean(actionTrack)} onClose={() => setActionTrack(null)} />
       <Toasts />
-      <Tour />
+      <Suspense fallback={null}>
+        <Tour />
+      </Suspense>
     </div>
   );
 }
