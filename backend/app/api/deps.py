@@ -88,7 +88,9 @@ async def _hit(redis: Redis, key: str, limit: int) -> None:
     prev_bucket = f"rl:{key}:{int(time.time() // 60) - 1}"
     try:
         # redis.eval signature varies; try both eval and evalsha style
-        result = await redis.eval(_RATE_LIMIT_LUA, 2, cur_bucket, prev_bucket, str(limit), str(now_ms))
+        result = await redis.eval(
+            _RATE_LIMIT_LUA, 2, cur_bucket, prev_bucket, str(limit), str(now_ms)
+        )
         # fakeredis returns int, redis-py returns int
         allowed = int(result) if result is not None else 1
         if allowed == 0:
