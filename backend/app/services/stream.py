@@ -142,11 +142,42 @@ async def pick_source(session: AsyncSession, track_id: int, bot_id: int, bot_max
     )
 
 
+_count_play_lua = """
+local added = redis.call('SADD', KEYS[1], ARGV[1])
+if added == 1 then redis.call('EXPIRE', KEYS[1], ARGV[3]) end
+local n = redis.call('SCARD', KEYS[1])
+if n > tonumber(ARGV[2]) then redis.call('SREM', KEYS[1], ARGV[1]); return 0 end
+return 1
+"""
+_COUNT_PLAY_LUA = _count_play_lua
+
+
 async def _count_play(redis: Redis, user_id: int, track_id: int, limit: int) -> None:
     """Free-plan daily cap, counted as distinct tracks per UTC day."""
     if limit < 0:
         return
     key = f"plays:{user_id}:{datetime.now(UTC):%Y%m%d}"
+    # Atomic via Lua; fallback for fakeredis / missing EVAL
+    try:
+        res = await resolve(redis.eval(_count_play_lua, 1, key, str(track_id), str(limit), str(2 * 86400)))
+        if int(res) == 0:
+            raise LimitReached("daily play limit reached", kind="daily_plays", limit=limit)
+        return
+    except LimitReached:
+        raise
+    except Exception:
+        pass
+    # Try alternate eval signature (fakeredis keys/args kwargs)
+    try:
+        res = await resolve(redis.eval(_count_play_lua, keys=[key], args=[str(track_id), str(limit), str(2 * 86400)]))  # type: ignore[call-arg]
+        if int(res) == 0:
+            raise LimitReached("daily play limit reached", kind="daily_plays", limit=limit)
+        return
+    except LimitReached:
+        raise
+    except Exception:
+        pass
+    # Ultimate fallback (non-atomic, best-effort)
     added = await resolve(redis.sadd(key, str(track_id)))
     if added:
         await resolve(redis.expire(key, 2 * 86400))
