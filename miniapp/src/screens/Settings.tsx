@@ -1,6 +1,5 @@
 import { useId, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useNavigate } from 'react-router-dom';
 
 import { useMe, useSetLanguage } from '@/api/hooks';
 import {
