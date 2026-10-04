@@ -671,7 +671,11 @@ async def set_setting(
 
 
 async def set_flag(
-    session: AsyncSession, claims: AdminClaims, key: str, value: Any
+    session: AsyncSession,
+    claims: AdminClaims,
+    key: str,
+    value: Any,
+    redis: Redis | None = None,
 ) -> dict[str, Any]:
     require(claims, "system.edit")
     row = (
@@ -685,6 +689,12 @@ async def set_flag(
     if row is None:
         raise NotFound("flag not found")
     plans.clear_caches()
+    if key == "maintenance_mode" and redis is not None:
+        try:
+            flag_val = "1" if bool(value) else "0"
+            await resolve(redis.set("flag:maintenance_mode", flag_val, ex=60))
+        except Exception:
+            pass
     await audit(session, claims, "flag.update", "flag", key, {"value": value})
     return {"key": key, "value": value}
 
