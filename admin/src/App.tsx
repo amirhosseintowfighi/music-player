@@ -4,6 +4,7 @@ import { HashRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom';
 
 import { fetchMe, saveToken, setUnauthorizedHandler, type AdminMe } from '@/api/client';
 import { Spinner, cx } from '@/components/ui';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Broadcasts } from '@/screens/Broadcasts';
 import { Candidates } from '@/screens/Candidates';
 import { ClientLog } from '@/screens/ClientLog';
@@ -124,6 +125,7 @@ export function App() {
 
   return (
     <QueryClientProvider client={client}>
+      <ErrorBoundary>
       {me ? (
         <HashRouter>
           <Shell
@@ -137,6 +139,7 @@ export function App() {
       ) : (
         <Login onLoggedIn={reload} />
       )}
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }
