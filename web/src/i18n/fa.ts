@@ -446,5 +446,11 @@ export const fa = {
   'tour.replayed': 'تور دوباره آغاز شد',
 
   'web.landing.title': 'موزیک‌ات، همه‌جا.',
-  'web.landing.body': 'کتابخانهٔ تلگرامت در مرورگر — دانلود و پخش آفلاین روی گوشی و دسکتاپ.'
+  'web.landing.body': 'کتابخانهٔ تلگرامت در مرورگر — دانلود و پخش آفلاین روی گوشی و دسکتاپ.',
+  'web.nav.downloads': 'دانلودها',
+  'web.downloads.title': 'دانلودها',
+  'web.downloads.empty': 'هنوز چیزی دانلود نکردی — روی هر آهنگ Download بزن.',
+  'web.downloads.offlineBadge': 'آفلاین',
+  'web.downloads.remove': 'حذف دانلود',
+  'web.downloads.playOffline': 'پخش آفلاین'
 } as const;

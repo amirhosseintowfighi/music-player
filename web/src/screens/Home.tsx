@@ -1,0 +1,321 @@
+import { motion } from 'framer-motion';
+import { useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
+
+import type { Track } from '@/api/client';
+import { useRecentTracks } from '@/api/playlists';
+import {
+  flatten,
+  useFeaturedChannels,
+  useLibraryTracks,
+  useMe,
+  useMyChannels,
+} from '@/api/hooks';
+import { ChannelCard } from '@/components/ChannelCard';
+import { TrackRow } from '@/components/TrackRow';
+import { Cover, EmptyState, ErrorNote, Glass, LoadMore, SectionHead, Spinner, cx } from '@/components/ui';
+import { JamIcon, PlayIcon } from '@/components/icons';
+import { useI18n } from '@/i18n';
+import { artistNames } from '@/lib/format';
+import { useThumbs } from '@/player/thumbs';
+import { useDaylist, usePrivateSession } from '@/api/listening';
+import { useDj } from '@/store/dj';
+import { useJam } from '@/store/jam';
+import { usePlayer } from '@/store/player';
+import { useUi } from '@/store/ui';
+
+function greetingKey(): 'home.greeting.morning' | 'home.greeting.afternoon' | 'home.greeting.night' {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'home.greeting.morning';
+  if (hour < 19) return 'home.greeting.afternoon';
+  return 'home.greeting.night';
+}
+
+/** Hero card: the track that is playing, or the most recent one to resume. */
+function ContinueCard({ track, thumb, onPlay }: { track: Track; thumb?: string; onPlay: () => void }) {
+  const { t } = useI18n();
+  const openPlayer = useUi((s) => s.setPlayerOpen);
+  const isCurrent = usePlayer((s) => s.current?.id === track.id);
+  return (
+    <Glass strong className="flex items-center gap-3.5 p-3.5" spec={0.4}>
+      <button type="button" className="flex min-w-0 flex-1 items-center gap-3.5 text-start" onClick={() => (isCurrent ? openPlayer(true) : onPlay())}>
+        <Cover src={thumb} seed={track.id} size={64} radius={16} glyph="♫" />
+        <span className="min-w-0">
+          <span className="block truncate text-[16px] font-bold">{track.title}</span>
+          <span className="block truncate text-[12.5px] text-[var(--ink-dim)]">{artistNames(track)}</span>
+        </span>
+      </button>
+      <button
+        type="button"
+        aria-label={t('common.play')}
+        onClick={onPlay}
+        className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] shadow-[0_10px_22px_-10px_var(--accent)]"
+      >
+        <PlayIcon size={18} />
+      </button>
+    </Glass>
+  );
+}
+
+const DAYPART_GRADIENT: Record<string, string> = {
+  morning: 'linear-gradient(145deg, #ffb347, #ff6f61)',
+  afternoon: 'linear-gradient(145deg, #4facfe, #7f7fd5)',
+  evening: 'linear-gradient(145deg, #c471f5, #fa71cd)',
+  night: 'linear-gradient(145deg, #1f1c2c, #5b4b8a)',
+};
+
+/** One tile on the "Made for you" shelf. */
+function MadeTile({
+  title,
+  subtitle,
+  background,
+  glyph,
+  busy,
+  onClick,
+}: {
+  title: string;
+  subtitle: string;
+  background: string;
+  glyph: React.ReactNode;
+  busy?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      whileTap={{ scale: 0.95 }}
+      transition={{ type: 'spring', stiffness: 500, damping: 26 }}
+      onClick={onClick}
+      className="relative flex h-[150px] w-[140px] shrink-0 flex-col justify-end overflow-hidden rounded-[18px] p-3 text-start text-white shadow-[0_8px_24px_rgba(0,0,0,0.25)]"
+      style={{ background }}
+    >
+      <motion.span
+        aria-hidden
+        className="absolute -end-4 -top-4 text-[64px] opacity-30"
+        animate={{ rotate: [0, 8, 0], scale: [1, 1.06, 1] }}
+        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+      >
+        {glyph}
+      </motion.span>
+      <span className="relative text-[17px] font-extrabold leading-tight">{title}</span>
+      <span className="relative mt-0.5 line-clamp-2 text-[11.5px] leading-snug opacity-85">{busy ? '…' : subtitle}</span>
+    </motion.button>
+  );
+}
+
+/** Daylist, DJ and Blend: the things made for this listener, one tap away. */
+function MadeForYou() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const daylist = useDaylist();
+  const dj = useDj();
+  const toast = useUi((s) => s.toast);
+  const part = daylist.data?.part ?? 'evening';
+  return (
+    <>
+      <SectionHead title={t('madeForYou.title')} />
+      <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2">
+        <MadeTile
+          title={t('daylist.title')}
+          subtitle={t(`daylist.part.${part}`)}
+          background={DAYPART_GRADIENT[part] ?? DAYPART_GRADIENT.evening!}
+          glyph="☀︎"
+          busy={daylist.isLoading}
+          onClick={() => daylist.data && navigate(`/playlist/${daylist.data.playlist_id}`)}
+        />
+        <MadeTile
+          title={dj.on ? t('dj.stop') : t('dj.title')}
+          subtitle={t('dj.hint')}
+          background="linear-gradient(145deg, #0f9b8e, #1d4e89)"
+          glyph="🎙"
+          busy={dj.loading}
+          onClick={() => {
+            if (dj.on) {
+              dj.stop();
+              return;
+            }
+            void dj.start().then((started) => {
+              if (!started) toast(t('dj.empty'));
+            });
+          }}
+        />
+        <MadeTile
+          title={t('blend.title')}
+          subtitle={t('blend.headline')}
+          background="linear-gradient(145deg, var(--accent), #5e5ce6)"
+          glyph="◑"
+          onClick={() => navigate('/blend')}
+        />
+      </div>
+    </>
+  );
+}
+
+/** While a private session is on, say so where the listener looks first. */
+function PrivateBadge() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const session = usePrivateSession();
+  if (!session.data?.private_until) return null;
+  return (
+    <motion.button
+      type="button"
+      initial={{ scale: 0.6, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      aria-label={t('private.on')}
+      onClick={() => navigate('/settings')}
+      className="grid h-9 w-9 place-items-center rounded-full bg-[var(--fill)] text-[15px]"
+    >
+      🔒
+    </motion.button>
+  );
+}
+
+/** Into the Jam — lit up, with a live dot, while one is going. */
+function JamButton() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const inJam = useJam((s) => Boolean(s.jam));
+  return (
+    <motion.button
+      type="button"
+      aria-label={t('jam.title')}
+      whileTap={{ scale: 0.9 }}
+      onClick={() => navigate('/jam')}
+      className={cx(
+        'relative flex h-9 items-center gap-1.5 rounded-full px-3 text-[12.5px] font-semibold',
+        inJam ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'bg-[var(--fill)] text-[var(--ink)]',
+      )}
+    >
+      <JamIcon size={17} />
+      {t('jam.title')}
+      {inJam && <span className="live-dot absolute -top-0.5 -end-0.5 ring-2 ring-[var(--bg-0)]" style={{ background: '#fff' }} />}
+    </motion.button>
+  );
+}
+
+export function Home() {
+  const { t } = useI18n();
+  const navigate = useNavigate();
+  const me = useMe();
+  const channels = useMyChannels();
+  const recent = useLibraryTracks();
+  const featured = useFeaturedChannels(null);
+  const recentlyPlayed = useRecentTracks();
+  const play = usePlayer((s) => s.play);
+  const current = usePlayer((s) => s.current);
+
+  const tracks = useMemo(() => flatten(recent.data), [recent.data]);
+  const played = useMemo(() => recentlyPlayed.data?.items ?? [], [recentlyPlayed.data]);
+  const thumbs = useThumbs([...tracks.slice(0, 20), ...played.slice(0, 10)].map((track) => track.id));
+  const hero = current ?? played[0] ?? tracks[0];
+  const totalTracks = channels.data?.reduce((sum, channel) => sum + channel.tracks_count, 0) ?? 0;
+
+  if (recent.isError) return <ErrorNote onRetry={() => void recent.refetch()} />;
+
+  const hasChannels = (channels.data?.length ?? 0) > 0;
+
+  return (
+    <div className="px-4">
+      <header data-tour="home-header" className="flex items-center justify-between py-4">
+        <div className="min-w-0">
+          <h1 className="truncate text-[21px] font-bold">
+            {t(greetingKey(), { name: me.data?.first_name ?? '' })}
+          </h1>
+          {hasChannels && (
+            <p className="mt-0.5 text-[12.5px] text-[var(--ink-dim)]">
+              {t('home.summary', { channels: channels.data?.length ?? 0, tracks: totalTracks })}
+            </p>
+          )}
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <PrivateBadge />
+          <JamButton />
+          {me.data && (
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#ffb86b] to-[#ff6b9a] text-[15px] font-bold text-[#2a1206]">
+              {me.data.first_name.slice(0, 1)}
+            </div>
+          )}
+        </div>
+      </header>
+
+      {!hasChannels && !channels.isLoading && (
+        <EmptyState
+          title={t('home.empty.title')}
+          body={t('home.empty.body')}
+          cta={t('home.empty.cta')}
+          onCta={() => navigate('/library?add=1')}
+        />
+      )}
+
+      {hasChannels && <MadeForYou />}
+
+      {hero && (
+        <div data-tour="home-continue">
+          <SectionHead title={t('home.continue')} />
+          <ContinueCard
+            track={hero}
+            {...(thumbs[hero.id] ? { thumb: thumbs[hero.id] as string } : {})}
+            onPlay={() => void play({ queue: tracks.length ? tracks : [hero], index: Math.max(0, tracks.findIndex((x) => x.id === hero.id)), source: 'library' })}
+          />
+        </div>
+      )}
+
+      {played.length > 0 && (
+        <>
+          <SectionHead title={t('home.playedRecently')} action={t('home.all')} onAction={() => navigate('/likes')} />
+          <div className="no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
+            {played.slice(0, 10).map((track, index) => (
+              <Glass
+                key={track.id}
+                as="button"
+                className="w-[132px] shrink-0 p-2.5 text-start"
+                onClick={() => void play({ queue: played, index, source: 'library' })}
+              >
+                <Cover src={thumbs[track.id]} seed={track.id} size={112} radius={14} glyph="♫" />
+                <p className="mt-2 truncate text-[13px] font-semibold">{track.title}</p>
+                <p className="truncate text-[11.5px] text-[var(--ink-faint)]">{artistNames(track)}</p>
+              </Glass>
+            ))}
+          </div>
+        </>
+      )}
+
+      {hasChannels && (
+        <div data-tour="home-channels">
+          <SectionHead title={t('home.yourChannels')} action={t('home.manage')} onAction={() => navigate('/library?tab=channels')} />
+          <div className="no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
+            {channels.data?.map((channel) => (
+              <ChannelCard key={channel.id} channel={channel} onClick={() => navigate(`/channel/${channel.id}`)} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tracks.length > 0 && (
+        <>
+          <SectionHead title={t('home.recent')} action={t('home.all')} onAction={() => navigate('/library')} />
+          <Glass className="rise p-1.5">
+            {tracks.slice(0, 8).map((track, index) => (
+              <TrackRow
+                key={track.id}
+                track={track}
+                {...(thumbs[track.id] ? { thumb: thumbs[track.id] as string } : {})}
+                onPlay={() => void play({ queue: tracks, index, source: 'library' })}
+              />
+            ))}
+          </Glass>
+        </>
+      )}
+
+      <div data-tour="home-featured"><SectionHead title={t('home.featured')} />
+      <div className="no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
+        {flatten(featured.data).map((channel) => (
+          <ChannelCard key={channel.id} channel={channel} onClick={() => navigate(`/channel/${channel.id}`)} />
+        ))}
+        {featured.isLoading && <Spinner />}
+      </div></div>
+      <LoadMore enabled={Boolean(featured.hasNextPage)} onVisible={() => void featured.fetchNextPage()} />
+    </div>
+  );
+}

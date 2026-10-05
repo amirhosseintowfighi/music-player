@@ -448,5 +448,11 @@ export const en: Record<keyof typeof fa, string> = {
   'tour.replayed': 'Tour restarted',
 
   'web.landing.title': 'Your music, everywhere.',
-  'web.landing.body': 'Your Telegram music library in the browser — download for offline on phone and desktop.'
+  'web.landing.body': 'Your Telegram music library in the browser — download for offline on phone and desktop.',
+  'web.nav.downloads': 'Downloads',
+  'web.downloads.title': 'Downloads',
+  'web.downloads.empty': 'Nothing downloaded yet — tap Download on any track.',
+  'web.downloads.offlineBadge': 'Offline',
+  'web.downloads.remove': 'Remove download',
+  'web.downloads.playOffline': 'Play offline'
 };
