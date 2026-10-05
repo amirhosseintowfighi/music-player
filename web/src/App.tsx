@@ -456,23 +456,39 @@ function JoinScreen({ channels, onPassed, onStillMissing }: { channels: { userna
 function Gate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'checking' | 'ready' | 'landing' | 'join'>('checking');
   const [joinChannels, setJoinChannels] = useState<{ username: string; url: string }[]>([]);
+  const [gateError, setGateError] = useState<string | null>(null);
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      if (!hasRefreshToken()) { if (!cancelled) setState('landing'); return; }
+      // Debug: force landing for testing: ?forceLanding=1
+      if (new URLSearchParams(window.location.search).has('forceLanding')) { if (!cancelled) setState('landing'); return; }
+      const hasToken = hasRefreshToken();
+      // console for remote debugging (incognito)
+      try { console.info('[Gate] hasRefreshToken=', hasToken, 'localStorage tmusic.refresh=', (()=>{ try{return localStorage.getItem('tmusic.refresh')?.slice(0,12)??'null'}catch{return 'err'}})()); } catch {}
+      if (!hasToken) { if (!cancelled) setState('landing'); return; }
       try {
         const gate = await get<{ missing: { username: string; url: string }[] }>('/v1/gate');
         if (cancelled) return;
         if (gate.missing.length) { setJoinChannels(gate.missing); setState('join'); }
         else setState('ready');
-      } catch {
-        if (!cancelled) setState('ready');
+      } catch (err) {
+        if (cancelled) return;
+        // Auth/Gate failure must NOT silently show the app — send the user to Landing so the button appears
+        if (err instanceof ApiError && (err.status === 401 || err.code === 'unauthorized' || err.code === 'no_refresh')) {
+          try { clearTokens(); } catch {}
+          setGateError(`${err.code}: ${err.message}`);
+          setState('landing');
+          return;
+        }
+        // Transient gate error (e.g. network) — let the app load; player will show retry
+        setGateError(err instanceof Error ? err.message : String(err));
+        setState('ready');
       }
     })();
     return () => { cancelled = true; };
   }, []);
   if (state === 'checking') return <div className="grid min-h-screen place-items-center text-sm text-[var(--ink-dim)]">…</div>;
-  if (state === 'landing') return <Landing />;
+  if (state === 'landing') return <><Landing />{gateError && <p className="fixed bottom-2 left-1/2 z-50 -translate-x-1/2 rounded-full bg-black/70 px-3 py-1 text-[11px] text-white">gate: {gateError}</p>}</>;
   if (state === 'join') return <JoinScreen channels={joinChannels} onPassed={() => setState('ready')} onStillMissing={setJoinChannels} />;
   return <>{children}</>;
 }
