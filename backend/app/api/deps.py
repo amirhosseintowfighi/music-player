@@ -87,11 +87,9 @@ async def _hit(redis: Redis, key: str, limit: int) -> None:
     cur_bucket = f"rl:{key}:{int(time.time() // 60)}"
     prev_bucket = f"rl:{key}:{int(time.time() // 60) - 1}"
     try:
-        # redis.eval signature varies; try both eval and evalsha style
-        result = await redis.eval(
+        result = await redis.eval(  # type: ignore[misc]
             _RATE_LIMIT_LUA, 2, cur_bucket, prev_bucket, str(limit), str(now_ms)
         )
-        # fakeredis returns int, redis-py returns int
         allowed = int(result) if result is not None else 1
         if allowed == 0:
             raise RateLimited("too many requests", retry_after=60 - int(time.time()) % 60)

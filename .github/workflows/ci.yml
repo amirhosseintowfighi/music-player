@@ -76,7 +76,7 @@ jobs:
           WEBHOOK_SECRET: s
           JWT_PRIVATE_KEY: x
           JWT_PUBLIC_KEY: x
-          STREAM_SIGNING_KEYS: k
+          STREAM_SIGNING_KEYS: dGVzdC1zaWduaW5nLWtleS0xMjM0NTY3ODkwMTIzNA
           INTERNAL_API_TOKEN: t
         run: |
           alembic downgrade base
