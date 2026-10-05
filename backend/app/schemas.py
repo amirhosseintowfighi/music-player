@@ -34,6 +34,18 @@ class TelegramLoginIn(ApiModel):
     init_data: str = Field(min_length=10, max_length=4096)
 
 
+class WebWidgetLoginIn(ApiModel):
+    """Telegram Login Widget payload for the standalone Web App."""
+
+    id: int
+    first_name: str
+    auth_date: int
+    hash: str
+    last_name: str | None = None
+    username: str | None = None
+    photo_url: str | None = None
+
+
 class RefreshIn(ApiModel):
     refresh_token: str = Field(min_length=20, max_length=200)
 

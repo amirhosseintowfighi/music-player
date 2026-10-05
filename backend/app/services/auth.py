@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import Settings
 from app.errors import Forbidden, Unauthorized
 from app.models import RefreshToken, User
-from app.security.initdata import InitData, InitDataError, validate_init_data
+from app.security.initdata import InitData, InitDataError, TelegramUser, validate_init_data
 from app.security.tokens import AccessClaims, encode_access, hash_refresh_token, new_refresh_token
 from app.services import plans, users
 from tmusic_common.logging import get_logger
@@ -79,6 +79,33 @@ async def login_with_init_data(
     if user.is_banned:
         raise Forbidden("user is banned", reason=user.ban_reason)
     return await _issue(session, settings, user, uuid.uuid4(), device), data
+
+
+async def login_with_widget(
+    session: AsyncSession, settings: Settings, payload: dict[str, object], device: str | None
+) -> tuple[TokenPair, str | None]:
+    """Login Widget for the standalone Web App (browser, not Mini App)."""
+    from app.security.adminauth import verify_login_widget  # local import to avoid cycle
+
+    try:
+        data = verify_login_widget(
+            {k: v for k, v in payload.items() if v is not None},
+            settings.bot_token.get_secret_value(),
+        )
+    except Exception as exc:  # noqa: BLE001
+        log.info("auth.widget_rejected", reason=str(exc))
+        raise Unauthorized("invalid widget data") from exc
+    tg_user = TelegramUser(
+        id=data.tg_id,
+        first_name=data.first_name,
+        username=data.username,
+        photo_url=data.photo_url,
+    )
+    user = await users.upsert_telegram_user(session, tg_user)
+    if user.is_banned:
+        raise Forbidden("user is banned", reason=user.ban_reason)
+    pair = await _issue(session, settings, user, uuid.uuid4(), device)
+    return pair, None
 
 
 async def refresh(
