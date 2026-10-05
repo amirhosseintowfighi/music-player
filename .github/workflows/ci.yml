@@ -165,6 +165,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - name: Build (PWA + budget)
+        env:
+          VITE_BOT_USERNAME: ${{ vars.VITE_BOT_USERNAME != '' && vars.VITE_BOT_USERNAME || secrets.VITE_BOT_USERNAME }}
+          VITE_API_URL: ${{ vars.VITE_API_URL != '' && vars.VITE_API_URL || secrets.VITE_API_URL }}
         run: npm run build
 
   k6:
