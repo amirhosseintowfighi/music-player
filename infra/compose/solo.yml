@@ -173,17 +173,18 @@ services:
 
   # ── one-shot helpers ────────────────────────────────────────────────────────
 
-  # Builds both front ends inside Docker, so the server needs no Node at all.
+  # Builds all three front ends inside Docker, so the server needs no Node at all.
+  # Uses env_file + shell expansion (not compose interpolation) for VITE_ so a
+  # missing --env-file or a shell that doesn't export .env cannot silently produce
+  # a web build without the bot name — the same failure you just hit.
   frontend:
     image: node:22-alpine
     working_dir: /src
-    environment:
-      VITE_API_URL: https://api.${DOMAIN}
-      VITE_BOT_USERNAME: ${BOT_USERNAME:?}
+    env_file: ../../.env
     volumes: [../..:/src]
     # One line on purpose: in a folded scalar an *indented* continuation keeps its
     # newline, which silently turns one command into several.
-    command: ["sh", "-ec", "cd /src/miniapp && npm ci --no-audit --no-fund && npm run build && cd /src/admin && npm ci --no-audit --no-fund && npm run build && cd /src/web && npm ci --no-audit --no-fund && VITE_API_URL=https://api.$${DOMAIN} VITE_BOT_USERNAME=$${BOT_USERNAME} npm run build"]
+    command: ["sh", "-ec", "export VITE_API_URL=\"https://api.$${DOMAIN}\" VITE_BOT_USERNAME=\"$${BOT_USERNAME}\"; echo \"[frontend] VITE_BOT_USERNAME=$$VITE_BOT_USERNAME VITE_API_URL=$$VITE_API_URL\"; cd /src/miniapp && npm ci --no-audit --no-fund && npm run build && cd /src/admin && npm ci --no-audit --no-fund && npm run build && cd /src/web && npm ci --no-audit --no-fund && npm run build; echo \"[frontend] verify web/dist:\"; grep -r \"$$VITE_BOT_USERNAME\" /src/web/dist/ | head -n 2 || echo \"[frontend] WARN: bot not found in web/dist\""]
     profiles: ["build"]
 
   # Certificates for app/admin/api/cdn/hook.<domain>, via the ACME webroot nginx
