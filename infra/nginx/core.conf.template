@@ -83,7 +83,7 @@ server {
     add_header Strict-Transport-Security "max-age=31536000" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.${DOMAIN} https://cdn2.${DOMAIN} blob:; media-src https://cdn.${DOMAIN} https://cdn2.${DOMAIN} blob:; connect-src 'self' https://api.${DOMAIN}; font-src 'self'; frame-src https://oauth.telegram.org; frame-ancestors 'self'; base-uri 'none'; form-action 'self'" always;
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.${DOMAIN} https://cdn2.${DOMAIN} blob:; media-src https://cdn.${DOMAIN} https://cdn2.${DOMAIN} blob:; connect-src 'self' https://api.${DOMAIN}; font-src 'self'; frame-src 'self' https://oauth.telegram.org; frame-ancestors 'self'; base-uri 'none'; form-action 'self'" always;
 
     # Same-origin proxy for the Login Widget — telegram.org is filtered in Iran.
     # Variable + resolver defers DNS to request time so nginx starts even if
@@ -92,6 +92,42 @@ server {
         resolver 127.0.0.11 valid=10s ipv6=off;
         set $tg_widget https://telegram.org/js/telegram-widget.js;
         proxy_pass $tg_widget;
+        proxy_ssl_server_name on;
+        proxy_set_header Host telegram.org;
+        proxy_cache off;
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600" always;
+    }
+
+    location ~ ^/embed/ {
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $oauth_base https://oauth.telegram.org;
+        proxy_pass $oauth_base;
+        proxy_ssl_server_name on;
+        proxy_set_header Host oauth.telegram.org;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_cache off;
+        sub_filter 'https://telegram.org/' 'https://$host/';
+        sub_filter_once off;
+        sub_filter_types text/html;
+        expires -1;
+        add_header Cache-Control "no-store" always;
+    }
+
+    location = /js/widget-frame.js {
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $tg_base https://telegram.org;
+        proxy_pass $tg_base;
+        proxy_ssl_server_name on;
+        proxy_set_header Host telegram.org;
+        proxy_cache off;
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600" always;
+    }
+    location ~ ^/css/(widget-frame|font-roboto)\.css {
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        proxy_pass https://telegram.org;
         proxy_ssl_server_name on;
         proxy_set_header Host telegram.org;
         proxy_cache off;
