@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AnimatePresence, MotionConfig, motion } from 'framer-motion';
-import { lazy, Suspense, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import { ApiError, clearTokens, get, hasRefreshToken, loginWithWidget, setUnauthorizedHandler } from '@/api/client';
@@ -110,7 +110,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function Landing() {
+function Landing({ onAuthenticated }: { onAuthenticated?: () => void }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
@@ -156,7 +156,8 @@ function Landing() {
       setError(null);
       try {
         await loginWithWidget(detail);
-        navigate('/', { replace: true });
+        if (onAuthenticated) onAuthenticated();
+        else navigate('/', { replace: true });
       } catch (err) {
         if (err instanceof ApiError) {
           const msg = err.message.toLowerCase();
@@ -188,7 +189,7 @@ function Landing() {
       window.removeEventListener('telegram-auth', handler as EventListener);
       container.innerHTML = '';
     };
-  }, [botUsername, navigate]);
+  }, [botUsername, navigate, onAuthenticated]);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 py-12 text-center">
@@ -456,31 +457,33 @@ function JoinScreen({ channels, onPassed, onStillMissing }: { channels: { userna
 function Gate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'checking' | 'ready' | 'landing' | 'join'>('checking');
   const [joinChannels, setJoinChannels] = useState<{ username: string; url: string }[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      if (new URLSearchParams(window.location.search).has('forceLanding')) { if (!cancelled) setState('landing'); return; }
-      const hasToken = hasRefreshToken();
-      if (!hasToken) { if (!cancelled) setState('landing'); return; }
-      try {
-        const gate = await get<{ missing: { username: string; url: string }[] }>('/v1/gate');
-        if (cancelled) return;
-        if (gate.missing.length) { setJoinChannels(gate.missing); setState('join'); }
-        else setState('ready');
-      } catch (err) {
-        if (cancelled) return;
-        if (err instanceof ApiError && (err.status === 401 || err.code === 'unauthorized' || err.code === 'no_refresh')) {
-          try { clearTokens(); } catch {}
-          setState('landing');
-          return;
-        }
-        setState('ready');
+  const check = useCallback(async (signal?: { cancelled: boolean }) => {
+    if (new URLSearchParams(window.location.search).has('forceLanding')) { if (!signal?.cancelled) setState('landing'); return; }
+    const hasToken = hasRefreshToken();
+    if (!hasToken) { if (!signal?.cancelled) setState('landing'); return; }
+    try {
+      const gate = await get<{ missing: { username: string; url: string }[] }>('/v1/gate');
+      if (signal?.cancelled) return;
+      if (gate.missing.length) { setJoinChannels(gate.missing); setState('join'); }
+      else setState('ready');
+    } catch (err) {
+      if (signal?.cancelled) return;
+      if (err instanceof ApiError && (err.status === 401 || err.code === 'unauthorized' || err.code === 'no_refresh')) {
+        try { clearTokens(); } catch {}
+        setState('landing');
+        return;
       }
-    })();
-    return () => { cancelled = true; };
+      setState('ready');
+    }
   }, []);
+  useEffect(() => {
+    const signal = { cancelled: false };
+    void check(signal);
+    return () => { signal.cancelled = true; };
+  }, [check]);
+  const onAuthenticated = useCallback(() => { void check(); }, [check]);
   if (state === 'checking') return <div className="grid min-h-screen place-items-center text-sm text-[var(--ink-dim)]">…</div>;
-  if (state === 'landing') return <Landing />;
+  if (state === 'landing') return <Landing onAuthenticated={onAuthenticated} />;
   if (state === 'join') return <JoinScreen channels={joinChannels} onPassed={() => setState('ready')} onStillMissing={setJoinChannels} />;
   return <>{children}</>;
 }
