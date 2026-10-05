@@ -49,7 +49,7 @@ import {
 import { hiRes } from '@/player/thumbs';
 
 export type RepeatMode = 'off' | 'all' | 'one';
-export type PlaySource = 'library' | 'search' | 'playlist' | 'channel' | 'discover' | 'mix' | 'radio' | 'trending' | 'shared';
+export type PlaySource = 'library' | 'search' | 'playlist' | 'channel' | 'discover' | 'mix' | 'radio' | 'trending' | 'shared' | 'offline';
 
 /**
  * While in a Jam, the transport belongs to everybody: the controls ask the Jam to
