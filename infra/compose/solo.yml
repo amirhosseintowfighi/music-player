@@ -163,6 +163,7 @@ services:
       - edgecache:/var/cache/nginx/stream
       - ../../miniapp/dist:/srv/miniapp:ro
       - ../../admin/dist:/srv/admin:ro
+      - ../../web/dist:/srv/web:ro
     ports:
       - "80:80"
       - "443:443"
@@ -182,7 +183,7 @@ services:
     volumes: [../..:/src]
     # One line on purpose: in a folded scalar an *indented* continuation keeps its
     # newline, which silently turns one command into several.
-    command: ["sh", "-ec", "cd /src/miniapp && npm ci --no-audit --no-fund && npm run build && cd /src/admin && npm ci --no-audit --no-fund && npm run build"]
+    command: ["sh", "-ec", "cd /src/miniapp && npm ci --no-audit --no-fund && npm run build && cd /src/admin && npm ci --no-audit --no-fund && npm run build && cd /src/web && npm ci --no-audit --no-fund && VITE_API_URL=https://api.$${DOMAIN} VITE_BOT_USERNAME=$${BOT_USERNAME} npm run build"]
     profiles: ["build"]
 
   # Certificates for app/admin/api/cdn/hook.<domain>, via the ACME webroot nginx
@@ -203,7 +204,7 @@ services:
       test -n '${CERTBOT_EMAIL:-}' || { echo 'set CERTBOT_EMAIL=you@example.com in the env file first'; exit 1; };
       certbot certonly --webroot -w /var/www/certbot --non-interactive --agree-tos
       --email '${CERTBOT_EMAIL:-}'
-      -d app.${DOMAIN} -d admin.${DOMAIN} -d api.${DOMAIN} -d cdn.${DOMAIN} -d hook.${DOMAIN} &&
+      -d app.${DOMAIN} -d admin.${DOMAIN} -d api.${DOMAIN} -d cdn.${DOMAIN} -d hook.${DOMAIN} -d ${DOMAIN} &&
       cp -L /etc/letsencrypt/live/app.${DOMAIN}/fullchain.pem /certs/fullchain.pem &&
       cp -L /etc/letsencrypt/live/app.${DOMAIN}/privkey.pem /certs/privkey.pem &&
       echo 'certificate written to infra/certs — now: nginx -s reload'
