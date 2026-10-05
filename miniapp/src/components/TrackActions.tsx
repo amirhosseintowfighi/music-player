@@ -20,7 +20,7 @@ import {
   SnoozeIcon,
 } from '@/components/icons';
 import { Cover, Sheet, Spinner, cx } from '@/components/ui';
-import { CreatePlaylistSheet } from '@/screens/Playlists';
+import { CreatePlaylistSheet } from '@/components/CreatePlaylistSheet';
 import { useI18n } from '@/i18n';
 import { artistNames } from '@/lib/format';
 import { shareCard } from '@/lib/shareCard';

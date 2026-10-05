@@ -398,7 +398,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
       const panel = fullPanelRef.current;
       if (!panel) return;
       const focusable = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-      if (focusable.length) focusable[0].focus();
+      if (focusable.length) focusable[0]!.focus();
       else panel.focus();
     });
   }, [open]);
@@ -411,8 +411,8 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
         if (!panel) return;
         const focusable = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR));
         if (focusable.length === 0) { event.preventDefault(); return; }
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
+        const first = focusable[0] as HTMLElement;
+        const last = focusable[focusable.length - 1] as HTMLElement;
         const active = document.activeElement as HTMLElement | null;
         if (event.shiftKey) { if (active === first) { event.preventDefault(); last.focus(); } }
         else if (active === last) { event.preventDefault(); first.focus(); }

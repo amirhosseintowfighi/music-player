@@ -238,7 +238,7 @@ export function Sheet({
         const panel = panelRef.current;
         if (!panel) return;
         const focusable = panel.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
-        if (focusable.length) focusable[0].focus();
+        if (focusable.length) focusable[0]!.focus();
         else panel.focus();
       });
     } else if (triggerRef.current) {
@@ -262,8 +262,8 @@ export function Sheet({
           event.preventDefault();
           return;
         }
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
+        const first = focusable[0] as HTMLElement;
+        const last = focusable[focusable.length - 1] as HTMLElement;
         const active = document.activeElement as HTMLElement | null;
         if (event.shiftKey) {
           if (active === first) {
