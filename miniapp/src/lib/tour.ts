@@ -19,6 +19,9 @@ export function resetTour(): void {
   } catch { /* ignore */ }
 }
 
+/** Dispatched on `window` to re-open the tour without a page reload (Settings → Show tour). */
+export const TOUR_REPLAY_EVENT = 'tour:replay' as const;
+
 export type TourPlacement = 'top' | 'bottom' | 'center';
 
 export interface TourStep {

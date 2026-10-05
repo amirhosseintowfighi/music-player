@@ -4,7 +4,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import { useI18n } from '@/i18n';
-import { hasSeenTour, markTourSeen, resolveStepRect, TOUR_STEPS } from '@/lib/tour';
+import { hasSeenTour, markTourSeen, TOUR_REPLAY_EVENT, resolveStepRect, TOUR_STEPS } from '@/lib/tour';
 import { haptic } from '@/lib/telegram';
 import { useUi } from '@/store/ui';
 
@@ -42,6 +42,7 @@ export default function Tour() {
   const step = TOUR_STEPS[index] ?? TOUR_STEPS[0]!;
   const isCenter = !rect;
 
+  // Auto-open only once: hasSeenTour() guards it.
   useEffect(() => {
     let cancelled = false;
     const timer = setTimeout(() => {
@@ -53,6 +54,20 @@ export default function Tour() {
       cancelled = true;
       clearTimeout(timer);
     };
+  }, []);
+
+  // Replay without reload: Settings → "Show tour" (tab More). Listens for
+  // `window.dispatchEvent(new CustomEvent(TOUR_REPLAY_EVENT))`.
+  useEffect(() => {
+    const replay = () => {
+      setIndex(0);
+      setRect(null);
+      setPlacement(TOUR_STEPS[0]?.placement ?? 'center');
+      setTooltipPos(null);
+      setReady(true);
+    };
+    window.addEventListener(TOUR_REPLAY_EVENT, replay as EventListener);
+    return () => window.removeEventListener(TOUR_REPLAY_EVENT, replay as EventListener);
   }, []);
 
   const updateRect = useCallback(() => {
