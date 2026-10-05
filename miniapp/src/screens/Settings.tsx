@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 
 import { useMe, useSetLanguage } from '@/api/hooks';
 import {
@@ -13,7 +12,7 @@ import { Credit, Glass, cx } from '@/components/ui';
 import { useI18n, type Key } from '@/i18n';
 import { EQ_PRESETS, useAudioSettings, type EqPreset } from '@/store/audio';
 import { useUi } from '@/store/ui';
-import { resetTour } from '@/lib/tour';
+import { resetTour, TOUR_REPLAY_EVENT } from '@/lib/tour';
 
 function Row({ label, hint, children, labelId }: { label: string; hint?: string; children: React.ReactNode; labelId?: string }) {
   return (
@@ -180,7 +179,6 @@ function PlaybackSettings() {
 }
 
 export function Settings() {
-  const navigate = useNavigate();
   const { t } = useI18n();
   const me = useMe();
   const setLanguage = useSetLanguage();
@@ -313,8 +311,7 @@ export function Settings() {
             onClick={() => {
               resetTour();
               useUi.getState().toast(t('tour.replayed'), 'success');
-              navigate('/');
-              setTimeout(() => window.location.reload(), 300);
+              window.dispatchEvent(new CustomEvent(TOUR_REPLAY_EVENT));
             }}
           >
             {t('tour.replay')}
