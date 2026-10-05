@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Apple-inspired Web — Visual Companion (B+C+A)</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Vazirmatn,sans-serif;background:#07080c;color:#e8eaf0}
+h1,h2{margin:0} .wrap{max-width:1280px;margin:0 auto;padding:24px}
+.card{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:16px;backdrop-filter:blur(12px)}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:900px){.g2,.g3{grid-template-columns:1fr}}
+.badge{font-size:11px;padding:4px 8px;border-radius:999px;background:#6c5cff;color:white}
+.mini{font-size:12px;color:#a8adbf;line-height:1.8}
+.mock{border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.12);background:#0f1117}
+.bar{height:42px;display:flex;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.dot{width:10px;height:10px;border-radius:50%}.r{background:#ff5f57}.y{background:#ffbd2e}.g{background:#28c940}
+.layout{display:grid;grid-template-columns:220px 1fr;min-height:340px}
+.sidebar{border-left:1px solid rgba(255,255,255,.08);padding:14px}
+.header{height:48px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:12px;padding:0 14px}
+.content{padding:14px}
+.row{display:flex;gap:10px;overflow:auto;padding:6px 0}
+.tile{min-width:144px;height:144px;border-radius:14px;background:linear-gradient(140deg,#6c5cff,#2bd9c4);display:grid;place-items:center;font-weight:800}
+.focus{outline:3px solid #6c5cff;outline-offset:2px;box-shadow:0 0 0 6px rgba(108,92,255,.25)}
+.tv{transform:scale(1.02)}
+.kbd{font-family:ui-monospace,monospace;background:rgba(255,255,255,.08);padding:2px 6px;border-radius:6px;font-size:11px}
+</style>
+<div class="wrap">
+  <h1 style="font-size:20px">طرح B + ده‌فوت A + بریک C + پلیر A — ماکت تعاملی</h1>
+  <p class="mini">موبایل دست‌نخورده · دسکتاپ سایدبار اپلیِ باریک + هدر مینیمال · TV ده‌فوت با فوکوس حلقه‌ای · بودجه 200KB · RTL</p>
+
+  <div class="grid g2" style="margin-top:16px">
+    <div class="card">
+      <div class="badge">Desktop — B</div>
+      <div class="mock" style="margin-top:10px">
+        <div class="bar"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="mini" style="margin-inline-start:8px">noax.virgule.studio — Music</span></div>
+        <div class="layout">
+          <div class="sidebar">
+            <div style="font-weight:800">Music</div>
+            <div class="mini" style="margin-top:12px">خانه<br>کشف<br>جست‌وجو<br>کتابخانه<br>دانلودها<br>تنظیمات</div>
+            <div class="mini" style="margin-top:14px;opacity:.6">پلی‌لیست‌ها · پوشه‌ها · بلند</div>
+          </div>
+          <div style="flex:1">
+            <div class="header"><span class="kbd">⌘K</span><span class="mini">جست‌وجو</span><span style="margin-inline-start:auto" class="kbd">FA / EN</span></div>
+            <div class="content">
+              <div class="mini">ادامهٔ گوش دادن · تازه‌ها</div>
+              <div class="row"><div class="tile focus">Cover</div><div class="tile">Cover</div><div class="tile">Cover</div><div class="tile">Cover</div></div>
+              <div class="mini" style="margin-top:8px">خانه با گرید clamp + container query</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="mini">سایدبار 220px (≥1024px ثابت، 240px ≥1280px) · هدر 48px · محتوا max-w-6xl · glass فعلی حفظ</p>
+    </div>
+
+    <div class="card">
+      <div class="badge">Mobile — دست‌نخورده</div>
+      <div class="mock" style="margin-top:10px">
+        <div class="bar"><span class="mini">Music — Web</span></div>
+        <div style="padding:14px"><div class="mini">همان BottomNav + MiniPlayer فعلی · هیچ تغییر اسکلت</div><div class="row"><div class="tile" style="min-width:110px;height:110px"></div><div class="tile" style="min-width:110px;height:110px"></div><div class="tile" style="min-width:110px;height:110px"></div></div></div>
+        <div style="height:56px;border-top:1px solid rgba(255,255,255,.08);display:grid;place-items:center" class="mini">BottomNav · MiniPlayer</div>
+      </div>
+      <p class="mini">تا 767px هیچ تغییری — بودجه و تور حفظ</p>
+    </div>
+
+    <div class="card">
+      <div class="badge">TV 10-foot — A (1600px+ pointer:coarse)</div>
+      <div class="mock tv" style="margin-top:10px">
+        <div class="bar"><span class="mini">Android TV · D-pad</span><span class="kbd">▲ ▼ ◀ ▶ OK ↩</span></div>
+        <div class="layout" style="grid-template-columns:260px 1fr">
+          <div class="sidebar" style="padding:20px"><div style="font-size:18px;font-weight:900">Music</div><div class="mini" style="font-size:14px;line-height:2.4">خانه · کشف · جست‌وجو · کتابخانه</div></div>
+          <div>
+            <div class="header" style="height:64px"><span class="mini" style="font-size:15px">جست‌وجو با ریموت</span></div>
+            <div class="content"><div class="row"><div class="tile focus" style="min-width:200px;height:200px;font-size:20px">Focus</div><div class="tile" style="min-width:200px;height:200px"></div><div class="tile" style="min-width:200px;height:200px"></div></div><div class="mini">کارت 200px · متن 15-18px · hit-target ≥48dp · فوکوس حلقه 3px + glow</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="mini">safe-area 5% · فونت clamp(14px,1.1vw,18px) · ردیف افقی با چپ/راست · Back → خروج/بستن</p>
+    </div>
+
+    <div class="card">
+      <div class="badge">FullPlayer TV — A</div>
+      <div class="mock" style="margin-top:10px;background:linear-gradient(140deg,#1a1c24,#0a0c12)">
+        <div style="padding:20px;display:grid;grid-template-columns:1.2fr .8fr;gap:16px;min-height:320px">
+          <div style="border-radius:18px;background:linear-gradient(140deg,#2bd9c4,#4a6bff);display:grid;place-items:center;font-size:56px">♪</div>
+          <div style="display:flex;flex-direction:column;justify-content:center;gap:14px">
+            <div style="font-size:26px;font-weight:900">عنوان آهنگ</div><div class="mini" style="font-size:16px">هنرمند — آلبوم</div>
+            <div style="display:flex;gap:12px;margin-top:8px"><span class="kbd" style="padding:10px 14px;font-size:14px">⏮</span><span class="kbd" style="padding:12px 18px;font-size:16px;background:#6c5cff;color:white">⏯</span><span class="kbd" style="padding:10px 14px;font-size:14px">⏭</span></div>
+            <div class="mini">progress 48px بلند · لیریک با فاصله 10-foot · Back برای خروج</div>
+          </div>
+        </div>
+      </div>
+      <p class="mini">همان FullPlayer فعلی ولی TV-mode: کاور تمام‌صفحه پشت + کنترل 88px فاصله‌دار</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h2 style="font-size:14px">بریک‌ها — C</h2>
+    <p class="mini">320 / 360 / 768 / 1024 / 1280 / 1920 + لایه TV: <span class="kbd">@media (min-width:1600px) and (pointer:coarse)</span> و <span class="kbd">prefers-reduced-motion</span> · گریدها container query + clamp · موبایل ≤767 هیچ رگرسیون</p>
+    <div class="grid g3" style="margin-top:10px">
+      <div class="mini">D-pad: <span class="kbd">Arrow</span> جابجایی فوکوس · <span class="kbd">Enter/Space</span> انتخاب · <span class="kbd">Escape/Back</span> خروج · roving tabindex + <span class="kbd">focus-visible</span></div>
+      <div class="mini">ریسپانسیو: کارت <span class="kbd">clamp(110px, 18vw, 200px)</span> · فونت <span class="kbd">clamp</span> · safe-area <span class="kbd">env(safe-area-inset)</span> + 5% padding TV</div>
+      <div class="mini">بودجه: بدون وابستگی جدید · spatial-nav سبک داخلی · motion روی TV خاموش اگر reduced-motion</div>
+    </div>
+  </div>
+</div>
+</html>
