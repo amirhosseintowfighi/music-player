@@ -110,9 +110,13 @@ server {
     add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.${DOMAIN} https://cdn2.${DOMAIN} blob:; media-src https://cdn.${DOMAIN} https://cdn2.${DOMAIN} blob:; connect-src 'self' https://api.${DOMAIN}; font-src 'self'; frame-src https://oauth.telegram.org; frame-ancestors 'self'; base-uri 'none'; form-action 'self'" always;
 
     # Same-origin proxy for the Login Widget JS — telegram.org is filtered in Iran.
-    # The app tries /telegram-widget.js first, falls back to telegram.org.
+    # Variable + resolver defers DNS to request time so nginx starts even if
+    # Telegram DNS is slow/unreachable at boot; otherwise `proxy_pass https://...`
+    # would fail `nginx -t` and the container would loop in Restarting.
     location = /telegram-widget.js {
-        proxy_pass https://telegram.org/js/telegram-widget.js;
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $tg_widget https://telegram.org/js/telegram-widget.js;
+        proxy_pass $tg_widget;
         proxy_ssl_server_name on;
         proxy_set_header Host telegram.org;
         proxy_cache off;
