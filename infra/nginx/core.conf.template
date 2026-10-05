@@ -85,6 +85,16 @@ server {
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;
     add_header Content-Security-Policy "default-src 'self'; script-src 'self' https://telegram.org; style-src 'self' 'unsafe-inline'; img-src 'self' data: https://cdn.${DOMAIN} https://cdn2.${DOMAIN} blob:; media-src https://cdn.${DOMAIN} https://cdn2.${DOMAIN} blob:; connect-src 'self' https://api.${DOMAIN}; font-src 'self'; frame-src https://oauth.telegram.org; frame-ancestors 'self'; base-uri 'none'; form-action 'self'" always;
 
+    # Same-origin proxy for the Login Widget — telegram.org is filtered in Iran.
+    location = /telegram-widget.js {
+        proxy_pass https://telegram.org/js/telegram-widget.js;
+        proxy_ssl_server_name on;
+        proxy_set_header Host telegram.org;
+        proxy_cache off;
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600" always;
+    }
+
     location /assets/ {
         expires 1y;
         add_header Cache-Control "public, immutable";

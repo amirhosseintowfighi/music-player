@@ -447,6 +447,10 @@ export const fa = {
 
   'web.landing.title': 'موزیک‌ات، همه‌جا.',
   'web.landing.body': 'کتابخانهٔ تلگرامت در مرورگر — دانلود و پخش آفلاین روی گوشی و دسکتاپ.',
+  'web.landing.continue': 'ادامه با تلگرام',
+  'web.landing.widgetHint': 'اگر دکمهٔ تلگرام لود نشد، با VPN دوباره امتحان کن یا ربات را در تلگرام باز کن.',
+  'web.landing.corsHint': 'ارتباط با سرور برقرار نشد — CORS یا گواهی TLS را چک کن.',
+  'web.landing.badSignature': 'امضای تلگرام تایید نشد — توکن ربات با @{bot} همخوان نیست یا دامنه در @BotFather روی {domain} تنظیم نشده.',
   'web.nav.downloads': 'دانلودها',
   'web.downloads.title': 'دانلودها',
   'web.downloads.empty': 'هنوز چیزی دانلود نکردی — روی هر آهنگ Download بزن.',

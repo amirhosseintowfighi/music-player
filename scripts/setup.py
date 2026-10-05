@@ -308,11 +308,17 @@ def ask_core(answers: Answers, domain: str) -> None:
         "WEBHOOK_URL",
         ask(say("Webhook URL", "آدرس وبهوک"), f"https://hook.{domain}/tg/webhook"),
     )
-    # Both browsers that talk to the API: the Mini App and the admin panel. Leaving
-    # the panel out lets every request from it die in CORS while curl still works,
-    # which reads as "wrong password" and is a miserable thing to debug.
+    # Every browser that talks to the API: Mini App, the standalone Web PWA
+    # on the apex, and the admin panel. Leaving one out lets every request from
+    # it die in CORS while curl still works, which reads as "Login failed" or
+    # "wrong password" and is a miserable thing to debug.
+    apex_url = f"https://{domain}"
     admin_url = f"https://admin.{domain}"
-    origins = [app_url] + ([admin_url] if admin_url != app_url else [])
+    origins = [app_url]
+    if apex_url not in origins:
+        origins.append(apex_url)
+    if admin_url not in origins:
+        origins.append(admin_url)
     answers.set("CORS_ORIGINS", "[" + ", ".join(f'"{o}"' for o in origins) + "]")
     answers.set(
         "EDGE_INTERNAL_URL",

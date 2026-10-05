@@ -115,18 +115,41 @@ function Landing() {
   const navigate = useNavigate();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [widgetFailed, setWidgetFailed] = useState(false);
   const botUsername = (import.meta.env.VITE_BOT_USERNAME as string | undefined) ?? '';
 
   useEffect(() => {
     if (!botUsername) return;
+    let cancelled = false;
+    const container = document.getElementById('tg-login');
+    if (!container) return;
+    container.innerHTML = '';
     const script = document.createElement('script');
-    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+    // Try same-origin proxy first (bypasses telegram.org filtering in Iran),
+    // fall back to direct telegram.org if proxy 404s — both are allowed by CSP.
+    script.src = '/telegram-widget.js';
     script.async = true;
     script.setAttribute('data-telegram-login', botUsername);
     script.setAttribute('data-size', 'large');
     script.setAttribute('data-onauth', '__onTelegramAuth(user)');
     script.setAttribute('data-request-access', 'write');
-    document.getElementById('tg-login')?.appendChild(script);
+    script.onerror = () => {
+      // proxy miss — retry directly against telegram.org
+      if (cancelled || script.dataset.retried) { if (!cancelled) setWidgetFailed(true); return; }
+      script.dataset.retried = '1';
+      const fallback = document.createElement('script');
+      fallback.src = 'https://telegram.org/js/telegram-widget.js?22';
+      fallback.async = true;
+      for (const a of ['data-telegram-login', 'data-size', 'data-onauth', 'data-request-access']) fallback.setAttribute(a, script.getAttribute(a) ?? '');
+      fallback.onerror = () => { if (!cancelled) setWidgetFailed(true); };
+      fallback.onload = () => setTimeout(() => { if (!cancelled && !container.querySelector('iframe')) setWidgetFailed(true); }, 1500);
+      container.appendChild(fallback);
+    };
+    script.onload = () => {
+      setTimeout(() => { if (!cancelled && !container.querySelector('iframe')) setWidgetFailed(true); }, 1500);
+    };
+    container.appendChild(script);
+    const timer = setTimeout(() => { if (!cancelled && !container.querySelector('iframe')) setWidgetFailed(true); }, 3500);
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail as Record<string, unknown>;
       setBusy(true);
@@ -135,15 +158,35 @@ function Landing() {
         await loginWithWidget(detail);
         navigate('/', { replace: true });
       } catch (err) {
-        setError(err instanceof ApiError ? `${err.code}: ${err.message}` : 'Login failed');
+        if (err instanceof ApiError) {
+          const msg = err.message.toLowerCase();
+          if (err.status === 401 && (msg.includes('widget') || msg.includes('signature') || msg.includes('stale') || err.code === 'unauthorized')) {
+            setError(`${t('web.landing.badSignature', { bot: botUsername, domain: window.location.hostname })} — ${err.code}: ${err.message}`);
+          } else if (err.code === 'bad_response') {
+            // Almost always VITE_API_URL missing — fetch hit the static host's index.html
+            const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? '(not set)';
+            setError(`${t('web.landing.corsHint')} — API: ${apiUrl} — ${err.code}: ${err.message.slice(0, 120)}`);
+          } else if (err.code === 'network' || err.status === 0) {
+            setError(`${t('web.landing.corsHint')} — ${err.code}: ${err.message}`);
+          } else {
+            setError(`${err.code}: ${err.message}`);
+          }
+        } else if (err instanceof TypeError) {
+          // CORS or network — fetch throws TypeError, not ApiError
+          setError(`${t('web.landing.corsHint')} — ${String((err as Error).message).slice(0, 180)}`);
+        } else {
+          setError('Login failed');
+        }
       } finally {
         setBusy(false);
       }
     };
     window.addEventListener('telegram-auth', handler as EventListener);
     return () => {
+      cancelled = true;
+      clearTimeout(timer);
       window.removeEventListener('telegram-auth', handler as EventListener);
-      script.remove();
+      container.innerHTML = '';
     };
   }, [botUsername, navigate]);
 
@@ -154,6 +197,16 @@ function Landing() {
       <div id="tg-login" className="mt-8 min-h-[44px]">
         {!botUsername && <p className="text-[13px] text-[var(--ink-dim)]">Set VITE_BOT_USERNAME to enable Telegram Login</p>}
       </div>
+      {widgetFailed && botUsername && (
+        <div className="mt-3 flex flex-col items-center gap-2">
+          <a href={`https://t.me/${botUsername}?start=web`} target="_blank" rel="noopener noreferrer" className="rounded-full bg-[var(--accent)] px-6 py-3 text-[14px] font-bold text-[var(--accent-ink)]">
+            {t('web.landing.continue') ?? 'Continue with Telegram'}
+          </a>
+          <p className="max-w-sm text-[12px] leading-5 text-[var(--ink-dim)]">
+            {t('web.landing.widgetHint')} — دامنهٔ BotFather باید <span dir="ltr" className="font-mono">noax.virgule.studio</span> باشد.
+          </p>
+        </div>
+      )}
       {busy && <p className="mt-2 text-[13px] text-[var(--ink-dim)]">…</p>}
       {error && <p className="mt-2 text-[13px] text-red-400">{error}</p>}
       <p className="mt-6 text-[12px] text-[var(--ink-faint)]">Works on phone, tablet and desktop · PWA installable</p>

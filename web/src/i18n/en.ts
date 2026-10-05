@@ -449,6 +449,10 @@ export const en: Record<keyof typeof fa, string> = {
 
   'web.landing.title': 'Your music, everywhere.',
   'web.landing.body': 'Your Telegram music library in the browser — download for offline on phone and desktop.',
+  'web.landing.continue': 'Continue with Telegram',
+  'web.landing.widgetHint': 'If the Telegram button did not load, retry with VPN or open the bot in Telegram.',
+  'web.landing.corsHint': 'Could not reach the API — check CORS and the TLS certificate.',
+  'web.landing.badSignature': 'Telegram signature rejected — bot token for @{bot} or @BotFather domain {domain} mismatch.',
   'web.nav.downloads': 'Downloads',
   'web.downloads.title': 'Downloads',
   'web.downloads.empty': 'Nothing downloaded yet — tap Download on any track.',
