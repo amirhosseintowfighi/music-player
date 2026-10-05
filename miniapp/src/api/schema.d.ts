@@ -55,6 +55,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/widget": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Login Widget
+         * @description Telegram Login Widget for the standalone Web App (not Mini App initData).
+         */
+        post: operations["login_widget_v1_auth_widget_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -4858,6 +4878,26 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /**
+         * WebWidgetLoginIn
+         * @description Telegram Login Widget payload for the standalone Web App.
+         */
+        WebWidgetLoginIn: {
+            /** Id */
+            id: number;
+            /** First Name */
+            first_name: string;
+            /** Auth Date */
+            auth_date: number;
+            /** Hash */
+            hash: string;
+            /** Last Name */
+            last_name?: string | null;
+            /** Username */
+            username?: string | null;
+            /** Photo Url */
+            photo_url?: string | null;
+        };
         /** WrappedOut */
         WrappedOut: {
             /** Year */
@@ -4952,6 +4992,41 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["TelegramLoginIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TokenOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    login_widget_v1_auth_widget_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "User-Agent"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebWidgetLoginIn"];
             };
         };
         responses: {

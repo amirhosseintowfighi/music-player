@@ -24,6 +24,7 @@ from app.schemas import (
     RefreshIn,
     TelegramLoginIn,
     TokenOut,
+    WebWidgetLoginIn,
 )
 from app.services import auth, gate, plans, users
 
@@ -60,6 +61,23 @@ async def login_telegram(
         refresh_token=pair.refresh_token,
         refresh_expires_at=pair.refresh_expires_at,
         start_param=data.start_param,
+        me=await _me(session, pair.user),
+    )
+
+
+@router.post("/auth/widget", response_model=TokenOut, dependencies=[Depends(rate_limit_auth)])
+async def login_widget(
+    body: WebWidgetLoginIn, session: SessionDep, settings: SettingsDep, ua: UserAgent = None
+) -> TokenOut:
+    """Telegram Login Widget for the standalone Web App (not Mini App initData)."""
+    pair, _ = await auth.login_with_widget(
+        session, settings, body.model_dump(exclude_none=True), ua
+    )
+    return TokenOut(
+        access_token=pair.access_token,
+        access_expires_at=pair.access_expires_at,
+        refresh_token=pair.refresh_token,
+        refresh_expires_at=pair.refresh_expires_at,
         me=await _me(session, pair.user),
     )
 

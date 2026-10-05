@@ -145,6 +145,28 @@ jobs:
       - run: npm test
       - run: npm run build
 
+  web:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: API types are in sync with the backend
+        run: |
+          npm run gen:api
+          git diff --exit-code src/api/schema.d.ts
+      - run: npm run typecheck
+      - run: npm test
+      - name: Build (PWA + budget)
+        run: npm run build
+
   k6:
     # The scripts are executable config; a syntax error must not be found in production.
     runs-on: ubuntu-24.04
@@ -210,7 +232,7 @@ jobs:
 
   images:
     runs-on: ubuntu-24.04
-    needs: [backend, indexer, miniapp, admin, k6, ops]
+    needs: [backend, indexer, miniapp, admin, web, k6, ops]
     permissions:
       contents: read
       packages: write
