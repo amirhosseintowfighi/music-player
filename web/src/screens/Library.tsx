@@ -184,7 +184,7 @@ export function Library() {
   };
 
   return (
-    <div className="px-4 pt-4">
+    <div className="px-4 pt-4 tv-safe">
       <div className="flex items-center justify-between">
         <h1 className="text-[21px] font-bold">{t('tab.library')}</h1>
         <button

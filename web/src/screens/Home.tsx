@@ -216,7 +216,7 @@ export function Home() {
   const hasChannels = (channels.data?.length ?? 0) > 0;
 
   return (
-    <div className="px-4">
+    <div className="px-4 tv-safe">
       <header data-tour="home-header" className="flex items-center justify-between py-4">
         <div className="min-w-0">
           <h1 className="truncate text-[21px] font-bold">

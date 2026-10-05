@@ -430,6 +430,8 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
 
   if (!track) return null;
 
+  const isTvScreen = typeof window !== 'undefined' && window.matchMedia('(min-width: 1600px) and (pointer: coarse)').matches;
+
   return (
     <AnimatePresence>
       {open && (
@@ -443,15 +445,33 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          style={{ background: 'var(--bg-0)', overscrollBehavior: 'contain' }}
+          style={{ background: isTvScreen ? 'transparent' : 'var(--bg-0)', overscrollBehavior: 'contain' }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setOpen(false);
+          }}
         >
           {/* The one screen Music lets the artwork colour: a soft wash of the cover's
               own palette behind the art, and a solid page everywhere else. */}
           <Aurora />
           <Canvas src={thumbs[track.id]} playing={isPlaying} />
+          {isTvScreen && (
+            <div
+              aria-hidden
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background: `radial-gradient(70% 70% at 50% 30%, rgba(0,0,0,0.15), rgba(0,0,0,0.65)), linear-gradient(180deg, rgba(0,0,0,0.25), rgba(0,0,0,0.55))`,
+                backdropFilter: 'blur(24px)',
+                WebkitBackdropFilter: 'blur(24px)',
+              }}
+            />
+          )}
           <motion.div
-            className="mx-auto flex min-h-full max-w-lg flex-col px-5"
-            style={{ paddingTop: 'calc(18px + var(--safe-top))', paddingBottom: 'calc(24px + var(--safe-bottom))' }}
+            className={cx('mx-auto flex min-h-full flex-col px-5', isTvScreen ? 'max-w-5xl px-[5vw] py-[5vh]' : 'max-w-lg')}
+            style={
+              isTvScreen
+                ? { paddingTop: 'calc(5vh + var(--safe-top))', paddingBottom: 'calc(5vh + var(--safe-bottom))' }
+                : { paddingTop: 'calc(18px + var(--safe-top))', paddingBottom: 'calc(24px + var(--safe-bottom))' }
+            }
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
             dragElastic={{ top: 0, bottom: 0.5 }}
@@ -540,10 +560,11 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
             </div>
 
             <Scrubber />
+            {/* On TV the scrubber is thicker via tv.css; keep logic same */}
 
             {/* Music's transport is plain glyphs, not filled discs: the artwork is
                 the colour on this screen and the controls stay out of its way. */}
-            <div dir="ltr" className="mt-2 flex items-center justify-center gap-7">
+            <div dir="ltr" className={cx('mt-2 flex items-center justify-center gap-7', isTvScreen && 'mt-6 gap-10')}>
               <button
                 type="button"
                 aria-label={smart ? t('player.smartShuffle') : t('player.shuffle')}

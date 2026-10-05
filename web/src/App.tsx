@@ -19,6 +19,8 @@ import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
 import { TrackActions } from '@/components/TrackActions';
+import { DesktopShell } from '@/layouts/DesktopShell';
+import { useSpatialNav } from '@/hooks/useSpatialNav';
 
 const FullPlayer = lazy(() => import('@/components/FullPlayer').then((m) => ({ default: m.FullPlayer })));
 const Home = lazy(() => import('@/screens/Home').then((m) => ({ default: m.Home })));
@@ -44,15 +46,7 @@ const Search = lazy(() => import('@/screens/Search').then((m) => ({ default: m.S
 const Tour = lazy(() => import('@/components/Tour'));
 const Downloads = lazy(() => import('@/screens/Downloads').then((m) => ({ default: m.Downloads })));
 
-// Desktop sidebar — same destinations as the phone tab bar, plus Downloads
-const TABS_DESKTOP: { to: string; key: Key; Icon: typeof HomeIcon }[] = [
-  { to: '/', key: 'tab.home', Icon: HomeIcon },
-  { to: '/discover', key: 'tab.discover', Icon: RadioIcon },
-  { to: '/search', key: 'tab.search', Icon: SearchIcon },
-  { to: '/library', key: 'tab.library', Icon: LibraryIcon },
-  { to: '/downloads', key: 'web.nav.downloads', Icon: MoreIcon },
-  { to: '/settings', key: 'tab.settings', Icon: MoreIcon },
-];
+// Keep TABS_MOBILE for BottomNav; DesktopShell owns desktop tabs.
 const TABS_MOBILE: { to: string; key: Key; Icon: typeof HomeIcon }[] = [
   { to: '/', key: 'tab.home', Icon: HomeIcon },
   { to: '/discover', key: 'tab.discover', Icon: RadioIcon },
@@ -60,30 +54,6 @@ const TABS_MOBILE: { to: string; key: Key; Icon: typeof HomeIcon }[] = [
   { to: '/library', key: 'tab.library', Icon: LibraryIcon },
   { to: '/settings', key: 'tab.settings', Icon: MoreIcon },
 ];
-
-function DesktopNav() {
-  const { t } = useI18n();
-  return (
-    <aside className="hidden w-[240px] shrink-0 border-e border-[var(--separator)] px-3 py-6 md:block">
-      <div className="px-2 text-[15px] font-extrabold tracking-tight">Music</div>
-      <nav className="mt-6 flex flex-col gap-0.5">
-        {TABS_DESKTOP.map(({ to, key, Icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            end={to === '/'}
-            className={({ isActive }) =>
-              cx('flex items-center gap-2.5 rounded-xl px-3 py-2 text-[13.5px]', isActive ? 'bg-[var(--fill)] font-semibold text-[var(--ink)]' : 'text-[var(--ink-dim)] hover:bg-[var(--fill)]')
-            }
-          >
-            <Icon size={18} />
-            {t(key)}
-          </NavLink>
-        ))}
-      </nav>
-    </aside>
-  );
-}
 
 function BottomNav() {
   const { t } = useI18n();
@@ -297,6 +267,16 @@ function Shell() {
   const actionTrack = useUi((s) => s.actionTrack);
   const setActionTrack = useUi((s) => s.setActionTrack);
   const isOnline = useOnline();
+  const { containerRef: contentNavRef } = useSpatialNav<HTMLDivElement>();
+  // TV Back closes FullPlayer or bubbles to browser history
+  useEffect(() => {
+    const onTvBack = () => {
+      if (useUi.getState().playerOpen) useUi.getState().setPlayerOpen(false);
+    };
+    const el = contentNavRef.current;
+    el?.addEventListener('tv:back', onTvBack as EventListener);
+    return () => el?.removeEventListener('tv:back', onTvBack as EventListener);
+  }, [contentNavRef]);
   usePlaybackSync();
   useResume();
   useSpecularOnScroll();
@@ -325,10 +305,9 @@ function Shell() {
 
   return (
     <div className="mx-auto flex min-h-screen max-w-6xl">
-      <DesktopNav />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <DesktopShell>
         {!isOnline && <div className="bg-amber-500 px-3 py-2 text-center text-[12px] font-semibold text-black" role="status">{t('app.offline')}</div>}
-        <div className="flex-1">
+        <div ref={contentNavRef} tabIndex={-1} className="tv-type flex-1 outline-none">
           <AnimatePresence mode="wait" initial={false}>
             <motion.main
               className="flex-1"
@@ -379,7 +358,7 @@ function Shell() {
         <TrackActions track={actionTrack} open={Boolean(actionTrack)} onClose={() => setActionTrack(null)} />
         <Toasts />
         <Suspense fallback={null}><Tour /></Suspense>
-      </div>
+      </DesktopShell>
     </div>
   );
 }

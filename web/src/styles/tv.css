@@ -1,0 +1,63 @@
+/* TV 10-foot layer — isolated so phones never pay. Only matches large coarse pointers. */
+@layer utilities {
+  /* Focus ring visible from the couch */
+  .tv-focus:focus-visible {
+    outline: 3px solid #6c5cff;
+    outline-offset: 2px;
+    box-shadow: 0 0 0 6px rgba(108, 92, 255, 0.25);
+    transform: scale(1.02);
+  }
+}
+
+@media (min-width: 1600px) and (pointer: coarse) {
+  /* Safe-area + outer breathing room for overscan */
+  .tv-safe {
+    padding-inline: max(16px, 5vw);
+    padding-inline: max(16px, 5vw, env(safe-area-inset-left, 0px));
+  }
+
+  /* Header taller on TV */
+  .tv-header {
+    height: 64px !important;
+  }
+
+  /* Sidebar a touch wider */
+  .tv-sidebar {
+    width: 260px !important;
+  }
+
+  /* Card grids breathe more; cards themselves 200px floor */
+  .tv-grid {
+    gap: clamp(14px, 1.2vw, 20px) !important;
+  }
+  .tv-grid > * {
+    min-height: 200px;
+  }
+
+  /* Horizontal snap rows */
+  .tv-row {
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  .tv-row > * {
+    scroll-snap-align: start;
+  }
+
+  /* FullPlayer TV handles via .tv-player class in FullPlayer.tsx */
+
+  /* Type scale for 10-foot */
+  .tv-type {
+    font-size: clamp(14px, 1.1vw, 18px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tv-focus:focus-visible {
+    transform: none;
+    transition: none !important;
+  }
+  .tv-row {
+    scroll-behavior: auto !important;
+  }
+}
