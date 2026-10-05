@@ -63,7 +63,7 @@ ENV = {
     "WEBHOOK_SECRET": "hook-secret",
     "JWT_PRIVATE_KEY": PRIVATE_PEM,
     "JWT_PUBLIC_KEY": PUBLIC_PEM,
-    "STREAM_SIGNING_KEYS": "stream-key-1,stream-key-old",
+    "STREAM_SIGNING_KEYS": "dGVzdC1zaWduaW5nLWtleS0xMjM0NTY3ODkwMTIzNA,dGVzdC1zaWduaW5nLWtleS1vbGQtMTIzNDU2Nzg5MDEyMw",
     "INTERNAL_API_TOKEN": "internal-token",
     "MEILI_URL": MEILI_URL,
     "MEILI_API_KEY": MEILI_KEY,
