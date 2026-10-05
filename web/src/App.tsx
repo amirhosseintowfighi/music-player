@@ -457,10 +457,12 @@ function JoinScreen({ channels, onPassed, onStillMissing }: { channels: { userna
 function Gate({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<'checking' | 'ready' | 'landing' | 'join'>('checking');
   const [joinChannels, setJoinChannels] = useState<{ username: string; url: string }[]>([]);
-  const check = useCallback(async (signal?: { cancelled: boolean }) => {
-    if (new URLSearchParams(window.location.search).has('forceLanding')) { if (!signal?.cancelled) setState('landing'); return; }
-    const hasToken = hasRefreshToken();
-    if (!hasToken) { if (!signal?.cancelled) setState('landing'); return; }
+  const check = useCallback(async (signal?: { cancelled: boolean }, opts?: { force?: boolean }) => {
+    if (!opts?.force && new URLSearchParams(window.location.search).has('forceLanding')) { if (!signal?.cancelled) setState('landing'); return; }
+    if (!opts?.force) {
+      const hasToken = hasRefreshToken();
+      if (!hasToken) { if (!signal?.cancelled) setState('landing'); return; }
+    }
     try {
       const gate = await get<{ missing: { username: string; url: string }[] }>('/v1/gate');
       if (signal?.cancelled) return;
@@ -469,10 +471,14 @@ function Gate({ children }: { children: React.ReactNode }) {
     } catch (err) {
       if (signal?.cancelled) return;
       if (err instanceof ApiError && (err.status === 401 || err.code === 'unauthorized' || err.code === 'no_refresh')) {
+        // If we just logged in via widget, a 401 here must not wipe the fresh session
+        // — the widget login already proved the token, gate may be transiently 401.
+        if (opts?.force) { setState('ready'); return; }
         try { clearTokens(); } catch {}
         setState('landing');
         return;
       }
+      // Transient error after a fresh login — don't bounce back to landing, show the app
       setState('ready');
     }
   }, []);
@@ -481,7 +487,14 @@ function Gate({ children }: { children: React.ReactNode }) {
     void check(signal);
     return () => { signal.cancelled = true; };
   }, [check]);
-  const onAuthenticated = useCallback(() => { void check(); }, [check]);
+  const onAuthenticated = useCallback(() => {
+    // Show a brief loading state, then verify gate with force (skip hasRefreshToken check).
+    // Even if gate fails, we go to ready — the login itself already proved the session.
+    setState('checking');
+    void check(undefined, { force: true });
+    // Safety: if gate hangs (network), still enter the app after 2.5s
+    setTimeout(() => setState((s) => (s === 'checking' ? 'ready' : s)), 2500);
+  }, [check]);
   if (state === 'checking') return <div className="grid min-h-screen place-items-center text-sm text-[var(--ink-dim)]">…</div>;
   if (state === 'landing') return <Landing onAuthenticated={onAuthenticated} />;
   if (state === 'join') return <JoinScreen channels={joinChannels} onPassed={() => setState('ready')} onStillMissing={setJoinChannels} />;
