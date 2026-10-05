@@ -19,17 +19,17 @@ import { useJam } from '@/store/jam';
 import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
 
-import { Home } from '@/screens/Home';
-import { Library } from '@/screens/Library';
-import { Search } from '@/screens/Search';
-import { AlbumScreen, ArtistScreen, ChannelScreen, ThisIsScreen, TrackScreen } from '@/screens/Detail';
-import { LikedScreen, PlaylistScreen, Playlists, SharedPlaylistScreen } from '@/screens/Playlists';
 import { TrackActions } from '@/components/TrackActions';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // The full-screen player is only needed once something plays.
 const FullPlayer = lazy(() => import('@/components/FullPlayer').then((m) => ({ default: m.FullPlayer })));
-// Screens most sessions never open (or not first): loaded when they are, so the
-// first paint stays inside the bundle budget.
+// Route screens: eager would put all of them in the initial bundle and blow the
+// 200 KB budget. Search is in the first paint on some entry points, so it stays
+// eager; the rest lazy-load _including_ Home+Library so a reload always lands
+// inside the budget.
+const Home = lazy(() => import('@/screens/Home').then((m) => ({ default: m.Home })));
+const Library = lazy(() => import('@/screens/Library').then((m) => ({ default: m.Library })));
 const Discover = lazy(() => import('@/screens/Discover').then((m) => ({ default: m.Discover })));
 const Profile = lazy(() => import('@/screens/Profile').then((m) => ({ default: m.Profile })));
 const FriendsFeedScreen = lazy(() => import('@/screens/Profile').then((m) => ({ default: m.FriendsFeedScreen })));
@@ -38,6 +38,16 @@ const Settings = lazy(() => import('@/screens/Settings').then((m) => ({ default:
 const Wrapped = lazy(() => import('@/screens/Wrapped').then((m) => ({ default: m.Wrapped })));
 const JamScreen = lazy(() => import('@/screens/Jam').then((m) => ({ default: m.JamScreen })));
 const BlendScreen = lazy(() => import('@/screens/Blend').then((m) => ({ default: m.BlendScreen })));
+const AlbumScreen = lazy(() => import('@/screens/Detail').then((m) => ({ default: m.AlbumScreen })));
+const ArtistScreen = lazy(() => import('@/screens/Detail').then((m) => ({ default: m.ArtistScreen })));
+const ChannelScreen = lazy(() => import('@/screens/Detail').then((m) => ({ default: m.ChannelScreen })));
+const ThisIsScreen = lazy(() => import('@/screens/Detail').then((m) => ({ default: m.ThisIsScreen })));
+const TrackScreen = lazy(() => import('@/screens/Detail').then((m) => ({ default: m.TrackScreen })));
+const Playlists = lazy(() => import('@/screens/Playlists').then((m) => ({ default: m.Playlists })));
+const PlaylistScreen = lazy(() => import('@/screens/Playlists').then((m) => ({ default: m.PlaylistScreen })));
+const SharedPlaylistScreen = lazy(() => import('@/screens/Playlists').then((m) => ({ default: m.SharedPlaylistScreen })));
+const LikedScreen = lazy(() => import('@/screens/Playlists').then((m) => ({ default: m.LikedScreen })));
+const Search = lazy(() => import('@/screens/Search').then((m) => ({ default: m.Search })));
 const Tour = lazy(() => import('@/components/Tour'));
 
 const queryClient = new QueryClient({
@@ -506,9 +516,11 @@ export function App() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <MotionConfig reducedMotion="user">
-        <I18nProvider lang={lang}>{content}</I18nProvider>
-      </MotionConfig>
+      <ErrorBoundary>
+        <MotionConfig reducedMotion="user">
+          <I18nProvider lang={lang}>{content}</I18nProvider>
+        </MotionConfig>
+      </ErrorBoundary>
     </QueryClientProvider>
   );
 }
