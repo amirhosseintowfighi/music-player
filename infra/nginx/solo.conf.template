@@ -124,6 +124,27 @@ server {
         add_header Cache-Control "public, max-age=3600" always;
     }
 
+    # OAuth popup — TWidgetLogin.auth() opens window.open('/auth?bot_id=...').
+    # When the widget JS is proxied same-origin, that URL resolves to
+    # https://$host/auth and would otherwise hit the SPA's try_files.
+    location ~ ^/auth(/|$) {
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $oauth_auth https://oauth.telegram.org;
+        proxy_pass $oauth_auth$request_uri;
+        proxy_ssl_server_name on;
+        proxy_set_header Host oauth.telegram.org;
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header Accept-Encoding "";
+        proxy_cache off;
+        proxy_buffering off;
+        sub_filter 'https://telegram.org/' 'https://$host/';
+        sub_filter_once off;
+        sub_filter_types text/html text/css application/javascript;
+        expires -1;
+        add_header Cache-Control "no-store" always;
+    }
+
     # Proxy for the Login Widget iframe — the widget JS sets its iframe src to
     # location.origin + /embed/... when loaded from a same-origin proxy (see
     # telegram-widget.js:getWidgetsOrigin). Without this, /embed/* falls through
@@ -148,17 +169,23 @@ server {
         add_header Cache-Control "no-store" always;
     }
 
-    # Same-origin mirrors for assets referenced by the proxied embed HTML
-    # (after sub_filter above rewrites https://telegram.org/js/... etc.)
-    # Must not shadow the SPA's own /assets/ — keep exact paths narrow.
-    # Telegram's embed references:
-    #   https://telegram.org/js/widget-frame.js?68
-    #   https://telegram.org/css/widget-frame.css?75
-    #   https://telegram.org/css/font-roboto.css?1
-    location = /js/widget-frame.js {
+    # Assets referenced by /embed and /auth (after sub_filter rewrites
+    # https://telegram.org/* to https://$host/*). Keep SPA's /assets/ untouched.
+    location = /css/oauth-old.css {
         resolver 127.0.0.11 valid=10s ipv6=off;
-        set $tg_base https://telegram.org;
-        proxy_pass $tg_base$request_uri;
+        set $oauth_css https://oauth.telegram.org;
+        proxy_pass $oauth_css$request_uri;
+        proxy_ssl_server_name on;
+        proxy_set_header Host oauth.telegram.org;
+        proxy_set_header Accept-Encoding "";
+        proxy_cache off;
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600" always;
+    }
+    location ~ ^/css/ {
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $tg_css https://telegram.org;
+        proxy_pass $tg_css$request_uri;
         proxy_ssl_server_name on;
         proxy_set_header Host telegram.org;
         proxy_set_header Accept-Encoding "";
@@ -166,13 +193,23 @@ server {
         expires 1h;
         add_header Cache-Control "public, max-age=3600" always;
     }
-    location ~ ^/css/(widget-frame|font-roboto)\.css {
+    location ~ ^/js/ {
         resolver 127.0.0.11 valid=10s ipv6=off;
-        set $tg_css https://telegram.org;
-        proxy_pass $tg_css$request_uri;
+        set $tg_js https://telegram.org;
+        proxy_pass $tg_js$request_uri;
         proxy_ssl_server_name on;
         proxy_set_header Host telegram.org;
         proxy_set_header Accept-Encoding "";
+        proxy_cache off;
+        expires 1h;
+        add_header Cache-Control "public, max-age=3600" always;
+    }
+    location ~ ^/(img|favicon\.ico) {
+        resolver 127.0.0.11 valid=10s ipv6=off;
+        set $tg_img https://telegram.org;
+        proxy_pass $tg_img$request_uri;
+        proxy_ssl_server_name on;
+        proxy_set_header Host telegram.org;
         proxy_cache off;
         expires 1h;
         add_header Cache-Control "public, max-age=3600" always;
