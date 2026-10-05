@@ -114,6 +114,66 @@
         }
       }
     },
+    "/v1/auth/widget": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "summary": "Login Widget",
+        "description": "Telegram Login Widget for the standalone Web App (not Mini App initData).",
+        "operationId": "login_widget_v1_auth_widget_post",
+        "parameters": [
+          {
+            "name": "User-Agent",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "User-Agent"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebWidgetLoginIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TokenOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/auth/refresh": {
       "post": {
         "tags": [
@@ -14484,6 +14544,69 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WebWidgetLoginIn": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "auth_date": {
+            "type": "integer",
+            "title": "Auth Date"
+          },
+          "hash": {
+            "type": "string",
+            "title": "Hash"
+          },
+          "last_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Name"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Photo Url"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "first_name",
+          "auth_date",
+          "hash"
+        ],
+        "title": "WebWidgetLoginIn",
+        "description": "Telegram Login Widget payload for the standalone Web App."
       },
       "WrappedOut": {
         "properties": {

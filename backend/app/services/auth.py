@@ -92,7 +92,7 @@ async def login_with_widget(
             {k: v for k, v in payload.items() if v is not None},
             settings.bot_token.get_secret_value(),
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         log.info("auth.widget_rejected", reason=str(exc))
         raise Unauthorized("invalid widget data") from exc
     tg_user = TelegramUser(

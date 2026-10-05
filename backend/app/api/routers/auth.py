@@ -70,7 +70,9 @@ async def login_widget(
     body: WebWidgetLoginIn, session: SessionDep, settings: SettingsDep, ua: UserAgent = None
 ) -> TokenOut:
     """Telegram Login Widget for the standalone Web App (not Mini App initData)."""
-    pair, _ = await auth.login_with_widget(session, settings, body.model_dump(exclude_none=True), ua)
+    pair, _ = await auth.login_with_widget(
+        session, settings, body.model_dump(exclude_none=True), ua
+    )
     return TokenOut(
         access_token=pair.access_token,
         access_expires_at=pair.access_expires_at,
