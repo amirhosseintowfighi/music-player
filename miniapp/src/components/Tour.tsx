@@ -198,9 +198,21 @@ export default function Tour() {
     pointerEvents: 'none',
   } : null;
 
-  const centerPos: React.CSSProperties = { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+  // isCenter used `transform: translate(-50%,-50%)` which framer-motion overwrites
+  // (it owns `transform`), so the card ended up with its top-left at 50%/50% —
+  // visibly off-center to the bottom-right. Center with inset+margin instead.
   const tipStyle: React.CSSProperties = isCenter
-    ? { width: 'calc(100vw - 32px)', maxWidth: 320, ...centerPos }
+    ? {
+      width: 'calc(100vw - 32px)',
+      maxWidth: 320,
+      left: 0,
+      right: 0,
+      top: 0,
+      bottom: 0,
+      margin: 'auto',
+      height: 'fit-content',
+      maxHeight: 'calc(100vh - 32px)',
+    }
     : {
       width: 'calc(100vw - 32px)',
       maxWidth: 320,
