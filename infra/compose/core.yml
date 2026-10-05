@@ -128,6 +128,7 @@ services:
       - ../certs:/etc/nginx/certs:ro
       - ../../miniapp/dist:/srv/miniapp:ro
       - ../../admin/dist:/srv/admin:ro
+      - ../../web/dist:/srv/web:ro
     ports:
       - "80:80"
       - "443:443"
