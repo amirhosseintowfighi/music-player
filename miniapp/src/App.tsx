@@ -20,6 +20,7 @@ import { usePlayer } from '@/store/player';
 import { useUi } from '@/store/ui';
 
 import { TrackActions } from '@/components/TrackActions';
+import { ShareSheet } from '@/components/ShareSheet';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 // The full-screen player is only needed once something plays.
@@ -316,12 +317,19 @@ function Shell() {
       )}
       <Paywall />
       <TrackActions track={actionTrack} open={Boolean(actionTrack)} onClose={() => setActionTrack(null)} />
+      <ShareSheetHost />
       <Toasts />
       <Suspense fallback={null}>
         <Tour />
       </Suspense>
     </div>
   );
+}
+
+function ShareSheetHost() {
+  const sheet = useUi((s) => s.shareSheet);
+  const close = useUi((s) => s.setShareSheet);
+  return <ShareSheet open={Boolean(sheet)} onClose={() => close(null)} track={sheet?.track ?? null} coverSrc={sheet?.coverSrc} />;
 }
 
 /** Authenticates with initData before the first API call. */

@@ -11,7 +11,7 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['icons/*.png', 'sw.js'],
+      includeAssets: ['icons/*.png', 'fonts/*.woff2', 'og.webp', 'og.png', 'favicon.ico', 'sw.js'],
       manifest: false,
       workbox: {
         globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],

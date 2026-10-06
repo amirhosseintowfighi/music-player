@@ -24,6 +24,8 @@ interface UiState {
   upsell: Upsell | null;
   playerOpen: boolean;
   actionTrack: Track | null;
+  actionTrackThumb?: string | null;
+  shareSheet: { track: Track; coverSrc?: string } | null;
 
   setLang: (lang: Lang) => void;
   setTheme: (theme: 'dark' | 'light') => void;
@@ -33,7 +35,8 @@ interface UiState {
   dismissToast: (id: number) => void;
   showUpsell: (upsell: Upsell | null) => void;
   setPlayerOpen: (open: boolean) => void;
-  setActionTrack: (track: Track | null) => void;
+  setActionTrack: (track: Track | null, thumb?: string | null) => void;
+  setShareSheet: (sheet: { track: Track; coverSrc?: string } | null) => void;
 }
 
 let toastId = 0;
@@ -55,6 +58,8 @@ export const useUi = create<UiState>((set, get) => {
     upsell: null,
     playerOpen: false,
     actionTrack: null,
+    actionTrackThumb: null,
+    shareSheet: null,
 
     setLang(lang) {
       document.documentElement.lang = lang;
@@ -90,8 +95,11 @@ export const useUi = create<UiState>((set, get) => {
     setPlayerOpen(open) {
       set({ playerOpen: open });
     },
-    setActionTrack(track) {
-      set({ actionTrack: track });
+    setActionTrack(track, thumb) {
+      set({ actionTrack: track, actionTrackThumb: thumb ?? null });
+    },
+    setShareSheet(sheet) {
+      set({ shareSheet: sheet });
     },
   };
 });

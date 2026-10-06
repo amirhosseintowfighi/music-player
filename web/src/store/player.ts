@@ -133,6 +133,7 @@ interface PlayerState {
   removeManual: (index: number) => void;
   moveInQueue: (from: number, to: number) => void;
   moveManual: (from: number, to: number) => void;
+  reorderRest: (nextRest: Track[]) => void;
   /** What plays next, manual queue first — this is what the queue sheet shows. */
   upcoming: () => Track[];
   clearError: () => void;
@@ -566,6 +567,11 @@ export const usePlayer = create<PlayerState>((set, get) => ({
 
   removeManual(target) {
     set({ manual: get().manual.filter((_, i) => i !== target) });
+  },
+
+  reorderRest(nextRest: Track[]) {
+    const { queue, index } = get();
+    set({ queue: [...queue.slice(0, index + 1), ...nextRest] });
   },
 
   moveManual(from, to) {

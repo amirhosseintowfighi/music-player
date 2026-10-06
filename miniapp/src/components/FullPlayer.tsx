@@ -37,9 +37,9 @@ import {
 } from '@/components/ui';
 import { useI18n } from '@/i18n';
 import { artistNames, duration } from '@/lib/format';
-import { shareCard } from '@/lib/shareCard';
-import { BOT_USERNAME, backButton, haptic, openTelegramLink } from '@/lib/telegram';
+import { backButton, haptic, openTelegramLink } from '@/lib/telegram';
 import { LyricsView } from '@/components/Lyrics';
+import { shareTrack } from '@/lib/share';
 import { useAudioSettings } from '@/store/audio';
 import { useConnect } from '@/store/connect';
 import { hiRes } from '@/player/thumbs';
@@ -237,21 +237,29 @@ function QueueSheet({ open, onClose, thumbs }: { open: boolean; onClose: () => v
       {rest.length > 0 && (
         <>
           <p className="px-1 pb-1 pt-2 text-[11.5px] text-[var(--ink-faint)]">{t('player.upNext')}</p>
-          <ul className="flex flex-col gap-1 pb-2">
+          <Reorder.Group
+            axis="y"
+            values={visible}
+            onReorder={(newVisible) => {
+              const tail = rest.slice(shown);
+              usePlayer.getState().reorderRest([...newVisible, ...tail]);
+            }}
+            className="flex flex-col gap-1 pb-2"
+          >
             {visible.map((track, i) => {
               const queueIndex = index + 1 + i;
               return (
-                <li key={`${track.id}-${queueIndex}`}>
+                <Reorder.Item key={`${track.id}-${queueIndex}`} value={track} className="touch-none">
                   <QueueRow
                     track={track}
                     thumb={thumbs[track.id]}
                     onPlay={() => void play({ queue, index: queueIndex, source })}
                     onRemove={() => remove(queueIndex)}
                   />
-                </li>
+                </Reorder.Item>
               );
             })}
-          </ul>
+          </Reorder.Group>
           <LoadMore
             enabled={shown < rest.length}
             onVisible={() => setShown((count) => count + QUEUE_CHUNK)}
@@ -645,9 +653,9 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
               <Glass
                 className="flex items-center gap-2 px-3.5 py-2 text-[12.5px]"
                 onClick={async () => {
-                  const outcome = await shareCard(track, hiRes(thumbs[track.id]) ?? thumbs[track.id], BOT_USERNAME);
-                  if (outcome === 'saved') useUi.getState().toast(t('share.saved'), 'success');
-                  if (outcome === 'failed') useUi.getState().toast(t('app.error'), 'error');
+                  const cover = hiRes(thumbs[track.id]) ?? thumbs[track.id];
+                  const outcome = await shareTrack(track, cover);
+                  if (outcome === 'sheet') useUi.getState().setShareSheet({ track, coverSrc: cover });
                 }}
               >
                 <ShareIcon size={16} />

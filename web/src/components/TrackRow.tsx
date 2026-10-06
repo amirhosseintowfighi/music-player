@@ -75,7 +75,7 @@ export const TrackRow = memo(function TrackRow({ track, thumb, trailing, onPlay,
         type="button"
         aria-label={t('common.more')}
         className="shrink-0 p-1.5 text-[var(--ink-dim)]"
-        onClick={() => (onMore ? onMore() : openActions(track))}
+        onClick={() => (onMore ? onMore() : openActions(track, thumb ?? null))}
       >
         <MoreIcon size={18} />
       </button>

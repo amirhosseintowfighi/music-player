@@ -23,7 +23,7 @@ import { Cover, Sheet, Spinner, cx } from '@/components/ui';
 import { CreatePlaylistSheet } from '@/components/CreatePlaylistSheet';
 import { useI18n } from '@/i18n';
 import { artistNames } from '@/lib/format';
-import { shareCard } from '@/lib/shareCard';
+import { shareTrack } from '@/lib/share';
 import { BOT_USERNAME, openTelegramLink } from '@/lib/telegram';
 import { listOffline, removeOffline, saveOffline } from '@/player/engine';
 import { usePlayer } from '@/store/player';
@@ -336,9 +336,16 @@ export function TrackActions({
             busy={carding}
             onClick={async () => {
               setCarding(true);
-              const outcome = await shareCard(track, undefined, BOT_USERNAME);
+              const { hiRes } = await import('@/player/thumbs');
+              const cover = hiRes(useUi.getState().actionTrackThumb ?? undefined);
+              const outcome = await shareTrack(track, cover);
               setCarding(false);
-              if (outcome === 'saved') toast(t('share.saved'), 'success');
+              if (outcome === 'sheet') {
+                useUi.getState().setShareSheet({ track, coverSrc: cover });
+                close();
+                return;
+              }
+              if (outcome === 'shared') return;
               if (outcome === 'failed') toast(t('app.error'), 'error');
             }}
           />
