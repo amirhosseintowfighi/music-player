@@ -47,7 +47,7 @@ function resolveLow(mode: PerfMode): boolean {
 export const useUi = create<UiState>((set, get) => {
   const perf = readPerfPreference();
   return {
-    lang: 'fa',
+    lang: 'en',
     theme: 'dark',
     perf,
     lowPerf: resolveLow(perf),

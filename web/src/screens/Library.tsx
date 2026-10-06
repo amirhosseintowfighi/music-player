@@ -49,13 +49,14 @@ function LongListens() {
     <>
       {started.length > 0 && (
         <>
-          <p className="mt-4 mb-2 px-1 text-[12px] font-semibold text-[var(--ink-dim)]">{t('library.long.continue')}</p>
-          <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+          <p className="mt-4 mb-2 px-1 text-[clamp(11px,1.5cqw,12px)] font-semibold text-[var(--ink-dim)]">{t('library.long.continue')}</p>
+          <div className="tv-row no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
             {started.map((track, index) => (
               <button
                 key={track.id}
                 type="button"
-                className="w-[140px] shrink-0 text-start transition-transform active:scale-95"
+                data-focusable
+                className="tv-hit w-[clamp(120px,16vw,160px)] shrink-0 text-start transition-transform active:scale-95"
                 onClick={() => void play({ queue: started, index, source: 'library' })}
               >
                 <Cover src={thumbs[track.id]} seed={track.id} size={140} radius={14} glyph="🎧" />
@@ -184,21 +185,22 @@ export function Library() {
   };
 
   return (
-    <div className="px-4 pt-4 tv-safe">
+    <div className="px-4 pt-4 tv-safe [container-type:inline-size]">
       <div className="flex items-center justify-between">
-        <h1 className="text-[21px] font-bold">{t('tab.library')}</h1>
+        <h1 className="text-[clamp(18px,2.5cqw,22px)] font-bold">{t('tab.library')}</h1>
         <button
           type="button"
           data-tour="add-channel"
+          data-focusable
           aria-label={t('channel.add.title')}
           onClick={() => setAddOpen(true)}
-          className="grid h-9 w-9 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)]"
+          className="tv-hit grid h-9 w-9 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)]"
         >
           <PlusIcon size={18} />
         </button>
       </div>
 
-      <div data-tour="library-tabs" className="no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+      <div data-tour="library-tabs" className="tv-row no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
         {TABS.map((item) => (
           <button
             key={item.id}
@@ -252,8 +254,8 @@ export function Library() {
         <>
           {(followed.data?.length ?? 0) > 0 && (
             <>
-              <p className="mt-4 mb-2 px-1 text-[12px] font-semibold text-[var(--ink-dim)]">{t('library.following')}</p>
-              <div className="no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
+              <p className="mt-4 mb-2 px-1 text-[clamp(11px,1.5cqw,12px)] font-semibold text-[var(--ink-dim)]">{t('library.following')}</p>
+              <div className="tv-row no-scrollbar -mx-1 flex gap-3 overflow-x-auto px-1 pb-1">
                 {followed.data?.map((artist) => (
                   <button
                     key={artist.id}
@@ -268,7 +270,7 @@ export function Library() {
               </div>
             </>
           )}
-          <div className="mt-4 grid grid-cols-2 gap-3">
+          <div className="tv-grid mt-4 grid grid-cols-2 gap-3 @[560px]:grid-cols-3 @[860px]:grid-cols-4">
             {artists.map((artist) => (
               <Glass
                 key={artist.id}

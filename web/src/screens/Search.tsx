@@ -48,7 +48,7 @@ export function Search() {
   const thumbs = useThumbs([...tracks.map((track) => track.id), ...albumCoverIds]);
 
   return (
-    <div className="px-4 pt-4">
+    <div className="px-4 pt-4 tv-safe [container-type:inline-size]">
       <div data-tour="search-input"><Glass className="flex items-center gap-2.5 rounded-full px-4 py-2.5" spec={0.35}>
         <SearchIcon size={18} className="text-[var(--ink-faint)]" />
         <input
@@ -117,12 +117,13 @@ export function Search() {
       {query && (artists.data?.length ?? 0) > 0 && (
         <section className="mt-5">
           <h2 className="mb-2 px-1 text-[14px] font-bold">{t('search.artists')}</h2>
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <div className="tv-row flex gap-3 overflow-x-auto pb-1">
             {artists.data?.map((artist) => (
               <button
                 key={artist.id}
                 type="button"
-                className="w-20 shrink-0 text-center"
+                data-focusable
+                className="tv-hit w-20 shrink-0 text-center"
                 onClick={() => navigate(`/artist/${artist.id}`)}
               >
                 <Cover
@@ -145,7 +146,7 @@ export function Search() {
       {query && (albums.data?.length ?? 0) > 0 && (
         <section className="mt-5">
           <h2 className="mb-2 px-1 text-[14px] font-bold">{t('search.albums')}</h2>
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <div className="tv-row flex gap-3 overflow-x-auto pb-1">
             {albums.data?.map((album) => (
               <button
                 key={`${album.artist_id}-${album.album}`}

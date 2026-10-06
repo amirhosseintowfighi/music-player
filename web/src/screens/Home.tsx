@@ -114,7 +114,7 @@ function MadeForYou() {
   return (
     <>
       <SectionHead title={t('madeForYou.title')} />
-      <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2">
+      <div className="tv-row no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4 pb-2">
         <MadeTile
           title={t('daylist.title')}
           subtitle={t(`daylist.part.${part}`)}
@@ -216,10 +216,10 @@ export function Home() {
   const hasChannels = (channels.data?.length ?? 0) > 0;
 
   return (
-    <div className="px-4 tv-safe">
+    <div className="px-4 tv-safe [container-type:inline-size]">
       <header data-tour="home-header" className="flex items-center justify-between py-4">
         <div className="min-w-0">
-          <h1 className="truncate text-[21px] font-bold">
+          <h1 className="truncate text-[clamp(18px,2.5cqw,22px)] font-bold">
             {t(greetingKey(), { name: me.data?.first_name ?? '' })}
           </h1>
           {hasChannels && (
@@ -264,12 +264,13 @@ export function Home() {
       {played.length > 0 && (
         <>
           <SectionHead title={t('home.playedRecently')} action={t('home.all')} onAction={() => navigate('/likes')} />
-          <div className="no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
+          <div className="tv-row no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
             {played.slice(0, 10).map((track, index) => (
               <Glass
                 key={track.id}
                 as="button"
-                className="w-[132px] shrink-0 p-2.5 text-start"
+                data-focusable
+                className="tv-hit w-[132px] shrink-0 p-2.5 text-start"
                 onClick={() => void play({ queue: played, index, source: 'library' })}
               >
                 <Cover src={thumbs[track.id]} seed={track.id} size={112} radius={14} glyph="♫" />
@@ -284,7 +285,7 @@ export function Home() {
       {hasChannels && (
         <div data-tour="home-channels">
           <SectionHead title={t('home.yourChannels')} action={t('home.manage')} onAction={() => navigate('/library?tab=channels')} />
-          <div className="no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
+          <div className="tv-row no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
             {channels.data?.map((channel) => (
               <ChannelCard key={channel.id} channel={channel} onClick={() => navigate(`/channel/${channel.id}`)} />
             ))}
@@ -309,7 +310,7 @@ export function Home() {
       )}
 
       <div data-tour="home-featured"><SectionHead title={t('home.featured')} />
-      <div className="no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
+      <div className="tv-row no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
         {flatten(featured.data).map((channel) => (
           <ChannelCard key={channel.id} channel={channel} onClick={() => navigate(`/channel/${channel.id}`)} />
         ))}

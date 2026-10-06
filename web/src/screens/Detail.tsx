@@ -83,16 +83,17 @@ function RelatedArtists({ artistId }: { artistId: number }) {
   return (
     <section className="mt-5">
       <h2 className="mb-2 text-[14px] font-bold">{t('artist.fansAlsoLike')}</h2>
-      <div className="flex gap-3.5 overflow-x-auto pb-1">
+      <div className="tv-row flex gap-3.5 overflow-x-auto pb-1">
         {items.map((other, index) => (
           <motion.button
             key={other.id}
             type="button"
+            data-focusable
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: Math.min(index, 8) * 0.04 }}
             whileTap={{ scale: 0.95 }}
-            className="w-24 shrink-0 text-center"
+            className="tv-hit w-24 shrink-0 text-center"
             onClick={() => navigate(`/artist/${other.id}`)}
           >
             <Cover src={other.image_url} seed={other.name} size={96} radius={48} glyph="🎤" />
@@ -192,7 +193,7 @@ export function ChannelScreen() {
   if (!channel.data) return <div className="grid place-items-center py-20"><Spinner /></div>;
 
   return (
-    <div className="px-4">
+    <div className="px-4 tv-safe [container-type:inline-size]">
       <Header
         title={channel.data.title ?? `@${channel.data.username ?? ''}`}
         subtitle={
@@ -235,7 +236,7 @@ export function ArtistScreen() {
   if (!artist.data) return <div className="grid place-items-center py-20"><Spinner /></div>;
 
   return (
-    <div className="px-4">
+    <div className="px-4 tv-safe [container-type:inline-size]">
       <div className="flex items-end justify-between gap-3">
         <div className="min-w-0 flex-1">
           <Header
@@ -280,12 +281,13 @@ export function ArtistScreen() {
       {albums.length > 0 && (
         <section className="mt-5">
           <h2 className="mb-2 text-[14px] font-bold">{t('artist.albums')}</h2>
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <div className="tv-row flex gap-3 overflow-x-auto pb-1">
             {albums.map((album) => (
               <button
                 key={album.name}
                 type="button"
-                className="w-28 shrink-0 text-start"
+                data-focusable
+                className="tv-hit w-28 shrink-0 text-start"
                 onClick={() =>
                   navigate(`/album/${id}/${encodeURIComponent(album.name)}`)
                 }
@@ -328,7 +330,7 @@ export function ThisIsScreen() {
   if (!query.data) return <div className="grid place-items-center py-20"><Spinner /></div>;
   const artist = query.data.artist;
   return (
-    <div className="px-4">
+    <div className="px-4 tv-safe [container-type:inline-size]">
       <Header
         title={t('thisIs.title', { name: artist.name })}
         subtitle={
@@ -359,7 +361,7 @@ export function AlbumScreen() {
 
   const year = album.data.year;
   return (
-    <div className="px-4">
+    <div className="px-4 tv-safe [container-type:inline-size]">
       <Header
         title={album.data.album.album}
         subtitle={[
@@ -395,7 +397,7 @@ export function TrackScreen() {
   if (!track.data) return <div className="grid place-items-center py-20"><Spinner /></div>;
 
   return (
-    <div className="px-4">
+    <div className="px-4 tv-safe [container-type:inline-size]">
       <Header
         title={track.data.title}
         subtitle={track.data.artists.map((artist) => artist.name).join('، ')}

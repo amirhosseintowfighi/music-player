@@ -26,12 +26,13 @@ function TrackCarousel({ items, source }: { items: Track[]; source: 'discover' |
   const play = usePlayer((s) => s.play);
   const thumbs = useThumbs(items.slice(0, 12).map((track) => track.id));
   return (
-    <div className="no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
+    <div className="tv-row no-scrollbar flex gap-3 overflow-x-auto px-0.5 pb-1.5">
       {items.slice(0, 12).map((track, index) => (
         <Glass
           key={track.id}
           as="button"
-          className="w-[132px] shrink-0 p-2.5 text-start"
+          data-focusable
+          className="tv-hit w-[clamp(120px,18vw,160px)] shrink-0 p-2.5 text-start"
           onClick={() => void play({ queue: items, index, source })}
         >
           <Cover src={thumbs[track.id]} seed={track.id} size={112} radius={14} glyph="♫" />
@@ -135,9 +136,9 @@ export function Discover() {
   const generated = sections.filter((section) => section.kind === 'playlist');
 
   return (
-    <div className="px-4 pb-28">
+    <div className="px-4 pb-28 tv-safe [container-type:inline-size]">
       <header className="flex items-center justify-between py-4">
-        <h1 className="text-[21px] font-bold">{t('discover.title')}</h1>
+        <h1 className="text-[clamp(18px,2.5cqw,22px)] font-bold">{t('discover.title')}</h1>
         <button
           type="button"
           onClick={() => refresh.mutate()}
