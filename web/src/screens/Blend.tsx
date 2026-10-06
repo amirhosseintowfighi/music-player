@@ -163,12 +163,12 @@ export function BlendScreen() {
     });
 
   return (
-    <div className="px-4 pt-4">
+    <div className="px-4 pt-4 tv-safe [container-type:inline-size]">
       <div className="flex items-center gap-2">
-        <button type="button" aria-label={t('common.back')} onClick={() => navigate(-1)} className="p-1.5">
+        <button type="button" aria-label={t('common.back')} data-focusable onClick={() => navigate(-1)} className="tv-hit p-1.5">
           <ChevronIcon size={22} className="rtl:rotate-180" />
         </button>
-        <h1 className="text-[24px] font-bold tracking-tight">{t('blend.title')}</h1>
+        <h1 className="text-[clamp(18px,2.5cqw,24px)] font-bold tracking-tight">{t('blend.title')}</h1>
       </div>
 
       <div className="relative mt-3 overflow-hidden rounded-[var(--radius-glass-lg)] bg-[var(--card)] p-5 text-center">
@@ -200,7 +200,7 @@ export function BlendScreen() {
         </motion.button>
       </div>
 
-      <div className="mt-5 flex flex-col gap-3">
+      <div className="tv-grid mt-5 flex flex-col gap-3 @[640px]:grid @[640px]:grid-cols-2">
         {blends.isLoading && (
           <div className="grid place-items-center py-6">
             <Spinner />

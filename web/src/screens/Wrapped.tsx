@@ -44,14 +44,14 @@ export function Wrapped() {
   }
 
   return (
-    <div className="px-4 pb-28 pt-4">
+    <div className="px-4 pb-28 pt-4 tv-safe [container-type:inline-size]">
       <div className="mb-4 rounded-2xl bg-gradient-to-br from-[#7b5cff] via-[#c44bd6] to-[#ff6b9a] p-6 text-center text-white">
         <p className="text-[13px] opacity-90">{t('wrapped.title', { year: formatYear(data.year, lang) })}</p>
         <p className="mt-1 text-[34px] font-bold tabular-nums">{n(data.minutes)}</p>
         <p className="text-[13px] opacity-90">{t('wrapped.minutes', { count: data.minutes })}</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2">
+      <div className="tv-grid grid grid-cols-3 gap-2">
         <Headline value={n(data.plays)} label={t('wrapped.plays', { count: data.plays })} />
         <Headline
           value={n(data.unique_tracks)}
@@ -77,8 +77,9 @@ export function Wrapped() {
               <button
                 key={artist.id}
                 type="button"
+                data-focusable
                 onClick={() => navigate(`/artist/${artist.id}`)}
-                className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-start"
+                className="tv-hit flex w-full items-center gap-3 rounded-xl px-2.5 py-2.5 text-start"
               >
                 <span className="w-5 text-[15px] font-bold text-[var(--accent)]">{index + 1}</span>
                 <span className="min-w-0 flex-1 truncate text-[14px]">{artist.name}</span>

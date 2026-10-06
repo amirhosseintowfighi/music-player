@@ -184,7 +184,7 @@ export function Plans() {
   }
 
   return (
-    <div className="space-y-4 px-4 pb-32 pt-3">
+    <div className="space-y-4 px-4 pb-32 pt-3 tv-safe [container-type:inline-size]">
       {isPro && live && (
         <Glass className="p-4">
           <p className="text-[13px] text-[var(--ink-dim)]">
@@ -200,11 +200,11 @@ export function Plans() {
       )}
 
       <div>
-        <h2 className="mb-1 text-[19px] font-bold">{t('plan.title')}</h2>
+        <h2 className="mb-1 text-[clamp(18px,2.5cqw,22px)] font-bold">{t('plan.title')}</h2>
         <p className="text-[12.5px] text-[var(--ink-faint)]">{t('plan.subtitle')}</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="tv-grid grid grid-cols-2 gap-2 @[560px]:grid-cols-3">
         {paid.map((plan) => (
           <PlanCard
             key={plan.code}
@@ -262,9 +262,10 @@ export function Plans() {
           <button
             key={provider.code}
             type="button"
+            data-focusable
             onClick={() => void buy(provider)}
             disabled={checkout.isPending}
-            className="glass glass-edge flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-start text-[13.5px]"
+            className="tv-hit glass glass-edge flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-start text-[13.5px]"
           >
             <span aria-hidden>{PROVIDER_ICON[provider.code] ?? '💠'}</span>
             <span className="flex-1">

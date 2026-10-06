@@ -199,7 +199,7 @@ function Members() {
   const me = useMe();
   if (!jam) return null;
   return (
-    <div className="no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 py-1">
+    <div className="tv-row no-scrollbar -mx-4 flex gap-4 overflow-x-auto px-4 py-1">
       <AnimatePresence initial={false}>
         {jam.members.map((member) => (
           <motion.div
@@ -311,10 +311,10 @@ function InJam() {
   };
 
   return (
-    <div className="px-4 pt-4">
+    <div className="px-4 pt-4 tv-safe [container-type:inline-size]">
       <header className="mb-4 flex items-center justify-between">
         <div>
-          <h1 className="flex items-center gap-2 text-[26px] font-bold tracking-tight">
+          <h1 className="flex items-center gap-2 text-[clamp(22px,2.5cqw,26px)] font-bold tracking-tight">
             {t('jam.title')}
             <span className="inline-flex items-center gap-1.5 rounded-full bg-[color-mix(in_oklab,var(--accent)_15%,transparent)] px-2 py-0.5 text-[11px] font-bold text-[var(--accent)]">
               <span className="live-dot" />
@@ -352,13 +352,14 @@ function InJam() {
         </motion.button>
         <motion.button
           type="button"
+          data-focusable
           whileTap={{ scale: 0.96 }}
           onClick={() => {
             void navigator.clipboard?.writeText(jam.share_url);
             haptic('success');
             toast(t('jam.copied'), 'success');
           }}
-          className="flex items-center justify-center gap-2 rounded-xl bg-[var(--card)] py-3 text-[14px] font-semibold"
+          className="tv-hit flex items-center justify-center gap-2 rounded-xl bg-[var(--card)] py-3 text-[14px] font-semibold"
         >
           <LinkIcon size={18} />
           {t('jam.copy')}

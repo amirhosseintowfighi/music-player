@@ -77,12 +77,13 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
     <button
       type="button"
       aria-pressed={on}
+      data-focusable
       onClick={() => {
         haptic('select');
         onClick();
       }}
       className={cx(
-        'flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12.5px] transition-colors duration-200',
+        'tv-hit flex shrink-0 items-center gap-1 rounded-full px-3 py-1.5 text-[12.5px] transition-colors duration-200',
         on ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]' : 'bg-[var(--fill)] text-[var(--ink-dim)]',
       )}
     >
@@ -132,20 +133,21 @@ export function Playlists() {
   const openFolder = folders.data?.find((item) => item.id === folder);
 
   return (
-    <div className="px-4 pt-4">
+    <div className="px-4 pt-4 tv-safe [container-type:inline-size]">
       <div className="flex items-center justify-between">
-        <h1 className="text-[21px] font-bold">{openFolder ? openFolder.name : t('library.playlists')}</h1>
+        <h1 className="text-[clamp(18px,2.5cqw,22px)] font-bold">{openFolder ? openFolder.name : t('library.playlists')}</h1>
         <button
           type="button"
           aria-label={t('playlist.new')}
+          data-focusable
           onClick={() => setCreateOpen(true)}
-          className="grid h-9 w-9 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] transition-transform active:scale-90"
+          className="tv-hit grid h-9 w-9 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] transition-transform active:scale-90"
         >
           <PlusIcon size={18} />
         </button>
       </div>
 
-      <div className="no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
+      <div className="tv-row no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
         {openFolder ? (
           <>
             <Chip on={false} onClick={() => setFolder(null)}>
@@ -179,7 +181,7 @@ export function Playlists() {
 
       <div className="rise mt-3 flex flex-col gap-2">
         {topLevel && (pins.data?.length ?? 0) > 0 && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="tv-grid grid grid-cols-2 gap-2 @[560px]:grid-cols-3 @[820px]:grid-cols-4">
             {pins.data?.map((pin) =>
               pin.kind === 'artist' ? (
                 <PinnedArtist key={`a-${pin.ref_id}`} artistId={pin.ref_id} />
@@ -521,7 +523,7 @@ export function PlaylistScreen() {
   };
 
   return (
-    <div className="px-4">
+    <div className="px-4 tv-safe [container-type:inline-size]">
       <PlaylistHeader
         title={playlist.name}
         subtitle={`${t('library.count', { count: playlist.tracks_count })} · ${duration(playlist.duration_total, lang)}`}
@@ -531,7 +533,7 @@ export function PlaylistScreen() {
         actions={
           <>
             <PinButton kind="playlist" refId={playlist.id} />
-            <button type="button" aria-label={t('common.more')} onClick={() => setMenuOpen(true)} className="p-1.5">
+            <button type="button" aria-label={t('common.more')} data-focusable onClick={() => setMenuOpen(true)} className="tv-hit p-1.5">
               ⋯
             </button>
           </>
@@ -700,7 +702,7 @@ export function SharedPlaylistScreen() {
   const playlist = query.data;
 
   return (
-    <div className="px-4">
+    <div className="px-4 tv-safe [container-type:inline-size]">
       <PlaylistHeader
         title={playlist.name}
         subtitle={`${t('library.count', { count: playlist.tracks_count })} · ${duration(playlist.duration_total, lang)}`}
@@ -743,7 +745,7 @@ export function LikedScreen() {
   const [addOpen, setAddOpen] = useState(false);
 
   return (
-    <div className="px-4">
+    <div className="px-4 tv-safe [container-type:inline-size]">
       <PlaylistHeader
         title={t('library.liked')}
         subtitle={t('library.count', { count: items.length })}

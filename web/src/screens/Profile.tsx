@@ -112,11 +112,11 @@ export function Profile() {
   const data = profile.data;
 
   return (
-    <div className="px-4 pb-28 pt-4">
+    <div className="px-4 pb-28 pt-4 tv-safe [container-type:inline-size]">
       <Glass className="flex items-center gap-4 p-4">
         <Initial name={data.first_name} />
         <div className="min-w-0 flex-1">
-          <p className="truncate text-[17px] font-bold">
+          <p className="truncate text-[clamp(16px,2.5cqw,18px)] font-bold">
             {data.first_name}
             {data.is_pro && <span className="ms-2 text-[11px] text-[var(--accent)]">PRO</span>}
           </p>
@@ -130,12 +130,13 @@ export function Profile() {
         {!data.is_me && (
           <button
             type="button"
+            data-focusable
             onClick={() => {
               haptic('select');
               follow.mutate(data.is_following);
             }}
             className={cx(
-              'shrink-0 rounded-full px-4 py-2 text-[12.5px] font-bold',
+              'tv-hit shrink-0 rounded-full px-4 py-2 text-[12.5px] font-bold',
               data.is_following
                 ? 'bg-[var(--fill)] text-[var(--ink-dim)]'
                 : 'bg-[var(--accent)] text-[var(--accent-ink)]',
@@ -182,13 +183,14 @@ export function Profile() {
       {data.top_artists.length > 0 && (
         <>
           <SectionHead title={t('profile.topArtists')} />
-          <div className="no-scrollbar flex gap-2 overflow-x-auto pb-1.5">
+          <div className="tv-row no-scrollbar flex gap-2 overflow-x-auto pb-1.5">
             {data.top_artists.map((artist) => (
               <button
                 key={artist.id}
                 type="button"
+                data-focusable
                 onClick={() => navigate(`/artist/${artist.id}`)}
-                className="glass shrink-0 rounded-full px-3.5 py-2 text-[12.5px]"
+                className="tv-hit glass shrink-0 rounded-full px-3.5 py-2 text-[12.5px]"
               >
                 {artist.name}
               </button>
@@ -260,8 +262,8 @@ export function FriendsFeedScreen() {
   if (feed.isError) return <ErrorNote onRetry={() => void feed.refetch()} />;
 
   return (
-    <div className="px-4 pb-28 pt-4">
-      <h1 className="mb-3 text-[21px] font-bold">{t('social.feed')}</h1>
+    <div className="px-4 pb-28 pt-4 tv-safe [container-type:inline-size]">
+      <h1 className="mb-3 text-[clamp(18px,2.5cqw,22px)] font-bold">{t('social.feed')}</h1>
       {feed.isLoading && <Spinner />}
       {feed.data?.length === 0 && (
         <EmptyState title={t('social.empty.title')} body={t('social.empty.body')} />

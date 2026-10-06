@@ -148,15 +148,16 @@ function PlaybackSettings() {
         <div className="px-3.5 py-3">
           <p className="text-[14px]">{t('audio.eq')}</p>
           <p className="mt-0.5 text-[11.5px] text-[var(--ink-faint)]">{t('audio.eq.hint')}</p>
-          <div className="no-scrollbar -mx-1 mt-2.5 flex gap-2 overflow-x-auto px-1">
+          <div className="tv-row no-scrollbar -mx-1 mt-2.5 flex gap-2 overflow-x-auto px-1">
             {(Object.keys(EQ_PRESETS) as EqPreset[]).map((preset) => (
               <button
                 key={preset}
                 type="button"
                 aria-pressed={audio.eq === preset}
+                data-focusable
                 onClick={() => audio.set({ eq: preset })}
                 className={cx(
-                  'shrink-0 rounded-full px-3 py-1.5 text-[12px] transition-colors',
+                  'tv-hit shrink-0 rounded-full px-3 py-1.5 text-[12px] transition-colors',
                   audio.eq === preset
                     ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]'
                     : 'bg-[var(--fill)] text-[var(--ink-dim)]',
@@ -191,8 +192,8 @@ export function Settings() {
   const plan = me.data?.plan ?? 'free';
 
   return (
-    <div className="px-4 pt-4">
-      <h1 className="mb-4 text-[21px] font-bold">{t('settings.title')}</h1>
+    <div className="px-4 pt-4 tv-safe [container-type:inline-size]">
+      <h1 className="mb-4 text-[clamp(18px,2.5cqw,22px)] font-bold">{t('settings.title')}</h1>
 
       <a
         href="#/jam"

@@ -30,13 +30,13 @@ export function Downloads() {
   if (ids.length === 0) return <EmptyState title={t('web.downloads.title')} body={t('web.downloads.empty')} />;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-4">
-      <h1 className="mb-3 text-[18px] font-bold">{t('web.downloads.title')}</h1>
+    <div className="mx-auto max-w-3xl px-4 pt-4 tv-safe [container-type:inline-size]">
+      <h1 className="mb-3 text-[clamp(18px,2.5cqw,22px)] font-bold">{t('web.downloads.title')}</h1>
       <Glass className="divide-y divide-[var(--separator)] overflow-hidden">
         {ids.map((id) => {
           const track = tracks[id];
           return (
-            <div key={id} className="flex items-center gap-3 px-3 py-3">
+            <div key={id} className="flex items-center gap-3 px-3 py-3 tv-hit">
               <Cover seed={id} size={44} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[14px] font-semibold">{track?.title ?? `#${id}`}</span>
@@ -44,11 +44,11 @@ export function Downloads() {
               </span>
               <span className="hidden rounded-full bg-[var(--fill)] px-2 py-0.5 text-[11px] sm:inline">{t('web.downloads.offlineBadge')}</span>
               {track && (
-                <button type="button" className="shrink-0 rounded-full bg-[var(--accent)] px-3 py-1.5 text-[12px] font-bold text-[var(--accent-ink)]" onClick={() => void play({ queue: [track], index: 0, source: 'offline' })}>
+                <button type="button" data-focusable className="tv-hit shrink-0 rounded-full bg-[var(--accent)] px-3 py-1.5 text-[12px] font-bold text-[var(--accent-ink)]" onClick={() => void play({ queue: [track], index: 0, source: 'offline' })}>
                   {t('web.downloads.playOffline')}
                 </button>
               )}
-              <button type="button" className="shrink-0 px-2 text-[12px] text-[var(--ink-dim)] hover:text-[var(--ink)]" onClick={async () => { await removeOffline(id); setIds((prev) => (prev ?? []).filter((x) => x !== id)); }}>
+              <button type="button" data-focusable className="tv-hit shrink-0 px-2 text-[12px] text-[var(--ink-dim)] hover:text-[var(--ink)]" onClick={async () => { await removeOffline(id); setIds((prev) => (prev ?? []).filter((x) => x !== id)); }}>
                 {t('web.downloads.remove')}
               </button>
             </div>
