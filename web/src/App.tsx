@@ -87,16 +87,33 @@ function Landing({ onAuthenticated }: { onAuthenticated?: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [widgetFailed, setWidgetFailed] = useState(false);
   const botUsername = (import.meta.env.VITE_BOT_USERNAME as string | undefined) ?? '';
+  const bakedApiUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? '(same-origin)';
+  const [diag, setDiag] = useState<string[]>(() => {
+    try {
+      const hw = typeof window !== 'undefined' && typeof (window as unknown as Record<string, unknown>).__onTelegramAuth === 'function';
+      const sw = typeof navigator !== 'undefined' && 'serviceWorker' in navigator ? 'sw' : 'no-sw';
+      return [`init bot=${botUsername || '(empty)'} api=${bakedApiUrl} hasRefresh=${hasRefreshToken()} hw=${hw} ${sw} host=${typeof window !== 'undefined' ? window.location.hostname : ''} href=${typeof window !== 'undefined' ? window.location.href.slice(0,80) : ''}`];
+    } catch { return ['init']; }
+  });
+  const pushDiag = useCallback((line: string) => {
+    const ts = new Date().toISOString().slice(11, 19);
+    setDiag((prev) => [...prev.slice(-14), `${ts} ${line}`]);
+    try { console.log(`[landing] ${line}`); } catch {}
+  }, []);
 
   useEffect(() => {
-    if (!botUsername) return;
+    if (!botUsername) {
+      pushDiag('BOT_USERNAME empty — widget disabled');
+      return;
+    }
     let cancelled = false;
     const container = document.getElementById('tg-login');
-    if (!container) return;
+    if (!container) { pushDiag('tg-login container missing'); return; }
     container.innerHTML = '';
+    // Ensure callback exists even if index.html is cached without it (PWA stale)
+    try { (window as unknown as Record<string, unknown>).__onTelegramAuth = (u: unknown) => window.dispatchEvent(new CustomEvent('telegram-auth', { detail: u as Record<string, unknown> })); pushDiag(`hw ensured`); } catch {}
+    pushDiag(`mount src=/telegram-widget.js bot=${botUsername}`);
     const script = document.createElement('script');
-    // Try same-origin proxy first (bypasses telegram.org filtering in Iran),
-    // fall back to direct telegram.org if proxy 404s — both are allowed by CSP.
     script.src = '/telegram-widget.js';
     script.async = true;
     script.setAttribute('data-telegram-login', botUsername);
@@ -104,46 +121,63 @@ function Landing({ onAuthenticated }: { onAuthenticated?: () => void }) {
     script.setAttribute('data-onauth', '__onTelegramAuth(user)');
     script.setAttribute('data-request-access', 'write');
     script.onerror = () => {
-      // proxy miss — retry directly against telegram.org
+      pushDiag('widget /telegram-widget.js error');
       if (cancelled || script.dataset.retried) { if (!cancelled) setWidgetFailed(true); return; }
       script.dataset.retried = '1';
+      pushDiag('retry direct telegram.org');
       const fallback = document.createElement('script');
       fallback.src = 'https://telegram.org/js/telegram-widget.js?22';
       fallback.async = true;
       for (const a of ['data-telegram-login', 'data-size', 'data-onauth', 'data-request-access']) fallback.setAttribute(a, script.getAttribute(a) ?? '');
-      fallback.onerror = () => { if (!cancelled) setWidgetFailed(true); };
-      fallback.onload = () => setTimeout(() => { if (!cancelled && !container.querySelector('iframe')) setWidgetFailed(true); }, 1500);
+      fallback.onerror = () => { if (!cancelled) { pushDiag('fallback error'); setWidgetFailed(true); } };
+      fallback.onload = () => setTimeout(() => {
+        const hasIframe = !!container.querySelector('iframe');
+        pushDiag(`fallback loaded iframe=${hasIframe}`);
+        if (!cancelled && !hasIframe) setWidgetFailed(true);
+      }, 1500);
       container.appendChild(fallback);
     };
     script.onload = () => {
-      setTimeout(() => { if (!cancelled && !container.querySelector('iframe')) setWidgetFailed(true); }, 1500);
+      setTimeout(() => {
+        const hasIframe = !!container.querySelector('iframe');
+        const html = container.innerHTML.slice(0, 200);
+        pushDiag(`proxy loaded iframe=${hasIframe} html=${html.replace(/\s+/g,' ').slice(0,120)}`);
+        if (!cancelled && !hasIframe) setWidgetFailed(true);
+      }, 1500);
     };
     container.appendChild(script);
-    const timer = setTimeout(() => { if (!cancelled && !container.querySelector('iframe')) setWidgetFailed(true); }, 3500);
+    const timer = setTimeout(() => {
+      const hasIframe = !!container.querySelector('iframe');
+      pushDiag(`timeout iframe=${hasIframe}`);
+      if (!cancelled && !hasIframe) setWidgetFailed(true);
+    }, 3500);
     const handler = async (e: Event) => {
       const detail = (e as CustomEvent).detail as Record<string, unknown>;
+      const keys = detail ? Object.keys(detail).join(',') : '(null)';
+      pushDiag(`telegram-auth keys=${keys} id=${String(detail?.id ?? '')} hash=${String(detail?.hash ?? '').slice(0,8)}…`);
       setBusy(true);
       setError(null);
       try {
+        pushDiag(`POST /v1/auth/widget → ${bakedApiUrl}/v1/auth/widget`);
         await loginWithWidget(detail);
-        if (onAuthenticated) onAuthenticated();
+        pushDiag(`widget OK hasRefresh=${hasRefreshToken()}`);
+        if (onAuthenticated) { pushDiag('onAuthenticated()'); onAuthenticated(); }
         else navigate('/', { replace: true });
       } catch (err) {
+        const line = err instanceof ApiError ? `${err.code} ${err.status}: ${err.message.slice(0,160)}` : err instanceof TypeError ? `TypeError: ${String((err as Error).message).slice(0,160)}` : String(err).slice(0,160);
+        pushDiag(`widget FAIL ${line}`);
         if (err instanceof ApiError) {
           const msg = err.message.toLowerCase();
           if (err.status === 401 && (msg.includes('widget') || msg.includes('signature') || msg.includes('stale') || err.code === 'unauthorized')) {
             setError(`${t('web.landing.badSignature', { bot: botUsername, domain: window.location.hostname })} — ${err.code}: ${err.message}`);
           } else if (err.code === 'bad_response') {
-            // Almost always VITE_API_URL missing — fetch hit the static host's index.html
-            const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? '(not set)';
-            setError(`${t('web.landing.corsHint')} — API: ${apiUrl} — ${err.code}: ${err.message.slice(0, 120)}`);
+            setError(`${t('web.landing.corsHint')} — API: ${bakedApiUrl} — ${err.code}: ${err.message.slice(0, 120)}`);
           } else if (err.code === 'network' || err.status === 0) {
             setError(`${t('web.landing.corsHint')} — ${err.code}: ${err.message}`);
           } else {
             setError(`${err.code}: ${err.message}`);
           }
         } else if (err instanceof TypeError) {
-          // CORS or network — fetch throws TypeError, not ApiError
           setError(`${t('web.landing.corsHint')} — ${String((err as Error).message).slice(0, 180)}`);
         } else {
           setError('Login failed');
@@ -152,6 +186,13 @@ function Landing({ onAuthenticated }: { onAuthenticated?: () => void }) {
         setBusy(false);
       }
     };
+    // Preflight probe: does the API actually answer JSON or the static host's index.html?
+    (async () => {
+      try {
+        const probe = await fetch(`${bakedApiUrl.startsWith('http') ? bakedApiUrl : ''}/v1/auth/widget`, { method: 'OPTIONS' }).catch(() => null);
+        pushDiag(`OPTIONS widget CORS=${probe?.status ?? 'net-err'} acao=${probe?.headers.get('access-control-allow-origin') ?? '-'}`);
+      } catch (e) { pushDiag(`OPTIONS err ${String(e).slice(0,80)}`); }
+    })();
     window.addEventListener('telegram-auth', handler as EventListener);
     return () => {
       cancelled = true;
@@ -159,7 +200,7 @@ function Landing({ onAuthenticated }: { onAuthenticated?: () => void }) {
       window.removeEventListener('telegram-auth', handler as EventListener);
       container.innerHTML = '';
     };
-  }, [botUsername, navigate, onAuthenticated]);
+  }, [botUsername, bakedApiUrl, navigate, onAuthenticated, pushDiag, t]);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 py-12 text-center">
@@ -179,8 +220,16 @@ function Landing({ onAuthenticated }: { onAuthenticated?: () => void }) {
         </div>
       )}
       {busy && <p className="mt-2 text-[13px] text-[var(--ink-dim)]">…</p>}
-      {error && <p className="mt-2 text-[13px] text-red-400">{error}</p>}
-      <p className="mt-6 text-[12px] text-[var(--ink-faint)]">Works on phone, tablet and desktop · PWA installable</p>
+      {error && <p className="mt-2 max-w-xl break-words text-[13px] text-red-400">{error}</p>}
+      <div dir="ltr" className="mt-6 w-full max-w-xl rounded-xl border border-[var(--separator)] bg-[var(--fill)] p-3 text-left">
+        <div className="flex items-center justify-between">
+          <span className="text-[11px] font-bold tracking-wide text-[var(--ink-dim)]">DIAG</span>
+          <button type="button" className="rounded bg-[var(--separator)] px-2 py-1 text-[11px]" onClick={() => { try { navigator.clipboard.writeText(diag.join('\n')); pushDiag('copied'); } catch {} }}>copy</button>
+        </div>
+        <pre className="mt-2 max-h-40 overflow-auto whitespace-pre-wrap break-words text-[11px] leading-4 text-[var(--ink-dim)]">{diag.join('\n')}</pre>
+        <p className="mt-2 text-[11px] text-[var(--ink-faint)]">host={typeof window !== 'undefined' ? window.location.host : ''} · api={bakedApiUrl} · bot={botUsername || '(empty)'} · hasRefresh={String(hasRefreshToken())} · hw={String(typeof window !== 'undefined' && typeof (window as unknown as Record<string, unknown>).__onTelegramAuth === 'function')}</p>
+      </div>
+      <p className="mt-4 text-[12px] text-[var(--ink-faint)]">Works on phone, tablet and desktop · PWA installable</p>
     </div>
   );
 }
