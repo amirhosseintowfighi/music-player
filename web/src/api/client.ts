@@ -47,7 +47,12 @@ export class ApiError extends Error {
 }
 
 const REFRESH_KEY = 'tmusic.refresh';
-const BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+const RAW_BASE = (import.meta.env.VITE_API_URL as string | undefined)?.replace(/\/$/, '') ?? '';
+// If the baked VITE_API_URL is cross-origin and unreachable (filtered DNS, etc.),
+// retry same-origin via the apex nginx proxy (location ^~ /v1/ → api:8000).
+// This also avoids CORS preflight when the proxy is available.
+let BASE = RAW_BASE;
+let baseFallbackTried = false;
 
 let accessToken: string | null = null;
 let accessExpiresAt = 0;
@@ -109,22 +114,36 @@ async function parse(response: Response): Promise<unknown> {
   }
 }
 
-async function raw<T>(path: string, init: RequestInit = {}, token?: string | null): Promise<T> {
+function isCrossOriginBase(): boolean {
+  return BASE.startsWith('http') && typeof window !== 'undefined' && !BASE.startsWith(window.location.origin);
+}
+async function fetchOnce<T>(url: string, init: RequestInit, token: string | null | undefined): Promise<T> {
   const headers = new Headers(init.headers);
   if (init.body) headers.set('Content-Type', 'application/json');
   if (token) headers.set('Authorization', `Bearer ${token}`);
-  const response = await fetch(`${BASE}${path}`, { ...init, headers });
+  const response = await fetch(url, { ...init, headers });
   const body = (await parse(response)) as { error?: { code: string; message: string; details?: Record<string, unknown> } };
   if (!response.ok) {
     const error = body?.error;
-    throw new ApiError(
-      response.status,
-      error?.code ?? 'network',
-      error?.message ?? response.statusText,
-      error?.details ?? {},
-    );
+    throw new ApiError(response.status, error?.code ?? 'network', error?.message ?? response.statusText, error?.details ?? {});
   }
   return body as T;
+}
+async function raw<T>(path: string, init: RequestInit = {}, token?: string | null): Promise<T> {
+  const url = `${BASE}${path}`;
+  try {
+    return await fetchOnce<T>(url, init, token);
+  } catch (e) {
+    // Cross-origin api.* may be unreachable (DNS filtering); retry same-origin once.
+    const networkish = e instanceof TypeError || (e instanceof ApiError && (e.status === 0 || e.code === 'network' || e.code === 'bad_response'));
+    if (!baseFallbackTried && isCrossOriginBase() && networkish) {
+      baseFallbackTried = true;
+      try { console.warn(`[api] ${BASE} unreachable (${String((e as Error).message).slice(0,120)}), retrying same-origin`, e); } catch {}
+      BASE = '';
+      return fetchOnce<T>(`${BASE}${path}`, init, token);
+    }
+    throw e;
+  }
 }
 
 async function refreshTokens(): Promise<void> {

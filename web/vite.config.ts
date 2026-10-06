@@ -13,7 +13,12 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png', 'sw.js'],
       manifest: false,
-      workbox: { globPatterns: ['**/*.{js,css,html,woff2,png,svg}'], navigateFallback: '/index.html', navigateFallbackDenylist: [/^\/v1\//, /^\/stream/] },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,woff2,png,svg}'],
+        navigateFallback: '/index.html',
+        // /auth and /embed are Telegram OAuth proxies, not SPA routes — must not be cached as index.html
+        navigateFallbackDenylist: [/^\/v1\//, /^\/stream/, /^\/auth/, /^\/embed\//, /^\/telegram-widget\.js/, /^\/css\//, /^\/js\//],
+      },
     }),
   ],
   resolve: { alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) } },
