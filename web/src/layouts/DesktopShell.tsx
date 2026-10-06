@@ -21,7 +21,10 @@ export function DesktopShell({ children }: { children: ReactNode }) {
     <>
       {/* md+ only: narrow Apple-like sidebar + minimal header. Mobile BottomNav stays elsewhere. */}
       <aside className="tv-sidebar hidden w-[220px] shrink-0 border-e border-[var(--separator)] px-3 py-6 md:block lg:w-[240px]">
-        <div className="px-2 text-[15px] font-extrabold tracking-tight">Music</div>
+        <div className="flex items-center gap-2 px-2">
+          <img src="/brand/noax-64.png" alt="Noax" width={28} height={28} className="h-7 w-7 rounded-lg object-cover" />
+          <span className="text-[15px] font-extrabold tracking-tight">Noax</span>
+        </div>
         <nav className="mt-6 flex flex-col gap-0.5">
           {TABS.map(({ to, key, Icon }) => (
             <NavLink

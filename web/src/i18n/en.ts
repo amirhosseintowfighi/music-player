@@ -426,7 +426,7 @@ export const en: Record<keyof typeof fa, string> = {
   'taste.excludeHint': 'What you play from this playlist won’t shape your recommendations and mixes.',
   'taste.excluded': 'This playlist no longer shapes your recommendations',
   'taste.included': 'This playlist counts towards your taste again',
-  'tour.welcome.title': 'Welcome to Music Player! 🎧',
+  'tour.welcome.title': 'Welcome to Noax! 🎧',
   'tour.welcome.body': 'All your channel tracks in one place — Persian, Finglish, queue & Jam',
   'tour.home.title': 'This is your home',
   'tour.home.body': 'Pick up right where you left off',
@@ -447,7 +447,7 @@ export const en: Record<keyof typeof fa, string> = {
   'tour.replay.hint': 'See the 7-step tour again',
   'tour.replayed': 'Tour restarted',
 
-  'web.landing.title': 'Your music, everywhere.',
+  'web.landing.title': 'Noax — Your music, everywhere.',
   'web.landing.body': 'Your Telegram music library in the browser — download for offline on phone and desktop.',
   'web.landing.continue': 'Continue with Telegram',
   'web.landing.widgetHint': 'If the Telegram button did not load, retry with VPN or open the bot in Telegram.',

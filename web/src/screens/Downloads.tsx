@@ -30,7 +30,7 @@ export function Downloads() {
   if (ids.length === 0) return <EmptyState title={t('web.downloads.title')} body={t('web.downloads.empty')} />;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 pt-4 tv-safe [container-type:inline-size]">
+    <div className="w-full px-4 pt-4 tv-safe [container-type:inline-size]">
       <h1 className="mb-3 text-[clamp(18px,2.5cqw,22px)] font-bold">{t('web.downloads.title')}</h1>
       <Glass className="divide-y divide-[var(--separator)] overflow-hidden">
         {ids.map((id) => {

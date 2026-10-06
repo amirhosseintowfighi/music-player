@@ -151,7 +151,8 @@ function Landing({ onAuthenticated }: { onAuthenticated?: () => void }) {
   }, [botUsername, navigate, onAuthenticated, t]);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-5xl flex-col items-center justify-center px-6 py-12 text-center">
+    <div className="flex min-h-screen w-full flex-col items-center justify-center px-6 py-12 text-center">
+      <img src="/brand/noax-256.png" alt="Noax" width={96} height={96} className="mb-6 h-24 w-24 rounded-[22px] object-cover shadow-[0_8px_30px_rgba(0,0,0,0.25)]" />
       <h1 className="text-3xl font-bold">{t('web.landing.title')}</h1>
       <p className="mt-3 max-w-xl text-[14px] leading-7 text-[var(--ink-dim)]">{t('web.landing.body')}</p>
       <div id="tg-login" className="mt-8 min-h-[44px]">
@@ -293,7 +294,7 @@ function Shell() {
   useEffect(() => { if (!location.pathname.startsWith('/jam/')) void useJam.getState().resume(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-6xl">
+    <div className="flex min-h-screen w-full">
       <DesktopShell>
         {!isOnline && <div className="bg-amber-500 px-3 py-2 text-center text-[12px] font-semibold text-black" role="status">{t('app.offline')}</div>}
         <div ref={contentNavRef} tabIndex={-1} className="tv-type flex-1 outline-none">
@@ -338,7 +339,7 @@ function Shell() {
             </motion.main>
           </AnimatePresence>
         </div>
-        <div className="sticky bottom-0 z-30 mx-auto w-full max-w-6xl">
+        <div className="sticky bottom-0 z-30 w-full">
           <MiniPlayer thumb={currentThumb} />
           <BottomNav />
         </div>
