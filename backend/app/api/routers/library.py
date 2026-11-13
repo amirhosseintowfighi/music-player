@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import Claims, SessionDep, WritableClaims
+from app.api.deps import Claims, RedisDep, SessionDep, WritableClaims
 from app.errors import LimitReached
 from app.schemas import (
     AlbumOut,
@@ -12,6 +12,7 @@ from app.schemas import (
     AlbumRef,
     ArtistOut,
     ArtistPageOut,
+    LoudnessIn,
     Page,
     PaletteIn,
     ReportTrackIn,
@@ -155,6 +156,25 @@ async def report_track(
         session, claims.user_id, track_id, reason=body.reason, details=body.details
     )
     return ReportTrackOut(id=report.id, status=report.status)
+
+
+@router.put("/tracks/{track_id}/loudness", status_code=204)
+async def set_loudness(
+    track_id: int,
+    body: LoudnessIn,
+    claims: WritableClaims,
+    session: SessionDep,
+    redis: RedisDep,
+) -> None:
+    """How loud this client measured the track, for volume levelling (0017).
+
+    One report per listener per track counts, and only the first few listeners: the
+    value only ever sets a gain within a few dB, so it cannot be used to do harm, and
+    nobody can drag the mean around by repeating themselves.
+    """
+    assert claims.user_id
+    if await redis.set(f"loud:{track_id}:{claims.user_id}", "1", nx=True, ex=90 * 86400):
+        await library.remember_loudness(session, track_id, body.db)
 
 
 @router.put("/tracks/{track_id}/palette", status_code=204)

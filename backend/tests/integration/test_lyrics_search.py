@@ -112,3 +112,38 @@ async def test_backfill_fetches_most_played_first_and_rekeys_old_rows(
     # Nothing left to look up: the next run is free.
     again = await lyrics.backfill(session, http, settings, pause_s=0)
     assert again == {"looked_up": 0, "found": 0, "rekeyed": 0}
+
+
+# ── loudness: measured by listeners, settled by a few ─────────────────────────
+
+
+async def test_loudness_is_a_running_mean_of_distinct_listeners(
+    client: httpx.AsyncClient, session: AsyncSession, songs: dict[str, int]
+) -> None:
+    track = songs["Pol"]
+    first = bearer(await login(client, 7401))
+    url = f"/v1/tracks/{track}/loudness"
+    assert (
+        await client.put(url, json={"db": -10, "seconds": 60}, headers=first)
+    ).status_code == 204
+    # The same listener again does not move it.
+    await client.put(url, json={"db": -40, "seconds": 60}, headers=first)
+    second = bearer(await login(client, 7402))
+    await client.put(url, json={"db": -14, "seconds": 60}, headers=second)
+    row = (
+        await session.execute(
+            select(Track.loudness_db, Track.loudness_reports).where(Track.id == track)
+        )
+    ).one()
+    assert (round(row.loudness_db, 1), row.loudness_reports) == (-12.0, 2)
+
+    # Out-of-range values are refused outright.
+    bad = await client.put(url, json={"db": 6, "seconds": 60}, headers=second)
+    assert bad.status_code == 422
+    # And the level travels with the track.
+    channel_id = await session.scalar(text("SELECT id FROM channels WHERE username = 'lyricchan'"))
+    user_id = await session.scalar(text("SELECT id FROM users WHERE tg_id = 7401"))
+    await subscribe(session, int(user_id), int(channel_id))
+    await session.commit()
+    body = (await client.get("/v1/search", params={"q": "pol"}, headers=first)).json()
+    assert body["items"][0]["loudness"] == -12.0

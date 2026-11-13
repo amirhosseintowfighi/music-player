@@ -169,6 +169,8 @@ class TrackOut(ApiModel):
     channel: TrackChannelRef | None = None
     # Dominant cover colours, so the player can paint before the artwork loads.
     palette: str | None = None
+    # Measured level in dBFS (0017), so the player can even it out from the first second.
+    loudness: float | None = None
 
 
 class ArtistOut(ApiModel):
@@ -850,6 +852,13 @@ class ReportTrackOut(ApiModel):
 
 
 HEX_COLOR = r"^#[0-9a-fA-F]{6}$"
+
+
+class LoudnessIn(ApiModel):
+    """How loud this client measured a track: mean level in dBFS over what it played."""
+
+    db: float = Field(ge=-60, le=0)
+    seconds: int = Field(ge=20, le=36_000, description="how much of the track was measured")
 
 
 class PaletteIn(ApiModel):

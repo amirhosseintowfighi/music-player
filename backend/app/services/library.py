@@ -153,6 +153,7 @@ async def hydrate_tracks(
                 liked=t.id in liked,
                 channel=channels.get(t.id),
                 palette=t.cover_palette,
+                loudness=None if t.loudness_db is None else round(t.loudness_db, 1),
             )
         )
     return out
@@ -585,6 +586,29 @@ async def get_artist(session: AsyncSession, artist_id: int, lang: Lang) -> Artis
         latin_name=artist.latin_name,
         tracks_count=artist.tracks_count,
         image_url=artist.image_url,
+    )
+
+
+# A few listeners agreeing is enough; after that the level is settled and costs nothing.
+LOUDNESS_MAX_REPORTS = 5
+
+
+async def remember_loudness(session: AsyncSession, track_id: int, db: float) -> None:
+    """Folds one client's measurement into the canonical track's running mean.
+
+    Like the palette, measured by listeners because the core never touches audio
+    bytes. Deliberately leaves ``updated_at`` alone: the level is not searchable, and
+    touching it would push every played track through the search sync again.
+    """
+    await session.execute(
+        text(
+            "UPDATE tracks SET"
+            " loudness_db = CASE WHEN loudness_db IS NULL THEN :db"
+            "   ELSE (loudness_db * loudness_reports + :db) / (loudness_reports + 1) END,"
+            " loudness_reports = loudness_reports + 1"
+            " WHERE id = (SELECT COALESCE(canonical_track_id, id) FROM tracks WHERE id = :id)"
+            "   AND loudness_reports < :max"
+        ).bindparams(db=db, id=track_id, max=LOUDNESS_MAX_REPORTS)
     )
 
 
