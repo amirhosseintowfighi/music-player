@@ -221,6 +221,9 @@ class SearchOut(ApiModel):
     offset: int
     limit: int
     degraded: bool = Field(False, description="true when served by the Postgres fallback")
+    lyric_matches: list[int] = Field(
+        default_factory=list, description="ids of results found by their lyrics"
+    )
 
 
 class SuggestOut(ApiModel):

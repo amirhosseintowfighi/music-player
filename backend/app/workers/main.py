@@ -67,6 +67,7 @@ class WorkerSettings:
         jobs.crawler_healthcheck,
         jobs.enrich_artists,
         jobs.enrich_lastfm,
+        jobs.backfill_lyrics,
         jobs.notify_new_releases,
         jobs.refresh_blends,
         jobs.warm_cache,
@@ -102,6 +103,8 @@ class WorkerSettings:
         # Artist photos: small, external, and nobody is waiting for it.
         cron(jobs.enrich_artists, minute={8, 28, 48}, unique=True),
         cron(jobs.enrich_lastfm, minute={18, 38, 58}, unique=True),
+        # Lyrics ahead of time, for search by lyrics: a few dozen songs every ten minutes.
+        cron(jobs.backfill_lyrics, minute=set(range(6, 60, 10)), unique=True),
         cron(jobs.notify_new_releases, hour={13}, minute={20}, unique=True),
         # Daily, after a full day of crawling has been recorded.
         cron(jobs.crawler_healthcheck, hour={7}, minute={0}, unique=True),

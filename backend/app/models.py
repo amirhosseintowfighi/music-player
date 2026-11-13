@@ -261,6 +261,9 @@ class Track(Base):
     metadata_probed_at: Mapped[datetime | None] = mapped_column(TS)
     # "#rrggbb,#rrggbb,#rrggbb" — reported by the first client that rendered it.
     cover_palette: Mapped[str | None] = mapped_column(Text)
+    # Measured by the clients that played it (0017): dBFS, a running mean.
+    loudness_db: Mapped[float | None] = mapped_column(Float)
+    loudness_reports: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     cdn_url: Mapped[str | None] = mapped_column(Text)
     cdn_url_fetched_at: Mapped[datetime | None] = mapped_column(TS)
     resolve_status: Mapped[str] = mapped_column(Text, server_default="resolved")
@@ -613,6 +616,8 @@ class TrackLyrics(Base):
     plain: Mapped[str | None] = mapped_column(Text)
     source: Mapped[str | None] = mapped_column(Text)
     fetched_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    # normalize_key of the words, for search by lyrics (0017).
+    search_text: Mapped[str | None] = mapped_column(Text)
 
 
 class Blend(Base):

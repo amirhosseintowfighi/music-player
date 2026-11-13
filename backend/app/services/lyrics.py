@@ -11,6 +11,8 @@ its words to the studio one.
 
 from __future__ import annotations
 
+import asyncio
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -20,6 +22,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import Settings
+from app.domain.text.normalizer import normalize_key
 from app.errors import NotFound
 from app.models import Track, TrackLyrics
 from app.services import history
@@ -33,6 +36,18 @@ DURATION_SLACK_S = 4
 # A miss is re-asked now and then: somebody may have added the song since.
 RETRY_MISS_AFTER = timedelta(days=30)
 USER_AGENT = "tmusic-miniapp (https://github.com/amirhosseintowfighi/music-player)"
+
+
+# "[01:23.45]" and the "[ar: …]" style tags at the top of an LRC file.
+_LRC_TAG = re.compile(r"\[[^\]]*\]")
+SEARCH_TEXT_MAX = 6000
+
+
+def search_text(synced: str | None, plain: str | None) -> str | None:
+    """The words alone, as a search key: what search by lyrics matches against."""
+    words = plain or _LRC_TAG.sub(" ", synced or "")
+    key = normalize_key(words)[:SEARCH_TEXT_MAX]
+    return key or None
 
 
 @dataclass(frozen=True, slots=True)
@@ -146,8 +161,70 @@ async def get(
     row.plain = (found or {}).get("plainLyrics") or None
     row.source = "lrclib" if found else None
     row.fetched_at = datetime.now(UTC)
+    row.search_text = search_text(row.synced, row.plain)
     if cached is None:
         session.add(row)
+    if found is not None:
+        # The search index syncs on updated_at: new words make the track findable by them.
+        await session.execute(
+            text("UPDATE tracks SET updated_at = now() WHERE id = :t").bindparams(t=root)
+        )
     if found is None:
         return None
     return Lyrics(root, row.synced, row.plain, row.source)
+
+
+BACKFILL_BATCH = 40
+# LRCLIB is free and run by volunteers: a pause between lookups keeps us a polite user.
+BACKFILL_PAUSE_S = 1.0
+
+
+async def backfill(
+    session: AsyncSession,
+    http: httpx.AsyncClient,
+    settings: Settings,
+    limit: int = BACKFILL_BATCH,
+    pause_s: float = BACKFILL_PAUSE_S,
+) -> dict[str, int]:
+    """Looks up lyrics ahead of anyone opening them, most-played songs first.
+
+    This is what makes search by lyrics useful: a song is only findable by its words
+    once we have them. Rows stored before 0017 get their search key here too.
+    """
+    stale = await session.execute(
+        text(
+            "SELECT track_id, synced, plain FROM track_lyrics"
+            " WHERE found AND search_text IS NULL LIMIT 500"
+        )
+    )
+    rekeyed = 0
+    for track_id, synced, plain in stale.tuples():
+        await session.execute(
+            text("UPDATE track_lyrics SET search_text = :s WHERE track_id = :t").bindparams(
+                s=search_text(synced, plain) or "", t=track_id
+            )
+        )
+        await session.execute(
+            text("UPDATE tracks SET updated_at = now() WHERE id = :t").bindparams(t=track_id)
+        )
+        rekeyed += 1
+    if not settings.lyrics_api_url:
+        return {"looked_up": 0, "found": 0, "rekeyed": rekeyed}
+    rows = await session.execute(
+        text(
+            "SELECT t.id FROM tracks t"
+            " WHERE t.canonical_track_id IS NULL AND NOT t.hidden AND t.playable"
+            " AND t.title <> ''"
+            " AND NOT EXISTS (SELECT 1 FROM track_lyrics l WHERE l.track_id = t.id)"
+            " ORDER BY t.plays_total DESC, t.channels_count DESC, t.id DESC LIMIT :lim"
+        ).bindparams(lim=limit)
+    )
+    looked_up = found = 0
+    for (track_id,) in rows.tuples():
+        if looked_up:
+            await asyncio.sleep(pause_s)
+        looked_up += 1
+        if await get(session, http, settings, track_id) is not None:
+            found += 1
+        await session.commit()
+    return {"looked_up": looked_up, "found": found, "rekeyed": rekeyed}

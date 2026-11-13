@@ -40,7 +40,12 @@ async def search_tracks(
     metrics.SEARCHES.labels(scope, str(hit.degraded).lower()).inc()
     items = await library.hydrate_tracks(session, hit.ids, claims.lang, claims.user_id)
     return SearchOut(
-        items=items, total=hit.total, offset=offset, limit=limit, degraded=hit.degraded
+        items=items,
+        total=hit.total,
+        offset=offset,
+        limit=limit,
+        degraded=hit.degraded,
+        lyric_matches=[i.id for i in items if i.id in hit.lyric_ids],
     )
 
 

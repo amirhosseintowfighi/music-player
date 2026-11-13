@@ -1,0 +1,14 @@
+-- 0017 — what brings people in and keeps them: lyrics search, even loudness, and a
+-- page for the people who run the channels.
+--
+-- Additive like 0015/0016: one new table and nullable / defaulted columns.
+
+-- The words of a song, normalised the way search keys are (normalize_key), so a
+-- line someone half-remembers finds the song. Filled whenever lyrics are stored.
+ALTER TABLE track_lyrics ADD COLUMN IF NOT EXISTS search_text text;
+
+-- How loud a track plays, in dB relative to full scale, as measured by the clients
+-- that played it (the core never touches audio bytes). A running mean of up to a
+-- handful of reports; the player turns everything towards one level from it.
+ALTER TABLE tracks ADD COLUMN IF NOT EXISTS loudness_db real;
+ALTER TABLE tracks ADD COLUMN IF NOT EXISTS loudness_reports smallint NOT NULL DEFAULT 0;

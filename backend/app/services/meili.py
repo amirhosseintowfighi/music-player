@@ -18,6 +18,7 @@ INDEX_SETTINGS: dict[str, Any] = {
         "artists_latin",
         "title_skel",
         "artists_skel",
+        "lyrics",
     ],
     "filterableAttributes": [
         "channel_ids",
@@ -53,6 +54,10 @@ PRIMARY_FIELDS = [
 ]
 SKELETON_FIELDS = ["title_skel", "artists_skel"]
 SKELETON_WEIGHT = 0.6
+# A line of a song: below a title or an artist match, because nearly any word is in
+# some song's lyrics, but still on the first page when nothing else fits (0017).
+LYRICS_FIELDS = ["lyrics"]
+LYRICS_WEIGHT = 0.5
 
 
 class MeiliClient:
