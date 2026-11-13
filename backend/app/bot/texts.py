@@ -26,6 +26,7 @@ TEXTS: dict[str, dict[Lang, str]] = {
             "راهنما:\n"
             "• افزودن کانال عمومی: @username یا لینک t.me بفرست، یا یک پست را فوروارد کن.\n"
             "• کانال خصوصی خودت: من را ادمین کانال کن؛ از آن به بعد آهنگ‌های جدید اضافه می‌شوند.\n"
+            "• در هر چتی بنویس @{bot} و اسم آهنگ تا همان‌جا برای دوستت بفرستی\n"
             "• /jam با دوستانت هم‌زمان موزیک گوش بده\n"
             "• /lang تغییر زبان"
         ),
@@ -33,6 +34,7 @@ TEXTS: dict[str, dict[Lang, str]] = {
             "Help:\n"
             "• Public channel: send @username or a t.me link, or forward a post.\n"
             "• Your private channel: make me an admin; new tracks are added from then on.\n"
+            "• In any chat, type @{bot} and a song name to send it right there\n"
             "• /jam listen together with friends, in sync\n"
             "• /lang change language"
         ),
@@ -207,6 +209,11 @@ TEXTS: dict[str, dict[Lang, str]] = {
     "jam_full": {"fa": "این جم پر است.", "en": "This Jam is full."},
     "jam_ended": {"fa": "جم تمام شد. 👋", "en": "The Jam has ended. 👋"},
     "jam_left": {"fa": "از جم خارج شدی.", "en": "You left the Jam."},
+    # ── inline mode: @bot <song> in any chat ──
+    "inline_open": {"fa": "🎧 گوش دادن در نوکس", "en": "🎧 Listen in Noax"},
+    "inline_button": {"fa": "باز کردن نوکس", "en": "Open Noax"},
+    "inline_caption": {"fa": "🎧 با @{bot}", "en": "🎧 via @{bot}"},
+    "inline_card": {"fa": "🎵 «{title}» — {artist}", "en": "🎵 «{title}» — {artist}"},
     "error": {
         "fa": "مشکلی پیش آمد، کمی بعد دوباره امتحان کن.",
         "en": "Something went wrong, please try again shortly.",

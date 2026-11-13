@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.bot.handlers import DbSessionMiddleware, build_router
 from app.config import Settings
+from app.services.meili import MeiliClient
 
 ALLOWED_UPDATES = [
     "message",
@@ -17,6 +18,7 @@ ALLOWED_UPDATES = [
     "my_chat_member",
     "channel_post",
     "pre_checkout_query",
+    "inline_query",
 ]
 
 
@@ -35,8 +37,9 @@ def build_dispatcher(
     maker: async_sessionmaker[AsyncSession],
     http: httpx.AsyncClient,
     redis: Redis,
+    meili: MeiliClient | None = None,
 ) -> Dispatcher:
-    dp = Dispatcher(settings=settings, http=http, redis=redis)
+    dp = Dispatcher(settings=settings, http=http, redis=redis, meili=meili)
     middleware = DbSessionMiddleware(maker)
     for observer in (
         dp.message,
@@ -44,6 +47,7 @@ def build_dispatcher(
         dp.my_chat_member,
         dp.channel_post,
         dp.pre_checkout_query,
+        dp.inline_query,
     ):
         observer.middleware(middleware)
     dp.include_router(build_router())

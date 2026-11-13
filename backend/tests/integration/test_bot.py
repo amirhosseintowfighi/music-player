@@ -120,7 +120,7 @@ async def test_help_and_language(
         client,
         private_message(text="/lang", entities=[{"type": "bot_command", "offset": 0, "length": 5}]),
     )
-    assert tg.texts()[0] == TEXTS["help"]["fa"]
+    assert tg.texts()[0] == TEXTS["help"]["fa"].format(bot="tmusic_test_bot")
     await send(
         client,
         {
