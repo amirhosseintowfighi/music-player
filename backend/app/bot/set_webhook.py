@@ -28,12 +28,14 @@ async def main() -> None:
                 ("start", "شروع"),
                 ("help", "راهنما"),
                 ("jam", "گوش دادن با دوستان"),
+                ("owner", "آمار کانال من"),
                 ("lang", "تغییر زبان"),
             ],
             "en": [
                 ("start", "Start"),
                 ("help", "Help"),
                 ("jam", "Listen with friends"),
+                ("owner", "My channel's stats"),
                 ("lang", "Language"),
             ],
         }.items():

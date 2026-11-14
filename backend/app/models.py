@@ -660,3 +660,16 @@ class LibraryPin(Base):
     kind: Mapped[str] = mapped_column(Text, primary_key=True)
     ref_id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     pinned_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class ChannelOwner(Base):
+    """An administrator of a channel, verified through the bot (0017)."""
+
+    __tablename__ = "channel_owners"
+    channel_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("channels.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    verified_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())

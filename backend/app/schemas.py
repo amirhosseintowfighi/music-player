@@ -1158,3 +1158,27 @@ class ClientEventOut(ApiModel):
 class ClientLogOut(ApiModel):
     summary: dict[str, dict[str, int]]
     items: list[ClientEventOut]
+
+
+# ── channel owners (0017) ──
+
+
+class OwnerClaimIn(ApiModel):
+    channel: str = Field(min_length=2, max_length=200, description="@username or t.me link")
+
+
+class OwnerChannelOut(ApiModel):
+    """How one channel does in the app. Aggregates only: never who listened."""
+
+    id: int
+    username: str | None
+    title: str | None
+    tracks_count: int
+    app_followers: int = Field(description="people who added it to their library")
+    plays_7d: int
+    listeners_7d: int
+    plays_30d: int
+    listeners_30d: int
+    minutes_30d: int
+    daily: list[int] = Field(description="plays per day for the last 30 days, oldest first")
+    top_tracks: list[TrackOut]

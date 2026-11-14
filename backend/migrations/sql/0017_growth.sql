@@ -12,3 +12,14 @@ ALTER TABLE track_lyrics ADD COLUMN IF NOT EXISTS search_text text;
 -- handful of reports; the player turns everything towards one level from it.
 ALTER TABLE tracks ADD COLUMN IF NOT EXISTS loudness_db real;
 ALTER TABLE tracks ADD COLUMN IF NOT EXISTS loudness_reports smallint NOT NULL DEFAULT 0;
+
+-- The people who run a channel, proven by Telegram (an administrator of it, as seen
+-- by the bot). They get a page of how their channel does in the app: aggregate
+-- numbers only, never who listened.
+CREATE TABLE IF NOT EXISTS channel_owners (
+    channel_id  bigint      NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+    user_id     bigint      NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    verified_at timestamptz NOT NULL DEFAULT now(),
+    PRIMARY KEY (channel_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS channel_owners_user ON channel_owners (user_id);

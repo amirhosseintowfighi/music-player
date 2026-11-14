@@ -31,7 +31,7 @@ from app.config import Settings
 from app.errors import AppError, Forbidden, InvalidInput, LimitReached, NotFound
 from app.models import Channel, User
 from app.security.initdata import TelegramUser
-from app.services import channels, history, jams, uploads, users
+from app.services import channels, history, jams, owners, uploads, users
 from app.services.channels import ChannelRef
 from app.services.ingest import ingest_items
 from tmusic_common.indexer_contract import AudioItem
@@ -144,6 +144,22 @@ async def on_help(message: Message, session: AsyncSession, settings: Settings) -
     if message.from_user:
         user = await _user(session, message.from_user)
         await message.answer(t("help", user.lang, bot=settings.bot_username))
+
+
+async def on_owner(message: Message, session: AsyncSession, settings: Settings) -> None:
+    """/owner: the page for people who run a channel."""
+    if message.from_user is None:
+        return
+    user = await _user(session, message.from_user)
+    url = f"{settings.webapp_url.rstrip('/')}/#/owner"
+    await message.answer(
+        t("owner_intro", user.lang, bot=settings.bot_username),
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text=t("owner_open", user.lang), web_app=WebAppInfo(url=url))]
+            ]
+        ),
+    )
 
 
 async def on_lang(message: Message, session: AsyncSession) -> None:
@@ -274,6 +290,8 @@ async def on_channel_membership(event: ChatMemberUpdated, session: AsyncSession,
         return
     if channel.source == "bot_admin" and channel.status == "paused":
         channel.status, channel.status_reason = "active", None
+    # Whoever made the bot an admin administers the channel: the owner page is theirs.
+    await owners.record(session, channel.id, user.id)
     try:
         await bot.send_message(
             event.from_user.id, t("admin_connected", user.lang, title=chat.title or "")
@@ -451,6 +469,7 @@ def build_router() -> Router:
     router.message.register(on_start, CommandStart())
     router.message.register(on_help, Command("help"))
     router.message.register(on_lang, Command("lang"))
+    router.message.register(on_owner, Command("owner"))
     router.message.register(on_jam, Command("jam"))
     router.callback_query.register(on_jam_button, F.data.startswith("jam:"))
     router.callback_query.register(on_lang_chosen, F.data.in_({"lang:fa", "lang:en"}))

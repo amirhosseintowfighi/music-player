@@ -78,8 +78,14 @@ TEXTS: dict[str, dict[Lang, str]] = {
     },
     "banned": {"fa": "دسترسی شما محدود شده است.", "en": "Your access has been restricted."},
     "admin_connected": {
-        "fa": "✅ کانال «{title}» وصل شد. آهنگ‌های جدیدش خودکار اضافه می‌شوند.",
-        "en": "✅ «{title}» is connected. New tracks will be added automatically.",
+        "fa": (
+            "✅ کانال «{title}» وصل شد. آهنگ‌های جدیدش خودکار اضافه می‌شوند.\n"
+            "آمار پخش کانالت را با /owner ببین."
+        ),
+        "en": (
+            "✅ «{title}» is connected. New tracks will be added automatically.\n"
+            "See how it does with /owner."
+        ),
     },
     "upload_added": {
         "fa": "🎵 «{title}» اضافه شد. حالا در اپ قابل پخش است.",
@@ -229,6 +235,23 @@ TEXTS: dict[str, dict[Lang, str]] = {
     "jam_full": {"fa": "این جم پر است.", "en": "This Jam is full."},
     "jam_ended": {"fa": "جم تمام شد. 👋", "en": "The Jam has ended. 👋"},
     "jam_left": {"fa": "از جم خارج شدی.", "en": "You left the Jam."},
+    # ── channel owners ──
+    "owner_intro": {
+        "fa": (
+            "📊 صاحب کانال موزیک هستی؟\n"
+            "ببین آهنگ‌های کانالت در نوکس چقدر پخش می‌شوند: پخش‌ها، شنونده‌ها، "
+            "پرطرفدارترین آهنگ‌ها و چند نفر کانالت را به کتابخانه‌شان اضافه کرده‌اند.\n\n"
+            "اول @{bot} را ادمین کانالت کن (فقط اجازهٔ دیدن پیام‌ها کافی است)، بعد صفحه را باز کن."
+        ),
+        "en": (
+            "📊 Do you run a music channel?\n"
+            "See how your channel does in Noax: plays, listeners, your most played songs "
+            "and how many people added it to their library.\n\n"
+            "First make @{bot} an admin of your channel (no extra rights needed), "
+            "then open the page."
+        ),
+    },
+    "owner_open": {"fa": "📊 صفحهٔ صاحب کانال", "en": "📊 Channel owner page"},
     # ── inline mode: @bot <song> in any chat ──
     "inline_open": {"fa": "🎧 گوش دادن در نوکس", "en": "🎧 Listen in Noax"},
     "inline_button": {"fa": "باز کردن نوکس", "en": "Open Noax"},
