@@ -1182,3 +1182,14 @@ class OwnerChannelOut(ApiModel):
     minutes_30d: int
     daily: list[int] = Field(description="plays per day for the last 30 days, oldest first")
     top_tracks: list[TrackOut]
+
+
+class StoryImageIn(ApiModel):
+    """A share card drawn by the client, base64 of a PNG or JPEG."""
+
+    image: str = Field(min_length=100, max_length=2_100_000)
+
+
+class StoryImageOut(ApiModel):
+    url: str
+    expires_in: int
