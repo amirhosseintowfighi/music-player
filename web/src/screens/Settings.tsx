@@ -12,6 +12,7 @@ import { Credit, Glass, cx } from '@/components/ui';
 import { useI18n, type Key } from '@/i18n';
 import { EQ_PRESETS, useAudioSettings, type EqPreset } from '@/store/audio';
 import { useUi } from '@/store/ui';
+import { useInstall } from '@/lib/install';
 import { resetTour, TOUR_REPLAY_EVENT } from '@/lib/tour';
 
 function Row({ label, hint, children, labelId }: { label: string; hint?: string; children: React.ReactNode; labelId?: string }) {
@@ -202,6 +203,29 @@ function PlaybackSettings() {
   );
 }
 
+/** Install as an app (Windows, Android, macOS) where the browser offers it. */
+function InstallCard() {
+  const { t } = useI18n();
+  const prompt = useInstall((s) => s.prompt);
+  const install = useInstall((s) => s.install);
+  if (!prompt) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => void install()}
+      className="mb-3 flex w-full items-center gap-3 rounded-[var(--radius-glass)] bg-[var(--accent)] px-3.5 py-3 text-start text-[var(--accent-ink)] transition-transform active:scale-[0.98]"
+    >
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-black/15 text-[17px]" aria-hidden>
+        ⬇
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14px] font-bold">{t('install.title')}</span>
+        <span className="block truncate text-[12px] opacity-80">{t('install.hint')}</span>
+      </span>
+    </button>
+  );
+}
+
 export function Settings() {
   const { t } = useI18n();
   const me = useMe();
@@ -218,6 +242,7 @@ export function Settings() {
     <div className="px-4 pt-4 tv-safe [container-type:inline-size]">
       <h1 className="mb-4 text-[clamp(18px,2.5cqw,22px)] font-bold">{t('settings.title')}</h1>
 
+      <InstallCard />
       <a
         href="#/owner"
         className="mb-3 flex items-center gap-3 rounded-[var(--radius-glass)] bg-[var(--card)] px-3.5 py-3 transition-transform active:scale-[0.98]"

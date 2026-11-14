@@ -78,6 +78,8 @@ export const en: Record<keyof typeof fa, string> = {
   'search.recent': 'Recent searches',
   'search.clear': 'Clear',
   'search.results': '{count} results',
+  'install.title': 'Install Noax on this device',
+  'install.hint': 'Its own icon and window, like any app',
   'owner.title': 'Channel owner',
   'owner.entryHint': "Your channel's plays in Noax",
   'owner.intro': 'See how much your channel is heard here. You see the numbers, never who listened.',

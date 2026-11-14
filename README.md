@@ -10,6 +10,7 @@
 | [docs/API.md](docs/API.md) · [openapi.json](docs/openapi.json) | قرارداد API |
 | [docs/adr/](docs/adr/README.md) · [ADR-002](docs/ADR-002-indexing-strategy.md) · [ADR-003](docs/ADR-003-playback-and-metadata.md) | تصمیم‌های فنی (ADR) — ۰۰۲ منبع کاتالوگ را عوض می‌کند، ۰۰۳ نقشهٔ پخش و متادیتا است |
 | [docs/DEPLOY.md](docs/DEPLOY.md) | استقرار روی سرور واقعی |
+| [docs/APPS.md](docs/APPS.md) | اپ اندروید (TWA) و ویندوز (PWA / MSIX) |
 | [docs/RUNBOOK.md](docs/RUNBOOK.md) | کارهای عملیاتی و پاسخ به هشدارها |
 | [docs/design/](docs/design/README.md) | سه گزینهٔ طراحی Home و تصمیم نهایی |
 

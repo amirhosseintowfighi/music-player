@@ -104,6 +104,13 @@ server {
     ssl_certificate_key /etc/nginx/certs/privkey.pem;
     root /srv/web;
 
+    # Android app (TWA) verification: the file or a 404, never the SPA's index.html.
+    location = /.well-known/assetlinks.json {
+        default_type application/json;
+        add_header Access-Control-Allow-Origin "*" always;
+        try_files $uri =404;
+    }
+
     add_header Strict-Transport-Security "max-age=31536000" always;
     add_header X-Content-Type-Options "nosniff" always;
     add_header Referrer-Policy "strict-origin-when-cross-origin" always;

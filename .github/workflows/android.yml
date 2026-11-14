@@ -1,0 +1,92 @@
+name: android-app
+
+# Builds the Android app (a Trusted Web Activity around the web app) on demand.
+# One-time setup: run apps/android/make-keystore.sh and add the two secrets it
+# prints. Then: Actions → android-app → Run workflow. The APK (for Bazaar, Myket or a
+# direct download) and the AAB (for Google Play) are attached to the run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: "Web app domain (no https://)"
+        required: true
+        default: noax.virgule.studio
+      package:
+        description: "Android application id"
+        required: true
+        default: studio.virgule.noax
+      version_name:
+        description: "Version shown to users"
+        required: true
+        default: "1.0.0"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Check the secrets are there
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_B64" || { echo "::error::Add the ANDROID_KEYSTORE_B64 secret (apps/android/make-keystore.sh)"; exit 1; }
+          test -n "$KEYSTORE_PASSWORD" || { echo "::error::Add the ANDROID_KEYSTORE_PASSWORD secret"; exit 1; }
+      - name: Project from the template
+        env:
+          DOMAIN: ${{ inputs.domain }}
+          PACKAGE: ${{ inputs.package }}
+          VERSION_NAME: ${{ inputs.version_name }}
+          # Every run is a newer build for Android: the run number only ever grows.
+          VERSION_CODE: ${{ github.run_number }}
+        run: |
+          mkdir -p build
+          sed -e "s/__DOMAIN__/${DOMAIN}/g" -e "s/__PACKAGE__/${PACKAGE}/g" \
+              -e "s/__VERSION_NAME__/${VERSION_NAME}/g" -e "s/__VERSION_CODE__/${VERSION_CODE}/g" \
+              twa-manifest.template.json > build/twa-manifest.json
+          node -e "JSON.parse(require('fs').readFileSync('build/twa-manifest.json','utf8'))"
+          echo "${{ secrets.ANDROID_KEYSTORE_B64 }}" | base64 -d > build/android.keystore
+      - name: Bubblewrap
+        run: |
+          npm install -g @bubblewrap/cli@1
+          # Use the runner's JDK and Android SDK instead of letting Bubblewrap ask.
+          mkdir -p ~/.bubblewrap
+          printf '{"jdkPath":"%s","androidSdkPath":"%s"}' "$JAVA_HOME" "$ANDROID_HOME" > ~/.bubblewrap/config.json
+          yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+      - name: Build APK and AAB
+        working-directory: apps/android/build
+        env:
+          BUBBLEWRAP_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          BUBBLEWRAP_KEY_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          bubblewrap update --skipVersionUpgrade
+          bubblewrap build --skipPwaValidation
+          ls -la *.apk *.aab
+      - name: Signing fingerprint (for ANDROID_CERT_SHA256 on the server)
+        working-directory: apps/android/build
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: |
+          fp=$(keytool -list -v -keystore android.keystore -alias noax -storepass "$KEYSTORE_PASSWORD" | sed -n 's/^.*SHA256: //p')
+          echo "ANDROID_CERT_SHA256=$fp" | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noax-android-${{ inputs.version_name }}
+          path: |
+            apps/android/build/app-release-signed.apk
+            apps/android/build/app-release-bundle.aab
+          if-no-files-found: error

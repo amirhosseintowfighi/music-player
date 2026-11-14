@@ -45,3 +45,21 @@ describe('web playback extras', () => {
     useAudioSettings.getState().set({ saver: 'cellular' });
   });
 });
+
+describe('install as an app', () => {
+  it('keeps the browser prompt and uses it once', async () => {
+    const { listenForInstall, useInstall } = await import('@/lib/install');
+    listenForInstall();
+    const prompt = vi.fn(async () => undefined);
+    const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+      prompt,
+      userChoice: Promise.resolve({ outcome: 'accepted' as const }),
+    });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true); // no mini-infobar: our button asks
+    expect(useInstall.getState().prompt).toBe(event);
+    expect(await useInstall.getState().install()).toBe(true);
+    expect(prompt).toHaveBeenCalledOnce();
+    expect(useInstall.getState()).toMatchObject({ prompt: null, installed: true });
+  });
+});
