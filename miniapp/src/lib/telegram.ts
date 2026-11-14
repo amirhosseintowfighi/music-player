@@ -31,7 +31,16 @@ interface WebApp {
   openTelegramLink?: (url: string) => void;
   openLink?: (url: string) => void;
   openInvoice?: (url: string, callback?: (status: InvoiceStatus) => void) => void;
+  /** Bot API 7.8: opens the story editor with an image Telegram fetches from a URL. */
+  shareToStory?: (mediaUrl: string, params?: StoryParams) => void;
+  isVersionAtLeast?: (version: string) => boolean;
   close?: () => void;
+}
+
+export interface StoryParams {
+  text?: string;
+  /** A link sticker on the story; premium-only on Telegram's side, ignored otherwise. */
+  widget_link?: { url: string; name?: string };
 }
 
 /** Result of a Stars invoice opened with ``openInvoice``. */
@@ -136,4 +145,20 @@ export function openInvoice(url: string): Promise<InvoiceStatus> {
       resolve('failed');
     }
   });
+}
+
+
+/** True where the Telegram app can open its story editor (mobile, Bot API 7.8+). */
+export function canShareToStory(): boolean {
+  const app = webApp();
+  if (!app?.shareToStory || !isInsideTelegram()) return false;
+  try {
+    return app.isVersionAtLeast ? app.isVersionAtLeast('7.8') : true;
+  } catch {
+    return false;
+  }
+}
+
+export function shareToStory(mediaUrl: string, params: StoryParams): void {
+  webApp()?.shareToStory?.(mediaUrl, params);
 }

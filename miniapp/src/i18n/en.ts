@@ -424,6 +424,7 @@ export const en: Record<keyof typeof fa, string> = {
   'share.copyLink': 'Copy link',
   'share.download': 'Download card',
   'share.copied': 'Link copied',
+  'share.story': 'Telegram story',
   'share.storyHint': 'Save card for Instagram Story',
   'credits.title': 'Credits',
   'credits.primary': 'Performed by',

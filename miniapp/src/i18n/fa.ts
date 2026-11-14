@@ -422,6 +422,7 @@ export const fa = {
   'share.copyLink': 'کپی لینک',
   'share.download': 'دانلود کارت',
   'share.copied': 'لینک کپی شد',
+  'share.story': 'استوری تلگرام',
   'share.storyHint': 'ذخیره برای استوری اینستاگرام',
   'credits.title': 'مشخصات آهنگ',
   'credits.primary': 'خواننده',
