@@ -20,7 +20,7 @@ import type { Track } from '@/api/client';
 import { fetchRadio } from '@/api/discover';
 import { fetchForTracks, loadProgress, saveProgress } from '@/api/listening';
 import { haptic } from '@/lib/telegram';
-import { applyEffects, resumeEffects, useAudioSettings } from '@/store/audio';
+import { applyEffects, levelTrack, resumeEffects, useAudioSettings } from '@/store/audio';
 import {
   allAudio,
   audio,
@@ -839,6 +839,7 @@ async function load(
     const resumeAt = saved && !saved.finished && saved.position_s > 30 ? saved.position_s : 0;
     if (get().current?.id !== track.id) return; // moved on while the ticket loaded
     if (!outgoing || el.src !== src) el.src = src;
+    levelTrack(el, track);
     if (resumeAt) el.currentTime = resumeAt;
     el.playbackRate = get().speed;
     if (positionAt) el.currentTime = Math.max(0, positionAt());
@@ -861,6 +862,7 @@ async function load(
       el = swapBack();
       cancelFade();
       el.src = src;
+      levelTrack(el, track);
       el.currentTime = position;
       el.playbackRate = get().speed;
       el.volume = 0;

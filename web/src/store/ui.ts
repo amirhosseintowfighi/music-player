@@ -23,6 +23,8 @@ interface UiState {
   toasts: Toast[];
   upsell: Upsell | null;
   playerOpen: boolean;
+  /** Car mode: the big-button player over everything (components/CarMode). */
+  carMode: boolean;
   actionTrack: Track | null;
   actionTrackThumb?: string | null;
   shareSheet: { track: Track; coverSrc?: string } | null;
@@ -35,6 +37,7 @@ interface UiState {
   dismissToast: (id: number) => void;
   showUpsell: (upsell: Upsell | null) => void;
   setPlayerOpen: (open: boolean) => void;
+  setCarMode: (on: boolean) => void;
   setActionTrack: (track: Track | null, thumb?: string | null) => void;
   setShareSheet: (sheet: { track: Track; coverSrc?: string } | null) => void;
 }
@@ -57,6 +60,7 @@ export const useUi = create<UiState>((set, get) => {
     toasts: [],
     upsell: null,
     playerOpen: false,
+    carMode: false,
     actionTrack: null,
     actionTrackThumb: null,
     shareSheet: null,
@@ -91,6 +95,9 @@ export const useUi = create<UiState>((set, get) => {
     },
     showUpsell(upsell) {
       set({ upsell });
+    },
+    setCarMode(on) {
+      set({ carMode: on });
     },
     setPlayerOpen(open) {
       set({ playerOpen: open });

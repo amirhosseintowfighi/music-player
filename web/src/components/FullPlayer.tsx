@@ -690,6 +690,18 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
           <CreditsSheet track={track} open={creditsOpen} onClose={() => setCreditsOpen(false)} />
 
           <Sheet open={optionsOpen} onClose={() => setOptionsOpen(false)} title={t('common.more')}>
+            <button
+              type="button"
+              onClick={() => {
+                haptic('light');
+                setOptionsOpen(false);
+                setOpen(false);
+                useUi.getState().setCarMode(true);
+              }}
+              className="mb-5 flex w-full items-center gap-3 rounded-xl bg-[var(--fill)] px-3.5 py-3 text-start text-[13.5px] font-semibold"
+            >
+              🚗 {t('car.open')}
+            </button>
             <p className="mb-2 px-1 text-[12.5px] text-[var(--ink-dim)]">{t('player.speed')}</p>
             <div className="mb-5 flex gap-2">
               {SPEEDS.map((value) => (

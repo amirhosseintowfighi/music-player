@@ -38,6 +38,7 @@ export function DesktopShell({ children }: { children: ReactNode }) {
                 )
               }
               data-focusable
+              data-tour={to === '/' ? 'tab-home' : `tab-${to.slice(1)}`}
             >
               <Icon size={18} />
               {t(key)}

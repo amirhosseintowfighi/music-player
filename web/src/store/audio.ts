@@ -6,8 +6,9 @@
  */
 import { create } from 'zustand';
 
+import { put, type Track } from '@/api/client';
 import { fragileWebView } from '@/lib/perf';
-import { onElement } from '@/player/engine';
+import { onElement, setSaverCheck } from '@/player/engine';
 
 export type EqPreset = 'flat' | 'bass' | 'treble' | 'vocal' | 'acoustic' | 'electronic' | 'night';
 
@@ -24,6 +25,9 @@ export const EQ_PRESETS: Record<EqPreset, readonly [number, number, number, numb
 };
 const BANDS = [60, 230, 910, 3600, 14000] as const;
 
+/** Data saver: never, only on mobile data, or always. */
+export type SaverMode = 'off' | 'cellular' | 'always';
+
 export interface AudioSettings {
   /** Seconds the end of one track overlaps the start of the next (0 = off). */
   crossfade: number;
@@ -32,10 +36,18 @@ export interface AudioSettings {
   eq: EqPreset;
   /** Animated artwork behind the full player (Canvas). */
   canvas: boolean;
+  saver: SaverMode;
 }
 
 const KEY = 'tmusic.audio';
-const DEFAULTS: AudioSettings = { crossfade: 0, gapless: true, normalize: false, eq: 'flat', canvas: true };
+const DEFAULTS: AudioSettings = {
+  crossfade: 0,
+  gapless: true,
+  normalize: false,
+  eq: 'flat',
+  canvas: true,
+  saver: 'cellular',
+};
 
 function read(): AudioSettings {
   try {
@@ -54,9 +66,9 @@ export const useAudioSettings = create<AudioStore>((set, get) => ({
   ...read(),
   set(patch) {
     set(patch);
-    const { crossfade, gapless, normalize, eq, canvas } = get();
+    const { crossfade, gapless, normalize, eq, canvas, saver } = get();
     try {
-      localStorage.setItem(KEY, JSON.stringify({ crossfade, gapless, normalize, eq, canvas }));
+      localStorage.setItem(KEY, JSON.stringify({ crossfade, gapless, normalize, eq, canvas, saver }));
     } catch {
       /* settings for this session only */
     }
@@ -64,18 +76,57 @@ export const useAudioSettings = create<AudioStore>((set, get) => ({
   },
 }));
 
+// ── data saver ────────────────────────────────────────────────────────────────
+
+interface NetworkInfo {
+  type?: string;
+  saveData?: boolean;
+  effectiveType?: string;
+}
+
+/** Mobile data, a slow link, or the browser's own "save data" switch. */
+export function onMeteredNetwork(): boolean {
+  const connection = (navigator as Navigator & { connection?: NetworkInfo }).connection;
+  if (!connection) return false;
+  return (
+    connection.saveData === true ||
+    connection.type === 'cellular' ||
+    connection.effectiveType === 'slow-2g' ||
+    connection.effectiveType === '2g' ||
+    connection.effectiveType === '3g'
+  );
+}
+
+/**
+ * Whether to spend as little data as possible right now: the smallest copy of each
+ * song (the server picks it), no warming up of the next one, no moving artwork.
+ */
+export function saverActive(): boolean {
+  const { saver } = useAudioSettings.getState();
+  return saver === 'always' || (saver === 'cellular' && onMeteredNetwork());
+}
+
+setSaverCheck(saverActive);
+
 // ── the effects chain ─────────────────────────────────────────────────────────
 //
 // Built only once somebody turns an effect on: routing an element through Web Audio
 // cannot be undone, and on some phones a suspended AudioContext stops playback in
 // the background. Turning everything off again leaves the chain in place but neutral.
 
+interface Routed {
+  /** This element's own level: what evens one song out against the next. */
+  gain: GainNode;
+  /** Taps the song before any processing, to measure how loud it is. */
+  analyser: AnalyserNode;
+}
+
 interface Chain {
   ctx: AudioContext;
   input: AudioNode;
   filters: BiquadFilterNode[];
   compressor: DynamicsCompressorNode;
-  connected: WeakSet<HTMLAudioElement>;
+  connected: WeakMap<HTMLAudioElement, Routed>;
 }
 
 let chain: Chain | null = null;
@@ -107,12 +158,18 @@ function build(): Chain | null {
     for (let i = 0; i < filters.length - 1; i += 1) filters[i]?.connect(filters[i + 1] as AudioNode);
     filters[filters.length - 1]?.connect(compressor);
     compressor.connect(ctx.destination);
-    const built: Chain = { ctx, input: filters[0] as AudioNode, filters, compressor, connected: new WeakSet() };
+    const built: Chain = { ctx, input: filters[0] as AudioNode, filters, compressor, connected: new WeakMap() };
     onElement((el) => {
       if (built.connected.has(el)) return;
       try {
-        ctx.createMediaElementSource(el).connect(built.input);
-        built.connected.add(el);
+        const source = ctx.createMediaElementSource(el);
+        const gain = ctx.createGain();
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        source.connect(gain);
+        gain.connect(built.input);
+        source.connect(analyser);
+        built.connected.set(el, { gain, analyser });
       } catch {
         /* already routed, or the browser refuses: it simply plays unprocessed */
       }
@@ -145,6 +202,72 @@ export function applyEffects(): void {
     c.knee.value = 0;
     c.ratio.value = 1;
   }
+}
+
+// ── per-song levelling ────────────────────────────────────────────────────────
+//
+// Every song is measured by the first few listeners who play it with levelling on
+// (the server never touches audio). Once a level is known, every later listener
+// gets that song turned towards one common level from its first second; until
+// then the compressor above evens it out as it plays.
+
+/** Where every song is turned towards: the RMS level of typical modern masters. */
+export const TARGET_DB = -16;
+const MAX_CUT_DB = -9;
+const MAX_BOOST_DB = 6;
+/** Seconds of sound to measure before reporting; the start alone is not the song. */
+export const MEASURE_SECONDS = 40;
+const SILENCE_DB = -60;
+
+export function gainFor(loudness: number | null | undefined): number {
+  if (loudness === null || loudness === undefined) return 0;
+  return Math.max(MAX_CUT_DB, Math.min(MAX_BOOST_DB, TARGET_DB - loudness));
+}
+
+/** RMS level of one block of samples, in dBFS. */
+export function levelDb(samples: Float32Array): number {
+  let power = 0;
+  for (const v of samples) power += v * v;
+  const mean = power / Math.max(1, samples.length);
+  return mean > 0 ? 10 * Math.log10(mean) : -Infinity;
+}
+
+let measuring: { timer: ReturnType<typeof setInterval>; trackId: number } | null = null;
+
+function stopMeasuring(): void {
+  if (measuring) clearInterval(measuring.timer);
+  measuring = null;
+}
+
+/**
+ * Called by the player when ``track`` starts on ``el``: sets that element's gain
+ * from the song's known level, or measures the song when nobody has yet.
+ */
+export function levelTrack(el: HTMLAudioElement, track: Track): void {
+  stopMeasuring();
+  const routed = chain?.connected.get(el);
+  if (!routed || !chain) return;
+  const { normalize } = useAudioSettings.getState();
+  const db = normalize ? gainFor(track.loudness) : 0;
+  routed.gain.gain.value = 10 ** (db / 20);
+  if (!normalize || (track.loudness !== null && track.loudness !== undefined)) return;
+  const samples = new Float32Array(routed.analyser.fftSize);
+  let power = 0;
+  let seconds = 0;
+  const timer = setInterval(() => {
+    // Only real listening counts: not paused, not mid-fade, not silence.
+    if (el.paused || el.volume < 0.95) return;
+    routed.analyser.getFloatTimeDomainData(samples);
+    const level = levelDb(samples);
+    if (level < SILENCE_DB) return;
+    power += 10 ** (level / 10);
+    seconds += 1;
+    if (seconds < MEASURE_SECONDS) return;
+    stopMeasuring();
+    const measured = Math.round(10 * Math.log10(power / seconds) * 10) / 10;
+    void put(`/v1/tracks/${track.id}/loudness`, { db: measured, seconds }).catch(() => undefined);
+  }, 1000);
+  measuring = { timer, trackId: track.id };
 }
 
 /** Browsers start an AudioContext suspended until a gesture; every play is one. */

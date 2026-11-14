@@ -118,13 +118,14 @@ export const TOUR_STEPS: TourStep[] = [
   { id: 'done', titleKey: 'tour.done.title', bodyKey: 'tour.done.body', placement: 'center' },
 ];
 
+/** The first visible match: the web app has the same tab in a sidebar and a bottom bar. */
 export function getTargetRect(selector: string): DOMRect | null {
   try {
-    const el = document.querySelector(selector) as HTMLElement | null;
-    if (!el) return null;
-    const r = el.getBoundingClientRect();
-    if (r.width === 0 && r.height === 0) return null;
-    return r;
+    for (const el of Array.from(document.querySelectorAll<HTMLElement>(selector))) {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 || r.height > 0) return r;
+    }
+    return null;
   } catch {
     return null;
   }
