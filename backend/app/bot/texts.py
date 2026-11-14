@@ -162,6 +162,26 @@ TEXTS: dict[str, dict[Lang, str]] = {
         "fa": "این هفته {tracks} آهنگ تازه در {channels} کانالت اضافه شد.",
         "en": "{tracks} new tracks landed in {channels} of your channels this week.",
     },
+    "notify_recap": {
+        "fa": "🎧 هفته‌ات در نوکس: {minutes} دقیقه موزیک، {plays} بار پخش.",
+        "en": "🎧 Your week in Noax: {minutes} minutes of music, {plays} plays.",
+    },
+    "notify_recap_track": {
+        "fa": "🔁 آهنگ هفته‌ات: «{title}»",
+        "en": "🔁 Your song of the week: «{title}»",
+    },
+    "notify_recap_artist": {
+        "fa": "⭐ خوانندهٔ هفته‌ات: {artist}",
+        "en": "⭐ Your artist of the week: {artist}",
+    },
+    "notify_recap_new": {
+        "fa": "🆕 {tracks} آهنگ تازه در کانال‌هایت منتظر توست.",
+        "en": "🆕 {tracks} new tracks are waiting in your channels.",
+    },
+    "notify_recap_end": {
+        "fa": "Discover Weekly این هفته هم آماده است.",
+        "en": "This week's Discover Weekly is ready too.",
+    },
     "notify_new_release": {
         "fa": "\U0001f195 آهنگ تازه از {artist}: «{title}»",
         "en": "\U0001f195 New from {artist}: «{title}»",

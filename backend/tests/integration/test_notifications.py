@@ -46,7 +46,7 @@ async def make_user(session: AsyncSession, tg_id: int, **values: Any) -> User:
 async def queued(session: AsyncSession, user_id: int) -> list[dict[str, Any]]:
     rows = await session.execute(
         text(
-            "SELECT kind, status, dedup_key, send_after FROM notifications"
+            "SELECT kind, status, dedup_key, send_after, payload FROM notifications"
             " WHERE user_id = :id ORDER BY id"
         ).bindparams(id=user_id)
     )
@@ -291,6 +291,46 @@ async def test_digest_only_targets_people_who_drifted_away(session: AsyncSession
     assert await notifications.queue_weekly_digest(session) == 1
     assert await queued(session, active.id) == []
     assert (await queued(session, lapsed.id))[0]["kind"] == "digest"
+
+
+async def test_listeners_get_a_recap_of_their_week(session: AsyncSession) -> None:
+    channel = await make_channel(session, "recapch")
+    fan = await make_user(session, 82024)
+    quiet = await make_user(session, 82025)
+    await subscribe(session, fan.id, channel.id)
+    await ingest_items(
+        session,
+        channel,
+        [item("Pol", "هایده", msg=9201), item("Golha", "هایده", msg=9202)],
+        bot_id=None,
+    )
+    pol = await session.scalar(
+        text("SELECT id FROM tracks WHERE title = 'Pol' ORDER BY id DESC LIMIT 1")
+    )
+    golha = await session.scalar(
+        text("SELECT id FROM tracks WHERE title = 'Golha' ORDER BY id DESC LIMIT 1")
+    )
+    for user_id, track_id in [(fan.id, pol)] * 3 + [(fan.id, golha), (quiet.id, pol)]:
+        await session.execute(
+            text(
+                "INSERT INTO play_history (user_id, track_id, played_at, duration_played,"
+                " completed, skipped, source) VALUES (:u, :t, now(), 180, true, false, 'library')"
+            ).bindparams(u=user_id, t=track_id)
+        )
+
+    assert await notifications.queue_weekly_digest(session) == 1
+    assert await queued(session, quiet.id) == []  # one play is not a week worth recapping
+    notice = (await queued(session, fan.id))[0]
+    assert notice["payload"]["style"] == "recap"
+    assert (notice["payload"]["plays"], notice["payload"]["minutes"]) == (4, 12)
+    assert notice["payload"]["track"] == "Pol"
+    assert notice["payload"]["artist"] == "هایده"
+    assert notice["payload"]["tracks"] == 2
+    body = notifications.render("digest", notice["payload"], "fa")
+    assert "۱۲" in body or "12" in body
+    assert "«Pol»" in body and "هایده" in body
+    # The old "what you missed" copy still renders for a lapsed listener.
+    assert "7" in notifications.render("digest", {"tracks": 7, "channels": 2}, "en")
 
 
 async def test_prune_drops_old_rows(session: AsyncSession) -> None:

@@ -209,6 +209,17 @@ def render(kind: str, payload: dict[str, Any], lang: str) -> str:
             count=payload.get("count", 0),
             channel=payload.get("channel", ""),
         )
+    if kind == "digest" and payload.get("style") == "recap":
+        lines = [t("notify_recap", lang, minutes=payload.get("minutes", 0),
+                   plays=payload.get("plays", 0))]  # fmt: skip
+        if payload.get("track"):
+            lines.append(t("notify_recap_track", lang, title=payload["track"]))
+        if payload.get("artist"):
+            lines.append(t("notify_recap_artist", lang, artist=payload["artist"]))
+        if payload.get("tracks"):
+            lines.append(t("notify_recap_new", lang, tracks=payload["tracks"]))
+        lines.append(t("notify_recap_end", lang))
+        return "\n".join(lines)
     if kind == "digest":
         return t(
             "notify_digest",
@@ -334,9 +345,79 @@ async def queue_new_tracks(session: AsyncSession, since_hours: int = 6) -> int:
     return await enqueue(session, notices)
 
 
+# Enough listening for a recap to say something about it.
+DIGEST_MIN_PLAYS = 3
+
+_RECAP_SQL = text(
+    """
+    WITH week AS (
+        SELECT ph.user_id, ph.track_id, ph.duration_played
+          FROM play_history ph
+          JOIN users u ON u.id = ph.user_id
+         WHERE ph.played_at > now() - interval '7 days'
+           AND NOT u.bot_blocked AND NOT u.is_banned
+    ), totals AS (
+        SELECT user_id, count(*) AS plays, sum(duration_played) AS seconds
+          FROM week GROUP BY 1 HAVING count(*) >= :min_plays
+    ), top_track AS (
+        SELECT DISTINCT ON (w.user_id) w.user_id, t.title
+          FROM week w JOIN tracks t ON t.id = w.track_id
+         GROUP BY w.user_id, t.id, t.title
+         ORDER BY w.user_id, count(*) DESC, t.id
+    ), top_artist AS (
+        SELECT DISTINCT ON (w.user_id) w.user_id, a.name
+          FROM week w
+          JOIN track_artists ta ON ta.track_id = w.track_id AND ta.role = 'primary'
+          JOIN artists a ON a.id = ta.artist_id AND NOT a.hidden
+         GROUP BY w.user_id, a.id, a.name
+         ORDER BY w.user_id, count(*) DESC, a.id
+    ), fresh AS (
+        SELECT uc.user_id, count(DISTINCT t.id) AS tracks
+          FROM user_channels uc
+          JOIN channel_tracks ct ON ct.channel_id = uc.channel_id
+          JOIN tracks t ON t.id = ct.track_id AND NOT t.hidden
+         WHERE t.created_at > now() - interval '7 days'
+           AND uc.user_id IN (SELECT user_id FROM totals)
+         GROUP BY 1
+    )
+    SELECT tt.user_id, tt.plays, tt.seconds, tr.title AS track, ar.name AS artist,
+           COALESCE(f.tracks, 0) AS tracks
+      FROM totals tt
+      LEFT JOIN top_track tr ON tr.user_id = tt.user_id
+      LEFT JOIN top_artist ar ON ar.user_id = tt.user_id
+      LEFT JOIN fresh f ON f.user_id = tt.user_id
+    """
+)
+
+
 async def queue_weekly_digest(session: AsyncSession) -> int:
-    """A weekly "here is what you missed" for people who have not opened the app."""
-    rows = await session.execute(
+    """The weekly note from the bot.
+
+    Two kinds, never both for one person: a recap of their week for people who
+    listened (minutes, their song and artist of the week, what is new for them), and
+    "here is what you missed" for people who drifted away while their channels kept
+    posting. Muted with the ``digest`` preference, like before.
+    """
+    week = datetime.now(UTC).strftime("%G-W%V")
+    recaps = (await session.execute(_RECAP_SQL.bindparams(min_plays=DIGEST_MIN_PLAYS))).all()
+    listened = {row.user_id for row in recaps}
+    notices = [
+        Notice(
+            user_id=row.user_id,
+            kind="digest",
+            payload={
+                "style": "recap",
+                "plays": row.plays,
+                "minutes": max(1, round((row.seconds or 0) / 60)),
+                "track": row.track or "",
+                "artist": row.artist or "",
+                "tracks": row.tracks,
+            },
+            dedup_key=f"digest:{week}",
+        )
+        for row in recaps
+    ]
+    lapsed = await session.execute(
         text(
             """
         SELECT u.id,
@@ -355,15 +436,15 @@ async def queue_weekly_digest(session: AsyncSession) -> int:
         """
         )
     )
-    week = datetime.now(UTC).strftime("%G-W%V")
-    notices = [
+    notices += [
         Notice(
             user_id=row.id,
             kind="digest",
             payload={"tracks": row.tracks, "channels": row.channels},
             dedup_key=f"digest:{week}",
         )
-        for row in rows
+        for row in lapsed
+        if row.id not in listened
     ]
     return await enqueue(session, notices)
 
