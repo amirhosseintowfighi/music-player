@@ -51,6 +51,7 @@ const LikedScreen = lazy(() => import('@/screens/Playlists').then((m) => ({ defa
 const Search = lazy(() => import('@/screens/Search').then((m) => ({ default: m.Search })));
 const OwnerScreen = lazy(() => import('@/screens/Owner').then((m) => ({ default: m.OwnerScreen })));
 const Tour = lazy(() => import('@/components/Tour'));
+const CarMode = lazy(() => import('@/components/CarMode').then((m) => ({ default: m.CarMode })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -197,6 +198,7 @@ function Shell() {
   const thumbs = useThumbs(current ? [current.id] : []);
   const currentThumb = current ? thumbs[current.id] : undefined;
   const actionTrack = useUi((s) => s.actionTrack);
+  const carMode = useUi((s) => s.carMode);
   const setActionTrack = useUi((s) => s.setActionTrack);
   usePlaybackSync();
   useResume();
@@ -315,6 +317,11 @@ function Shell() {
       {current && (
         <Suspense fallback={null}>
           <FullPlayer thumbs={thumbs} />
+        </Suspense>
+      )}
+      {carMode && current && (
+        <Suspense fallback={null}>
+          <CarMode thumb={currentThumb} />
         </Suspense>
       )}
       <Paywall />
