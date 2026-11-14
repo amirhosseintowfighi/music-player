@@ -1536,6 +1536,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tracks/{track_id}/loudness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Loudness
+         * @description How loud this client measured the track, for volume levelling (0017).
+         *
+         *     One report per listener per track counts, and only the first few listeners: the
+         *     value only ever sets a gain within a few dB, so it cannot be used to do harm, and
+         *     nobody can drag the mean around by repeating themselves.
+         */
+        put: operations["set_loudness_v1_tracks__track_id__loudness_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tracks/{track_id}/palette": {
         parameters: {
             query?: never;
@@ -2205,6 +2229,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/owner/channels": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Channels
+         * @description Every channel this person is a verified administrator of, with its numbers.
+         */
+        get: operations["my_channels_v1_owner_channels_get"];
+        put?: never;
+        /**
+         * Claim Channel
+         * @description Proves ownership through Telegram: the bot asks the channel who its admins are.
+         *
+         *     That only works once the bot is in the channel, which is why the error for "the
+         *     bot cannot see it" is its own code: the client then explains how to add the bot.
+         */
+        post: operations["claim_channel_v1_owner_channels_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/plans": {
         parameters: {
             query?: never;
@@ -2555,6 +2606,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/share/story": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Upload Story */
+        post: operations["upload_story_v1_share_story_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/users/{user_id}/profile": {
         parameters: {
             query?: never;
@@ -2753,6 +2821,9 @@ export interface paths {
          *
          *     `?prefetch=1` warms the next track up: it does not count against the daily limit
          *     and the ticket it returns can only read the first few hundred kilobytes.
+         *
+         *     `?saver=1` is data saver: the smallest ready copy of the song, when one is
+         *     meaningfully smaller than the one we would otherwise pick.
          */
         post: operations["stream_ticket_v1_tracks__track_id__stream_post"];
         delete?: never;
@@ -3821,6 +3892,19 @@ export interface components {
             /** Likes Count */
             likes_count: number;
         };
+        /**
+         * LoudnessIn
+         * @description How loud this client measured a track: mean level in dBFS over what it played.
+         */
+        LoudnessIn: {
+            /** Db */
+            db: number;
+            /**
+             * Seconds
+             * @description how much of the track was measured
+             */
+            seconds: number;
+        };
         /** LyricsOut */
         LyricsOut: {
             /** Track Id */
@@ -3941,6 +4025,50 @@ export interface components {
             conversion_pct: number;
             /** Churn 30D Pct */
             churn_30d_pct: number;
+        };
+        /**
+         * OwnerChannelOut
+         * @description How one channel does in the app. Aggregates only: never who listened.
+         */
+        OwnerChannelOut: {
+            /** Id */
+            id: number;
+            /** Username */
+            username: string | null;
+            /** Title */
+            title: string | null;
+            /** Tracks Count */
+            tracks_count: number;
+            /**
+             * App Followers
+             * @description people who added it to their library
+             */
+            app_followers: number;
+            /** Plays 7D */
+            plays_7d: number;
+            /** Listeners 7D */
+            listeners_7d: number;
+            /** Plays 30D */
+            plays_30d: number;
+            /** Listeners 30D */
+            listeners_30d: number;
+            /** Minutes 30D */
+            minutes_30d: number;
+            /**
+             * Daily
+             * @description plays per day for the last 30 days, oldest first
+             */
+            daily: number[];
+            /** Top Tracks */
+            top_tracks: components["schemas"]["TrackOut"][];
+        };
+        /** OwnerClaimIn */
+        OwnerClaimIn: {
+            /**
+             * Channel
+             * @description @username or t.me link
+             */
+            channel: string;
         };
         /** Page[ArtistOut] */
         Page_ArtistOut_: {
@@ -4551,6 +4679,11 @@ export interface components {
              * @default false
              */
             degraded: boolean;
+            /**
+             * Lyric Matches
+             * @description ids of results found by their lyrics
+             */
+            lyric_matches?: number[];
         };
         /** SectionOut */
         SectionOut: {
@@ -4572,6 +4705,21 @@ export interface components {
         SettingIn: {
             /** Value */
             value: unknown;
+        };
+        /**
+         * StoryImageIn
+         * @description A share card drawn by the client, base64 of a PNG or JPEG.
+         */
+        StoryImageIn: {
+            /** Image */
+            image: string;
+        };
+        /** StoryImageOut */
+        StoryImageOut: {
+            /** Url */
+            url: string;
+            /** Expires In */
+            expires_in: number;
         };
         /** StreamOut */
         StreamOut: {
@@ -4742,6 +4890,8 @@ export interface components {
             channel?: components["schemas"]["TrackChannelRef"] | null;
             /** Palette */
             palette?: string | null;
+            /** Loudness */
+            loudness?: number | null;
         };
         /** TrackSourceOut */
         TrackSourceOut: {
@@ -7762,6 +7912,39 @@ export interface operations {
             };
         };
     };
+    set_loudness_v1_tracks__track_id__loudness_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoudnessIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     set_palette_v1_tracks__track_id__palette_put: {
         parameters: {
             query?: never;
@@ -9057,6 +9240,59 @@ export interface operations {
             };
         };
     };
+    my_channels_v1_owner_channels_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerChannelOut"][];
+                };
+            };
+        };
+    };
+    claim_channel_v1_owner_channels_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OwnerClaimIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OwnerChannelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     list_plans_v1_plans_get: {
         parameters: {
             query?: never;
@@ -9725,6 +9961,39 @@ export interface operations {
             };
         };
     };
+    upload_story_v1_share_story_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StoryImageIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StoryImageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     profile_v1_users__user_id__profile_get: {
         parameters: {
             query?: never;
@@ -10087,6 +10356,7 @@ export interface operations {
         parameters: {
             query?: {
                 prefetch?: boolean;
+                saver?: boolean;
             };
             header?: never;
             path: {

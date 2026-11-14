@@ -4940,6 +4940,57 @@
         }
       }
     },
+    "/v1/tracks/{track_id}/loudness": {
+      "put": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Set Loudness",
+        "description": "How loud this client measured the track, for volume levelling (0017).\n\nOne report per listener per track counts, and only the first few listeners: the\nvalue only ever sets a gain within a few dB, so it cannot be used to do harm, and\nnobody can drag the mean around by repeating themselves.",
+        "operationId": "set_loudness_v1_tracks__track_id__loudness_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Track Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoudnessIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/tracks/{track_id}/palette": {
       "put": {
         "tags": [
@@ -6918,6 +6969,82 @@
         }
       }
     },
+    "/v1/owner/channels": {
+      "get": {
+        "tags": [
+          "owner"
+        ],
+        "summary": "My Channels",
+        "description": "Every channel this person is a verified administrator of, with its numbers.",
+        "operationId": "my_channels_v1_owner_channels_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OwnerChannelOut"
+                  },
+                  "type": "array",
+                  "title": "Response My Channels V1 Owner Channels Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "owner"
+        ],
+        "summary": "Claim Channel",
+        "description": "Proves ownership through Telegram: the bot asks the channel who its admins are.\n\nThat only works once the bot is in the channel, which is why the error for \"the\nbot cannot see it\" is its own code: the client then explains how to add the bot.",
+        "operationId": "claim_channel_v1_owner_channels_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnerClaimIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OwnerChannelOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/plans": {
       "get": {
         "tags": [
@@ -8071,6 +8198,52 @@
         ]
       }
     },
+    "/v1/share/story": {
+      "post": {
+        "tags": [
+          "share"
+        ],
+        "summary": "Upload Story",
+        "operationId": "upload_story_v1_share_story_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/StoryImageIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryImageOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/users/{user_id}/profile": {
       "get": {
         "tags": [
@@ -8635,7 +8808,7 @@
           "stream"
         ],
         "summary": "Stream Ticket",
-        "description": "Signed URL on a streaming edge. Short TTL; the client asks again when it expires.\n\nThe bytes never pass through this API (ADR-0004): the URL points at an edge node\noutside the core network, and `/api/stream/:id` is that two-step contract, not a\nroute here. `tests/unit/test_no_bytes_through_core.py` fails the build if that\never changes.\n\n`?prefetch=1` warms the next track up: it does not count against the daily limit\nand the ticket it returns can only read the first few hundred kilobytes.",
+        "description": "Signed URL on a streaming edge. Short TTL; the client asks again when it expires.\n\nThe bytes never pass through this API (ADR-0004): the URL points at an edge node\noutside the core network, and `/api/stream/:id` is that two-step contract, not a\nroute here. `tests/unit/test_no_bytes_through_core.py` fails the build if that\never changes.\n\n`?prefetch=1` warms the next track up: it does not count against the daily limit\nand the ticket it returns can only read the first few hundred kilobytes.\n\n`?saver=1` is data saver: the smallest ready copy of the song, when one is\nmeaningfully smaller than the one we would otherwise pick.",
         "operationId": "stream_ticket_v1_tracks__track_id__stream_post",
         "security": [
           {
@@ -8660,6 +8833,16 @@
               "type": "boolean",
               "default": false,
               "title": "Prefetch"
+            }
+          },
+          {
+            "name": "saver",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "default": false,
+              "title": "Saver"
             }
           }
         ],
@@ -11557,6 +11740,31 @@
         ],
         "title": "LikeOut"
       },
+      "LoudnessIn": {
+        "properties": {
+          "db": {
+            "type": "number",
+            "maximum": 0.0,
+            "minimum": -60.0,
+            "title": "Db"
+          },
+          "seconds": {
+            "type": "integer",
+            "maximum": 36000.0,
+            "minimum": 20.0,
+            "title": "Seconds",
+            "description": "how much of the track was measured"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "db",
+          "seconds"
+        ],
+        "title": "LoudnessIn",
+        "description": "How loud this client measured a track: mean level in dBFS over what it played."
+      },
       "LyricsOut": {
         "properties": {
           "track_id": {
@@ -11904,6 +12112,115 @@
           "churn_30d_pct"
         ],
         "title": "OverviewOut"
+      },
+      "OwnerChannelOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "tracks_count": {
+            "type": "integer",
+            "title": "Tracks Count"
+          },
+          "app_followers": {
+            "type": "integer",
+            "title": "App Followers",
+            "description": "people who added it to their library"
+          },
+          "plays_7d": {
+            "type": "integer",
+            "title": "Plays 7D"
+          },
+          "listeners_7d": {
+            "type": "integer",
+            "title": "Listeners 7D"
+          },
+          "plays_30d": {
+            "type": "integer",
+            "title": "Plays 30D"
+          },
+          "listeners_30d": {
+            "type": "integer",
+            "title": "Listeners 30D"
+          },
+          "minutes_30d": {
+            "type": "integer",
+            "title": "Minutes 30D"
+          },
+          "daily": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Daily",
+            "description": "plays per day for the last 30 days, oldest first"
+          },
+          "top_tracks": {
+            "items": {
+              "$ref": "#/components/schemas/TrackOut"
+            },
+            "type": "array",
+            "title": "Top Tracks"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "username",
+          "title",
+          "tracks_count",
+          "app_followers",
+          "plays_7d",
+          "listeners_7d",
+          "plays_30d",
+          "listeners_30d",
+          "minutes_30d",
+          "daily",
+          "top_tracks"
+        ],
+        "title": "OwnerChannelOut",
+        "description": "How one channel does in the app. Aggregates only: never who listened."
+      },
+      "OwnerClaimIn": {
+        "properties": {
+          "channel": {
+            "type": "string",
+            "maxLength": 200,
+            "minLength": 2,
+            "title": "Channel",
+            "description": "@username or t.me link"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "channel"
+        ],
+        "title": "OwnerClaimIn"
       },
       "Page_ArtistOut_": {
         "properties": {
@@ -13556,6 +13873,14 @@
             "title": "Degraded",
             "description": "true when served by the Postgres fallback",
             "default": false
+          },
+          "lyric_matches": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Lyric Matches",
+            "description": "ids of results found by their lyrics"
           }
         },
         "additionalProperties": false,
@@ -13627,6 +13952,42 @@
           "value"
         ],
         "title": "SettingIn"
+      },
+      "StoryImageIn": {
+        "properties": {
+          "image": {
+            "type": "string",
+            "maxLength": 2100000,
+            "minLength": 100,
+            "title": "Image"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "image"
+        ],
+        "title": "StoryImageIn",
+        "description": "A share card drawn by the client, base64 of a PNG or JPEG."
+      },
+      "StoryImageOut": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "expires_in": {
+            "type": "integer",
+            "title": "Expires In"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "url",
+          "expires_in"
+        ],
+        "title": "StoryImageOut"
       },
       "StreamOut": {
         "properties": {
@@ -14109,6 +14470,17 @@
               }
             ],
             "title": "Palette"
+          },
+          "loudness": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Loudness"
           }
         },
         "additionalProperties": false,
