@@ -1,5 +1,10 @@
-/** Tour persistence + step definitions – 7 steps, Liquid Glass, RTL-aware */
-export const TOUR_KEY = 'tmusic.tour.v1';
+/**
+ * Tour persistence + step definitions, RTL-aware.
+ *
+ * v2 explains what the bot is for before where things are, because "what does this
+ * even do" is where people got lost. A new key shows it once to people who saw v1.
+ */
+export const TOUR_KEY = 'tmusic.tour.v2';
 
 export function hasSeenTour(): boolean {
   try {
@@ -38,11 +43,16 @@ export interface TourStep {
 }
 
 export const TOUR_STEPS: TourStep[] = [
+  { id: 'welcome', titleKey: 'tour.welcome.title', bodyKey: 'tour.welcome.body', placement: 'center' },
   {
-    id: 'welcome',
-    titleKey: 'tour.welcome.title',
-    bodyKey: 'tour.welcome.body',
-    placement: 'center',
+    id: 'channels',
+    titleKey: 'tour.channels.title',
+    bodyKey: 'tour.channels.body',
+    placement: 'bottom',
+    target: '[data-tour="add-channel"]',
+    fallbackTarget: '[data-tour="tab-library"]',
+    fallbackPlacement: 'top',
+    navigateTo: '/library',
   },
   {
     id: 'home',
@@ -50,9 +60,16 @@ export const TOUR_STEPS: TourStep[] = [
     bodyKey: 'tour.home.body',
     placement: 'bottom',
     target: '[data-tour="home-continue"]',
-    fallbackTarget: '[data-tour="home-header"]',
-    fallbackPlacement: 'center',
+    fallbackTarget: '[data-tour="tab-home"]',
+    fallbackPlacement: 'top',
     navigateTo: '/',
+  },
+  {
+    id: 'discover',
+    titleKey: 'tour.discover.title',
+    bodyKey: 'tour.discover.body',
+    placement: 'top',
+    target: '[data-tour="tab-discover"]',
   },
   {
     id: 'search',
@@ -61,16 +78,23 @@ export const TOUR_STEPS: TourStep[] = [
     placement: 'bottom',
     target: '[data-tour="search-input"]',
     fallbackTarget: '[data-tour="tab-search"]',
-    fallbackPlacement: 'center',
+    fallbackPlacement: 'top',
     navigateTo: '/search',
   },
   {
-    id: 'play',
+    id: 'song',
     titleKey: 'tour.play.title',
     bodyKey: 'tour.play.body',
     placement: 'top',
     target: '[data-tour="track-row"]',
-    fallbackTarget: '[data-tour="miniplayer"]',
+    fallbackPlacement: 'center',
+  },
+  {
+    id: 'player',
+    titleKey: 'tour.player.title',
+    bodyKey: 'tour.player.body',
+    placement: 'top',
+    target: '[data-tour="miniplayer"]',
     fallbackPlacement: 'center',
   },
   {
@@ -80,25 +104,18 @@ export const TOUR_STEPS: TourStep[] = [
     placement: 'bottom',
     target: '[data-tour="library-tabs"]',
     fallbackTarget: '[data-tour="tab-library"]',
-    fallbackPlacement: 'center',
+    fallbackPlacement: 'top',
     navigateTo: '/library',
   },
+  { id: 'bot', titleKey: 'tour.bot.title', bodyKey: 'tour.bot.body', placement: 'center' },
   {
-    id: 'channels',
-    titleKey: 'tour.channels.title',
-    bodyKey: 'tour.channels.body',
-    placement: 'bottom',
-    target: '[data-tour="add-channel"]',
-    fallbackTarget: '[data-tour="home-featured"]',
-    fallbackPlacement: 'center',
-    navigateTo: '/library',
+    id: 'more',
+    titleKey: 'tour.more.title',
+    bodyKey: 'tour.more.body',
+    placement: 'top',
+    target: '[data-tour="tab-settings"]',
   },
-  {
-    id: 'done',
-    titleKey: 'tour.done.title',
-    bodyKey: 'tour.done.body',
-    placement: 'center',
-  },
+  { id: 'done', titleKey: 'tour.done.title', bodyKey: 'tour.done.body', placement: 'center' },
 ];
 
 export function getTargetRect(selector: string): DOMRect | null {
