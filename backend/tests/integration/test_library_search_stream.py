@@ -316,7 +316,14 @@ async def test_search_falls_back_to_postgres(
 async def test_search_with_no_channels(client: httpx.AsyncClient) -> None:
     auth = bearer(await login(client, 802))
     resp = await client.get("/v1/search", params={"q": "anything"}, headers=auth)
-    assert resp.json() == {"items": [], "total": 0, "offset": 0, "limit": 20, "degraded": False}
+    assert resp.json() == {
+        "items": [],
+        "total": 0,
+        "offset": 0,
+        "limit": 20,
+        "degraded": False,
+        "lyric_matches": [],
+    }
     assert (await client.get("/v1/search", headers=auth)).status_code == 422
 
 
@@ -386,6 +393,38 @@ async def test_stream_ticket_sources(
     await session.commit()
     body = (await client.post(f"/v1/tracks/{ids['AgADpol']}/stream", headers=lib["auth"])).json()
     assert verify(body["url"].split("t=", 1)[1], settings.signing_keys).bot_file_id is None
+
+
+async def test_data_saver_streams_the_smallest_ready_copy(
+    client: httpx.AsyncClient, session: AsyncSession, lib: dict[str, Any], settings: Any
+) -> None:
+    ids = lib["ids"]
+    await session.execute(update(Track).values(resolve_status="resolved"))
+    await session.execute(
+        update(Track).where(Track.id == ids["AgADpol"]).values(file_size=9_000_000)
+    )
+    await session.execute(
+        update(Track).where(Track.id == ids["AgADpoldup"]).values(file_size=3_500_000)
+    )
+    await session.commit()
+    url = f"/v1/tracks/{ids['AgADpol']}/stream"
+
+    def size_of(body: dict[str, Any]) -> int:
+        return verify(body["url"].split("t=", 1)[1], settings.signing_keys).size
+
+    assert size_of((await client.post(url, headers=lib["auth"])).json()) == 9_000_000
+    saver = (await client.post(url, params={"saver": "true"}, headers=lib["auth"])).json()
+    assert size_of(saver) == 3_500_000
+    # Still the canonical id, so the edge cache is shared between both kinds of play.
+    assert saver["url"].startswith(f"https://cdn.example.test/s/{ids['AgADpol']}?t=")
+
+    # A copy that is barely smaller is not worth switching to.
+    await session.execute(
+        update(Track).where(Track.id == ids["AgADpoldup"]).values(file_size=8_500_000)
+    )
+    await session.commit()
+    saver = (await client.post(url, params={"saver": "true"}, headers=lib["auth"])).json()
+    assert size_of(saver) == 9_000_000
 
 
 async def test_stream_unavailable_cases(
