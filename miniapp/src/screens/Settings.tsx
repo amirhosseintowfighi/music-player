@@ -218,6 +218,18 @@ export function Settings() {
       <h1 className="mb-4 text-[21px] font-bold">{t('settings.title')}</h1>
 
       <a
+        href="#/owner"
+        className="mb-3 flex items-center gap-3 rounded-[var(--radius-glass)] bg-[var(--card)] px-3.5 py-3 transition-transform active:scale-[0.98]"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--fill)] text-[17px]" aria-hidden>
+          📊
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold">{t('owner.title')}</span>
+          <span className="block truncate text-[12px] text-[var(--ink-dim)]">{t('owner.entryHint')}</span>
+        </span>
+      </a>
+      <a
         href="#/jam"
         className="mb-3 flex items-center gap-3 rounded-[var(--radius-glass)] bg-[var(--card)] px-3.5 py-3 transition-transform active:scale-[0.98]"
       >

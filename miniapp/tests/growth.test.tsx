@@ -2,13 +2,16 @@
  * Even loudness and data saver: what the player does with a song's measured level,
  * and how little it downloads on mobile data.
  */
+import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { __setAuthForTests } from '@/api/client';
 import { prefetch, resetForTests, ticketFor } from '@/player/engine';
+import { OwnerScreen } from '@/screens/Owner';
 import { gainFor, levelDb, onMeteredNetwork, saverActive, TARGET_DB, useAudioSettings } from '@/store/audio';
 
-import { mockApi } from './helpers';
+import { authRoutes, makeTrack, mockApi, renderApp } from './helpers';
 
 function connection(value: Record<string, unknown> | undefined): void {
   Object.defineProperty(navigator, 'connection', { configurable: true, value });
@@ -76,5 +79,49 @@ describe('data saver', () => {
     resetForTests();
     await ticketFor(5);
     expect(api.calls.at(-1)?.url).toBe('/v1/tracks/5/stream');
+  });
+});
+
+// ── the channel owner's page ──────────────────────────────────────────────────
+
+describe('owner page', () => {
+  const channel = {
+    id: 3,
+    username: 'tunes',
+    title: 'Tunes',
+    tracks_count: 120,
+    app_followers: 14,
+    plays_7d: 52,
+    listeners_7d: 9,
+    plays_30d: 300,
+    listeners_30d: 40,
+    minutes_30d: 900,
+    daily: Array.from({ length: 30 }, (_, i) => i),
+    top_tracks: [makeTrack({ id: 8, title: 'Khaneh' })],
+  };
+
+  it('shows the numbers and the most played songs', async () => {
+    mockApi({ ...authRoutes(), 'GET /v1/owner/channels': [channel], 'POST /v1/tracks/thumbs': { items: {} } });
+    renderApp(<OwnerScreen />);
+    expect(await screen.findByText('Tunes')).toBeTruthy();
+    expect(screen.getByText('Khaneh')).toBeTruthy();
+    expect(screen.getByRole('img').children).toHaveLength(30);
+  });
+
+  it('explains what to do when the bot is not in the channel', async () => {
+    const api = mockApi({
+      ...authRoutes(),
+      'GET /v1/owner/channels': [],
+      'POST /v1/owner/channels': new Response(
+        JSON.stringify({ error: { code: 'invalid_input', message: 'x', details: { reason: 'bot_not_admin' } } }),
+        { status: 400 },
+      ),
+    });
+    renderApp(<OwnerScreen />);
+    const input = await screen.findByPlaceholderText('@channel');
+    await userEvent.type(input, '@tunes');
+    await userEvent.click(screen.getByRole('button', { name: 'تأیید' }));
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    expect(api.calls.find((c) => c.method === 'POST')?.body).toEqual({ channel: '@tunes' });
   });
 });
