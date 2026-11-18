@@ -97,6 +97,40 @@ describe('analyse', () => {
     }
   });
 
+  it('finds the one past a backbeat: equal kicks, snare on 2 and 4, chords on the one', () => {
+    const beat = 0.5;
+    const start = 0.3;
+    const seconds = 40;
+    const out = new Float32Array(seconds * SR);
+    const chords = [
+      [220, 261.63, 329.63],
+      [174.61, 220, 261.63],
+      [196, 246.94, 293.66],
+      [164.81, 207.65, 246.94],
+    ];
+    let seed = 5;
+    const noise = () => ((seed = (seed * 16807) % 2147483647) / 2147483647) * 2 - 1;
+    for (let n = 0; start + n * beat < seconds - 0.5; n += 1) {
+      const at = Math.floor((start + n * beat) * SR);
+      for (let i = 0; i < 0.12 * SR; i += 1) {
+        const t = i / SR;
+        out[at + i] = (out[at + i] as number) + 0.6 * Math.exp(-t * 16) * Math.sin(2 * Math.PI * (55 + 100 * Math.exp(-t * 35)) * t);
+        // A loud snare with low end on the backbeat: the trap for a kick-only detector.
+        if (n % 2 === 1) out[at + i] = (out[at + i] as number) + 0.5 * Math.exp(-t * 20) * (0.7 * noise() + 0.5 * Math.sin(2 * Math.PI * 180 * t));
+      }
+      if (n % 4 === 0) {
+        const chord = chords[(n / 4) % 4] as number[];
+        for (let i = 0; i < 4 * beat * SR && at + i < out.length; i += 1) {
+          const t = i / SR;
+          out[at + i] = (out[at + i] as number) + 0.05 * chord.reduce((sum, f) => sum + Math.sin(2 * Math.PI * f * t), 0);
+        }
+      }
+    }
+    const result = analyse(out, SR);
+    expect(result.bpm).toBeCloseTo(120, 0);
+    expect(Math.abs(result.downbeat - start) % (4 * beat)).toBeLessThan(0.03);
+  });
+
   it('does not invent a beat where there is none', () => {
     const pad = new Float32Array(20 * SR);
     for (let i = 0; i < pad.length; i += 1) pad[i] = 0.2 * Math.sin((2 * Math.PI * 220 * i) / SR) * (1 + 0.3 * Math.sin(i / SR));

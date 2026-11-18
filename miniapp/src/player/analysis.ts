@@ -100,6 +100,14 @@ export interface Onsets {
    * speech, a held chord: small. Independent of how loud the file is.
    */
   attack: number;
+  /**
+   * How full the sound is in each frame: the summed log spectrum. Rises with every
+   * instrument that joins, not just with loudness — which is what tells a drums-only
+   * intro from the body of a song, where a kick-dominated RMS cannot.
+   */
+  fullness: Float64Array;
+  /** Twelve pitch-class energies per frame (frame-major): the harmony over time. */
+  chroma: Float32Array;
 }
 
 /** Subtracts a moving average and keeps the positive part: peaks, not loudness. */
@@ -130,6 +138,16 @@ export function onsets(samples: Float32Array, sr: number): Onsets {
   let current = new Float64Array(bins);
   const all = new Float64Array(frames);
   const low = new Float64Array(frames);
+  const fullness = new Float64Array(frames);
+  const chroma = new Float32Array(frames * 12);
+  // Which pitch class each bin belongs to (65 Hz – 2 kHz, near a semitone), or -1.
+  const pcOf = new Int8Array(bins).fill(-1);
+  for (let k = 1; k < bins; k += 1) {
+    const freq = (k * sr) / FRAME;
+    if (freq < 65 || freq > 2000) continue;
+    const midi = 69 + 12 * Math.log2(freq / 440);
+    pcOf[k] = ((Math.round(midi) % 12) + 12) % 12;
+  }
   for (let f = 0; f < frames; f += 1) {
     const start = f * HOP;
     for (let i = 0; i < FRAME; i += 1) {
@@ -150,6 +168,13 @@ export function onsets(samples: Float32Array, sr: number): Onsets {
         if (k <= lowBins) lowFlux += rise;
       }
     }
+    let frameLevel = 0;
+    for (let k = 1; k < bins; k += 1) {
+      frameLevel += current[k] as number;
+      const pc = pcOf[k] as number;
+      if (pc >= 0) chroma[f * 12 + pc] = (chroma[f * 12 + pc] as number) + (current[k] as number);
+    }
+    fullness[f] = frameLevel;
     all[f] = f === 0 ? 0 : flux;
     low[f] = f === 0 ? 0 : lowFlux;
     [previous, current] = [current, previous];
@@ -161,7 +186,7 @@ export function onsets(samples: Float32Array, sr: number): Onsets {
   const attack = level > 0 ? p98 / (level / Math.max(1, frames)) : 0;
   // A hit shows up as flux once it is three quarters into the window, not at its
   // centre (measured on kicks: half a frame put every beat ~25 ms early).
-  return { all: whiten(all, radius), low: whiten(low, radius), fps, offset: (FRAME * 0.75) / sr, attack };
+  return { all: whiten(all, radius), low: whiten(low, radius), fps, offset: (FRAME * 0.75) / sr, attack, fullness, chroma };
 }
 
 /** ``x`` at a fractional index, linearly interpolated (0 outside). */
@@ -383,18 +408,70 @@ export function beats(on: Onsets, bpm: number, phase: number): { beat: number; d
   // A grid on the hi-hats is half a beat off: the beat is where the kick is.
   let first = phase;
   if (kickAt((phase + period / 2) % period, period) > kickAt(phase, period) * 1.15) first = (phase + period / 2) % period;
-  // Of the four beats in a bar, the one the kick lands on hardest is the downbeat.
+  // The "one" of the bar: where the chord changes (it does on the one far more than
+  // anywhere else), with the kick as a tie-breaker.
+  // Each cue is scored for the four positions in the bar and normalised, so no cue
+  // wins just by being measured in bigger numbers.
+  const cues = [0, 1, 2, 3].map((shift) => {
+    let kick = 0;
+    let chord = 0;
+    for (let i = first + shift * period; i < on.low.length; i += 4 * period) {
+      kick += Math.max(at(on.low, i - 1), at(on.low, i), at(on.low, i + 1));
+      chord += chordChange(on.chroma, i - 2 * period, i, i + 2 * period);
+    }
+    return { kick, chord };
+  });
+  const share = (key: 'kick' | 'chord', shift: number) => {
+    const values = cues.map((c) => c[key]);
+    const min = Math.min(...values);
+    const range = Math.max(...values) - min;
+    return range > 1e-9 ? ((cues[shift] as Record<typeof key, number>)[key] - min) / range : 0;
+  };
   let bestShift = 0;
-  let bestKick = -1;
+  let bestScore = -1;
   for (let shift = 0; shift < 4; shift += 1) {
-    const kick = kickAt(first + shift * period, 4 * period);
-    if (kick > bestKick) {
-      bestKick = kick;
+    // The backbeat (snare on 2 and 4) is loud and has low end too: onsets and even
+    // the kick band point at it. Chord changes do not, so they decide; the kick only
+    // breaks ties where the harmony says nothing (a drums-only stretch).
+    const score = 0.5 * share('kick', shift) + 3 * share('chord', shift);
+    if (score > bestScore) {
+      bestScore = score;
       bestShift = shift;
     }
   }
   const beat = on.offset + first / on.fps;
   return { beat: round3(beat), downbeat: round3(beat + (bestShift * 60) / bpm) };
+}
+
+/** 1 − cosine similarity of the mean chroma over [a, b) and over [b, c). */
+function chordChange(chroma: Float32Array, a: number, b: number, c: number): number {
+  const frames = chroma.length / 12;
+  const mean = (from: number, to: number) => {
+    const out = new Array<number>(12).fill(0);
+    const lo = Math.max(0, Math.floor(from));
+    const hi = Math.min(frames, Math.ceil(to));
+    for (let f = lo; f < hi; f += 1) for (let p = 0; p < 12; p += 1) out[p] = (out[p] as number) + (chroma[f * 12 + p] as number);
+    return out;
+  };
+  const x = mean(a, b);
+  const y = mean(b, c);
+  let dot = 0;
+  let nx = 0;
+  let ny = 0;
+  for (let p = 0; p < 12; p += 1) {
+    dot += (x[p] as number) * (y[p] as number);
+    nx += (x[p] as number) ** 2;
+    ny += (y[p] as number) ** 2;
+  }
+  return nx && ny ? 1 - dot / Math.sqrt(nx * ny) : 0;
+}
+
+function meanOf(x: Float64Array, from: number, to: number): number {
+  const a = Math.max(0, Math.floor(from));
+  const b = Math.min(x.length, Math.ceil(to));
+  let sum = 0;
+  for (let i = a; i < b; i += 1) sum += x[i] as number;
+  return b > a ? sum / (b - a) : 0;
 }
 
 function round3(x: number): number {
@@ -493,31 +570,24 @@ export function key(samples: Float32Array, sr: number): number | null {
  * Intro and outro from the energy of each bar: the intro ends at the first bar
  * that reaches the body of the song, the outro starts after the last one that does.
  */
-export function sections(
-  samples: Float32Array,
-  sr: number,
-  bpm: number,
-  downbeat: number,
-): { intro: number; outro: number } {
-  const duration = samples.length / sr;
+export function sections(on: Onsets, duration: number, bpm: number, downbeat: number): { intro: number; outro: number } {
   const bar = (4 * 60) / bpm;
-  const energies: { start: number; rms: number }[] = [];
+  const bars: { start: number; full: number }[] = [];
   for (let start = downbeat; start + bar <= duration; start += bar) {
-    const a = Math.floor(start * sr);
-    const b = Math.floor((start + bar) * sr);
-    let sum = 0;
-    for (let i = a; i < b; i += 4) sum += (samples[i] as number) ** 2;
-    energies.push({ start, rms: Math.sqrt(sum / Math.max(1, (b - a) / 4)) });
+    bars.push({ start, full: meanOf(on.fullness, (start - on.offset) * on.fps, (start + bar - on.offset) * on.fps) });
   }
-  if (energies.length < 4) return { intro: round3(downbeat), outro: round3(duration) };
-  const sorted = energies.map((e) => e.rms).sort((x, y) => x - y);
+  if (bars.length < 8) return { intro: round3(downbeat), outro: round3(duration) };
+  // The body: how full the fullest fifth of the song is. Intro and outro are the
+  // stretches at either end that stay clearly below it.
+  const sorted = bars.map((b) => b.full).sort((x, y) => x - y);
   const body = sorted[Math.floor(sorted.length * 0.8)] as number;
-  const threshold = body * 0.7;
-  const first = energies.findIndex((e) => e.rms >= threshold);
-  let last = energies.length - 1;
-  while (last > 0 && (energies[last] as { rms: number }).rms < threshold) last -= 1;
-  const intro = Math.min(duration / 2, (energies[Math.max(0, first)] as { start: number }).start);
-  const outroBar = energies[last + 1];
+  const floor = sorted[0] as number;
+  const threshold = floor + (body - floor) * 0.6;
+  const first = bars.findIndex((b) => b.full >= threshold);
+  let last = bars.length - 1;
+  while (last > 0 && (bars[last] as { full: number }).full < threshold) last -= 1;
+  const intro = Math.min(duration / 2, (bars[Math.max(0, first)] as { start: number }).start);
+  const outroBar = bars[last + 1];
   const outro = Math.max(duration / 2, outroBar ? outroBar.start : duration);
   return { intro: round3(intro), outro: round3(Math.max(intro, outro)) };
 }
@@ -528,7 +598,7 @@ export function analyse(samples: Float32Array, sr: number): MixAnalysis {
   const on = onsets(samples, sr);
   const t = tempo(rhythm(on), on.fps);
   const b = beats(on, t.bpm, t.phase);
-  const s = sections(samples, sr, t.bpm, b.downbeat);
+  const s = sections(on, samples.length / sr, t.bpm, b.downbeat);
   return {
     v: ANALYSER_VERSION,
     bpm: t.bpm,

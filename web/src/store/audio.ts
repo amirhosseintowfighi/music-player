@@ -37,6 +37,8 @@ export interface AudioSettings {
   /** Animated artwork behind the full player (Canvas). */
   canvas: boolean;
   saver: SaverMode;
+  /** AutoMix: songs mixed into each other like a DJ would (player/automix). */
+  automix: boolean;
 }
 
 const KEY = 'tmusic.audio';
@@ -47,6 +49,7 @@ const DEFAULTS: AudioSettings = {
   eq: 'flat',
   canvas: true,
   saver: 'cellular',
+  automix: false,
 };
 
 function read(): AudioSettings {
@@ -66,9 +69,9 @@ export const useAudioSettings = create<AudioStore>((set, get) => ({
   ...read(),
   set(patch) {
     set(patch);
-    const { crossfade, gapless, normalize, eq, canvas, saver } = get();
+    const { crossfade, gapless, normalize, eq, canvas, saver, automix } = get();
     try {
-      localStorage.setItem(KEY, JSON.stringify({ crossfade, gapless, normalize, eq, canvas, saver }));
+      localStorage.setItem(KEY, JSON.stringify({ crossfade, gapless, normalize, eq, canvas, saver, automix }));
     } catch {
       /* settings for this session only */
     }
@@ -114,11 +117,87 @@ setSaverCheck(saverActive);
 // cannot be undone, and on some phones a suspended AudioContext stops playback in
 // the background. Turning everything off again leaves the chain in place but neutral.
 
+/**
+ * One deck's channel strip, as on a DJ mixer: a three-band EQ, a sweepable filter,
+ * the fader, and an echo send. Neutral unless AutoMix is moving it.
+ */
+export interface MixNodes {
+  low: BiquadFilterNode;
+  mid: BiquadFilterNode;
+  high: BiquadFilterNode;
+  filter: BiquadFilterNode;
+  fader: GainNode;
+  send: GainNode;
+  delay: DelayNode;
+  feedback: GainNode;
+}
+
 interface Routed {
   /** This element's own level: what evens one song out against the next. */
   gain: GainNode;
   /** Taps the song before any processing, to measure how loud it is. */
   analyser: AnalyserNode;
+  mix: MixNodes;
+}
+
+/** Puts a channel strip back to flat: full fader, no EQ, no filter, no echo. */
+export function neutral(nodes: MixNodes, ctx: BaseAudioContext): void {
+  const now = ctx.currentTime;
+  for (const param of [
+    nodes.low.gain,
+    nodes.mid.gain,
+    nodes.high.gain,
+    nodes.filter.frequency,
+    nodes.fader.gain,
+    nodes.send.gain,
+  ]) {
+    param.cancelScheduledValues(now);
+  }
+  nodes.low.gain.setValueAtTime(0, now);
+  nodes.mid.gain.setValueAtTime(0, now);
+  nodes.high.gain.setValueAtTime(0, now);
+  nodes.filter.type = 'highpass';
+  nodes.filter.frequency.setValueAtTime(10, now);
+  nodes.filter.Q.value = 0.7;
+  nodes.fader.gain.setValueAtTime(1, now);
+  nodes.send.gain.setValueAtTime(0, now);
+}
+
+function strip(ctx: AudioContext, out: AudioNode): { input: AudioNode; nodes: MixNodes } {
+  const low = ctx.createBiquadFilter();
+  low.type = 'lowshelf';
+  low.frequency.value = 180;
+  const mid = ctx.createBiquadFilter();
+  mid.type = 'peaking';
+  mid.frequency.value = 1000;
+  mid.Q.value = 0.8;
+  const high = ctx.createBiquadFilter();
+  high.type = 'highshelf';
+  high.frequency.value = 5000;
+  const filter = ctx.createBiquadFilter();
+  const fader = ctx.createGain();
+  // Echo: a send off the filter (before the fader, so a song can echo out after its
+  // fader is down), a delay that feeds back into itself, darkened on each repeat.
+  const send = ctx.createGain();
+  const delay = ctx.createDelay(2);
+  const feedback = ctx.createGain();
+  const tone = ctx.createBiquadFilter();
+  tone.type = 'lowpass';
+  tone.frequency.value = 3200;
+  low.connect(mid);
+  mid.connect(high);
+  high.connect(filter);
+  filter.connect(fader);
+  fader.connect(out);
+  filter.connect(send);
+  send.connect(delay);
+  delay.connect(tone);
+  tone.connect(feedback);
+  feedback.connect(delay);
+  tone.connect(out);
+  const nodes: MixNodes = { low, mid, high, filter, fader, send, delay, feedback };
+  neutral(nodes, ctx);
+  return { input: low, nodes };
 }
 
 interface Chain {
@@ -126,7 +205,21 @@ interface Chain {
   input: AudioNode;
   filters: BiquadFilterNode[];
   compressor: DynamicsCompressorNode;
+  output: AudioNode;
   connected: WeakMap<HTMLAudioElement, Routed>;
+}
+
+/** Linear to 0.8, then a smooth knee that never reaches 1. */
+export function softClipCurve(points = 2048): Float32Array<ArrayBuffer> {
+  const curve = new Float32Array(new ArrayBuffer(points * 4));
+  const knee = 0.8;
+  for (let i = 0; i < points; i += 1) {
+    const x = (i / (points - 1)) * 2 - 1;
+    const a = Math.abs(x);
+    const y = a <= knee ? a : knee + (1 - knee) * Math.tanh((a - knee) / (1 - knee)) * 0.95;
+    curve[i] = Math.sign(x) * y;
+  }
+  return curve;
 }
 
 let chain: Chain | null = null;
@@ -135,8 +228,8 @@ function wanted(): boolean {
   // WebKitGTK (Telegram Desktop on Linux) crashes routing a media element through Web
   // Audio: there the music plays unprocessed rather than not at all.
   if (fragileWebView()) return false;
-  const { normalize, eq } = useAudioSettings.getState();
-  return normalize || eq !== 'flat';
+  const { normalize, eq, automix } = useAudioSettings.getState();
+  return normalize || eq !== 'flat' || automix;
 }
 
 function build(): Chain | null {
@@ -157,8 +250,22 @@ function build(): Chain | null {
     const compressor = ctx.createDynamicsCompressor();
     for (let i = 0; i < filters.length - 1; i += 1) filters[i]?.connect(filters[i + 1] as AudioNode);
     filters[filters.length - 1]?.connect(compressor);
-    compressor.connect(ctx.destination);
-    const built: Chain = { ctx, input: filters[0] as AudioNode, filters, compressor, connected: new WeakMap() };
+    // The last stage: a soft clipper. The compressor adds make-up gain and lets the
+    // first milliseconds of a kick through, so on its own it is no limiter; this
+    // keeps every sample under full scale, transparently below 0.8.
+    const clipper = ctx.createWaveShaper();
+    clipper.curve = softClipCurve();
+    clipper.oversample = '2x';
+    compressor.connect(clipper);
+    clipper.connect(ctx.destination);
+    const built: Chain = {
+      ctx,
+      input: filters[0] as AudioNode,
+      filters,
+      compressor,
+      output: clipper,
+      connected: new WeakMap(),
+    };
     onElement((el) => {
       if (built.connected.has(el)) return;
       try {
@@ -166,10 +273,11 @@ function build(): Chain | null {
         const gain = ctx.createGain();
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 2048;
+        const deck = strip(ctx, built.input);
         source.connect(gain);
-        gain.connect(built.input);
+        gain.connect(deck.input);
         source.connect(analyser);
-        built.connected.set(el, { gain, analyser });
+        built.connected.set(el, { gain, analyser, mix: deck.nodes });
       } catch {
         /* already routed, or the browser refuses: it simply plays unprocessed */
       }
@@ -197,11 +305,29 @@ export function applyEffects(): void {
     c.ratio.value = 4;
     c.attack.value = 0.01;
     c.release.value = 0.3;
+  } else if (useAudioSettings.getState().automix) {
+    // Two songs overlap in every mix: a limiter keeps the sum from ever clipping.
+    c.threshold.value = -3;
+    c.knee.value = 3;
+    c.ratio.value = 20;
+    c.attack.value = 0.003;
+    c.release.value = 0.15;
   } else {
     c.threshold.value = 0;
     c.knee.value = 0;
     c.ratio.value = 1;
   }
+}
+
+/** The end of the chain (after the limiter), to listen in on what plays: diagnostics. */
+export function masterOutput(): AudioNode | null {
+  return chain?.output ?? null;
+}
+
+/** The audio graph's clock and an element's channel strip, for AutoMix. */
+export function mixDeck(el: HTMLAudioElement): { ctx: AudioContext; nodes: MixNodes } | null {
+  const routed = chain?.connected.get(el);
+  return routed && chain ? { ctx: chain.ctx, nodes: routed.mix } : null;
 }
 
 // ── per-song levelling ────────────────────────────────────────────────────────

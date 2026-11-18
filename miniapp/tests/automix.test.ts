@@ -10,8 +10,16 @@ function song(bpm: number, key: number | null, extra: Partial<MixAnalysis> = {})
 }
 
 describe('planner', () => {
-  it('blends harmonic songs at close tempos for 16 bars, phrase-aligned at the outro', () => {
-    const plan = planMix({ duration: 215, mix: song(124, 7) }, { duration: 200, mix: song(126, 8) });
+  it('matches phrases: the mix lasts as long as the incoming intro', () => {
+    // An 8-bar intro (15 s at 126) gets an 8-bar mix; a 16-bar intro gets 16.
+    const short = planMix({ duration: 215, mix: song(124, 7) }, { duration: 200, mix: song(126, 8) });
+    expect(short.bars).toBe(8);
+    const long = planMix({ duration: 215, mix: song(124, 7) }, { duration: 200, mix: song(126, 8, { intro: 30.7 }) });
+    expect(long.bars).toBe(16);
+  });
+
+  it('blends harmonic songs at close tempos, starting on a bar line at the outro', () => {
+    const plan = planMix({ duration: 215, mix: song(124, 7) }, { duration: 200, mix: song(126, 8, { intro: 30.7 }) });
     expect(plan.style).toBe('blend'); // 8A → 9A: neighbours on the wheel
     expect(plan.bars).toBe(16);
     expect(plan.rate).toBeCloseTo(124 / 126, 5); // the incoming song comes to our tempo
@@ -105,7 +113,8 @@ function deck(name: string, log: string[]): MixNodes {
 describe('automation', () => {
   it('a blend: incoming bass killed until the halfway bar line, then the basses swap', () => {
     const log: string[] = [];
-    const plan = planMix({ duration: 215, mix: song(120, 7) }, { duration: 200, mix: song(120, 8) });
+    const plan = planMix({ duration: 215, mix: song(120, 7) }, { duration: 200, mix: song(120, 8, { intro: 32.2 }) });
+    expect(plan.bars).toBe(16);
     automate(plan, deck('out', log), deck('in', log), 100);
     const swap = 100 + 8 * 4 * 0.5; // 16 bars at 120: the swap after 8 bars, 16 s in
     expect(log).toContain('in.low set -30 @100.00');

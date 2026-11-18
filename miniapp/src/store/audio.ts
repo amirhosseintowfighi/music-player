@@ -205,7 +205,21 @@ interface Chain {
   input: AudioNode;
   filters: BiquadFilterNode[];
   compressor: DynamicsCompressorNode;
+  output: AudioNode;
   connected: WeakMap<HTMLAudioElement, Routed>;
+}
+
+/** Linear to 0.8, then a smooth knee that never reaches 1. */
+export function softClipCurve(points = 2048): Float32Array<ArrayBuffer> {
+  const curve = new Float32Array(new ArrayBuffer(points * 4));
+  const knee = 0.8;
+  for (let i = 0; i < points; i += 1) {
+    const x = (i / (points - 1)) * 2 - 1;
+    const a = Math.abs(x);
+    const y = a <= knee ? a : knee + (1 - knee) * Math.tanh((a - knee) / (1 - knee)) * 0.95;
+    curve[i] = Math.sign(x) * y;
+  }
+  return curve;
 }
 
 let chain: Chain | null = null;
@@ -236,8 +250,22 @@ function build(): Chain | null {
     const compressor = ctx.createDynamicsCompressor();
     for (let i = 0; i < filters.length - 1; i += 1) filters[i]?.connect(filters[i + 1] as AudioNode);
     filters[filters.length - 1]?.connect(compressor);
-    compressor.connect(ctx.destination);
-    const built: Chain = { ctx, input: filters[0] as AudioNode, filters, compressor, connected: new WeakMap() };
+    // The last stage: a soft clipper. The compressor adds make-up gain and lets the
+    // first milliseconds of a kick through, so on its own it is no limiter; this
+    // keeps every sample under full scale, transparently below 0.8.
+    const clipper = ctx.createWaveShaper();
+    clipper.curve = softClipCurve();
+    clipper.oversample = '2x';
+    compressor.connect(clipper);
+    clipper.connect(ctx.destination);
+    const built: Chain = {
+      ctx,
+      input: filters[0] as AudioNode,
+      filters,
+      compressor,
+      output: clipper,
+      connected: new WeakMap(),
+    };
     onElement((el) => {
       if (built.connected.has(el)) return;
       try {
@@ -289,6 +317,11 @@ export function applyEffects(): void {
     c.knee.value = 0;
     c.ratio.value = 1;
   }
+}
+
+/** The end of the chain (after the limiter), to listen in on what plays: diagnostics. */
+export function masterOutput(): AudioNode | null {
+  return chain?.output ?? null;
 }
 
 /** The audio graph's clock and an element's channel strip, for AutoMix. */

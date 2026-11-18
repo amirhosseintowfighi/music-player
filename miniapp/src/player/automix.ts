@@ -114,15 +114,27 @@ export function planMix(
     const beat = 60 / a.bpm;
     if (Math.abs(rate - 1) <= MAX_STRETCH) {
       const style: MixStyle = base.harmonic ? 'blend' : 'swap';
-      // As long as the music allows: the outro must hold it, the incoming intro
-      // should cover it, and a transition is not a medley.
+      // Phrase matching, the way a DJ counts it: the mix should start where the
+      // outgoing song's outro does and last as long as the incoming song's intro, so
+      // the new song's body arrives exactly as the old one ends. Of the lengths that
+      // fit, the one closest to that wins; on a tie, the longer one.
+      const introBars = Math.max(0, (b.intro - inAt) / ((4 * 60) / b.bpm));
+      let chosen: MixPlan | null = null;
+      let bestMiss = Infinity;
       for (const bars of style === 'blend' ? [16, 8, 4] : [8, 4]) {
         const seconds = bars * 4 * beat;
         if (seconds > MAX_MIX_S && bars > 4) continue;
         const outAt = mixOutPoint(a, cur.duration, seconds);
         const fits = outAt + seconds <= cur.duration - 0.2 && inAt + seconds * rate <= next.duration * 0.6;
-        if (fits) return { ...base, style, outAt, inAt, seconds, rate, beat, bars };
+        if (!fits) continue;
+        const barOut = 4 * beat;
+        const miss = Math.abs(outAt - a.outro) / barOut + (introBars > 0 ? Math.abs(bars - introBars) : 0);
+        if (miss < bestMiss - 0.5) {
+          bestMiss = miss;
+          chosen = { ...base, style, outAt, inAt, seconds, rate, beat, bars };
+        }
       }
+      if (chosen) return chosen;
     }
     // Too far apart to beatmatch: echo out on a bar line, land on the downbeat.
     const seconds = 2 * 4 * beat;
@@ -280,6 +292,8 @@ export interface MixState {
   toBpm: number | null;
   fromKey: number | null;
   toKey: number | null;
+  /** Wall-clock milliseconds: when the mix started and when it will be over. */
+  started: number;
   until: number;
 }
 
@@ -377,7 +391,9 @@ export function runMix(out: HTMLAudioElement, inn: HTMLAudioElement, plan: MixPl
   if (armed && armed.out === out && armed.inn === inn) t0 = armed.t0;
   else automate(plan, outDeck.nodes, inDeck.nodes, t0);
   armed = null;
-  const beatmatched = plan.style === 'blend' || plan.style === 'swap';
+  // Beatmatched styles stay locked for the whole overlap; an echo out is locked too,
+  // so the new song lands exactly on its downbeat under the echo tail.
+  const beatmatched = plan.style === 'blend' || plan.style === 'swap' || plan.style === 'echo';
   const tail = plan.style === 'echo' ? plan.seconds + 4 * plan.beat : plan.seconds;
   const remaining = Math.max(0.1, t0 + tail - inDeck.ctx.currentTime);
   const timers: Running['timers'] = [];
@@ -389,6 +405,7 @@ export function runMix(out: HTMLAudioElement, inn: HTMLAudioElement, plan: MixPl
     toBpm: plan.toBpm,
     fromKey: plan.fromKey,
     toKey: plan.toKey,
+    started: Date.now(),
     until: Date.now() + remaining * 1000,
   });
   if (beatmatched) {

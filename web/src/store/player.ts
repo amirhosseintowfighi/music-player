@@ -20,13 +20,16 @@ import type { Track } from '@/api/client';
 import { fetchRadio } from '@/api/discover';
 import { fetchForTracks, loadProgress, saveProgress } from '@/api/listening';
 import { haptic } from '@/lib/telegram';
-import { applyEffects, levelTrack, resumeEffects, useAudioSettings } from '@/store/audio';
+import { fragileWebView } from '@/lib/perf';
+import type { MixPlan, MixState } from '@/player/automix';
+import { applyEffects, levelTrack, resumeEffects, saverActive, useAudioSettings } from '@/store/audio';
 import {
   allAudio,
   audio,
   cancelFade,
   fadeElement,
   preloadNext,
+  spareElement,
   spareTrackId,
   takePreloaded,
   dropTicket,
@@ -106,6 +109,8 @@ interface PlayerState {
   error: PlaybackError | null;
   /** Set while in a Jam: transport actions go there instead of to the queue. */
   remote: Remote | null;
+  /** The AutoMix transition playing right now, for the player to show. */
+  mixing: MixState | null;
   /** Set by the app; used to report finished plays (phase 5). */
   onPlayed: ((track: Track, playedSeconds: number, completed: boolean, source: PlaySource, sourceId: number | null) => void) | null;
 
@@ -176,6 +181,41 @@ function rememberPlace(track: Track | null, seconds: number, force = false): voi
 
 /** Set while the next track is fading in over the end of this one. */
 let crossfading = false;
+
+// ── AutoMix (player/automix) ─────────────────────────────────────────────────
+// Loaded only once somebody turns it on: the analyser and the planner are not part
+// of the first screen.
+type AutomixModules = {
+  mix: typeof import('@/player/automix');
+  data: typeof import('@/player/mixdata');
+};
+let automix: AutomixModules | null = null;
+let automixLoading: Promise<void> | null = null;
+/** The transition the next load should perform, once its moment has come. */
+let pendingMix: MixPlan | null = null;
+let armedFor: { from: number; timer: ReturnType<typeof setTimeout> } | null = null;
+const studied = new Set<number>();
+
+function automixModules(): AutomixModules | null {
+  if (automix) return automix;
+  automixLoading ??= Promise.all([import('@/player/automix'), import('@/player/mixdata')])
+    .then(([mix, data]) => {
+      automix = { mix, data };
+      mix.onMixState((mixing) => usePlayer.setState({ mixing }));
+    })
+    .catch(() => {
+      automixLoading = null;
+    });
+  return null;
+}
+
+/** Calls off whatever AutoMix had planned or is doing: the listener took over. */
+function stopAutomix(): void {
+  if (armedFor) clearTimeout(armedFor.timer);
+  armedFor = null;
+  pendingMix = null;
+  automix?.mix.abortMix();
+}
 /** How long the next load should overlap the outgoing track (0 = no crossfade). */
 let pendingCrossfadeMs = 0;
 
@@ -227,6 +267,7 @@ export const usePlayer = create<PlayerState>((set, get) => ({
   sleepEndOfTrack: false,
   error: null,
   remote: null,
+  mixing: null,
   onPlayed: null,
 
   async play(request) {
@@ -295,6 +336,7 @@ export const usePlayer = create<PlayerState>((set, get) => ({
       return;
     }
     if (isPlaying) {
+      stopAutomix();
       el.pause();
       return;
     }
@@ -446,6 +488,7 @@ export const usePlayer = create<PlayerState>((set, get) => ({
       remote.seek(seconds);
       return;
     }
+    stopAutomix();
     const el = audio();
     if (Number.isFinite(el.duration)) el.currentTime = Math.max(0, Math.min(seconds, el.duration));
     else el.currentTime = Math.max(0, seconds);
@@ -649,8 +692,57 @@ export const usePlayer = create<PlayerState>((set, get) => ({
      * Near the end of a track: buffer the next one in the spare element (gapless),
      * and with crossfade on, start it while this one fades out.
      */
+    /**
+     * AutoMix: get to know both songs, buffer the next one early, and arm the
+     * planned transition a moment before its bar line. True when it is in charge.
+     */
+    const automixAhead = (el: HTMLAudioElement): boolean => {
+      const { remote, repeat, isPlaying, current, speed } = get();
+      if (!useAudioSettings.getState().automix || fragileWebView()) return false;
+      if (remote || repeat === 'one' || speed !== 1) return false;
+      const modules = automixModules();
+      if (!modules || !current || !isPlaying) return false;
+      const [upcoming] = get().upcoming();
+      if (!upcoming || !Number.isFinite(el.duration) || el.duration <= 0) return Boolean(upcoming);
+      const { mix, data } = modules;
+      const download = !saverActive();
+      // The playing song is studied once it has settled in, the next one straight away.
+      for (const track of [current, upcoming]) {
+        if (studied.has(track.id) || (track === current && el.currentTime < 8)) continue;
+        studied.add(track.id);
+        void data.requestMix(track, download).then((found) => found && mix.replan());
+      }
+      const plan = mix.planFor(
+        { ...current, duration: el.duration },
+        upcoming,
+        data.knownMix(current),
+        data.knownMix(upcoming),
+      );
+      const until = plan.outAt - el.currentTime;
+      if (until <= 45 && spareTrackId() !== upcoming.id && !mix.isMixing()) void preloadNext(upcoming);
+      if (until <= 1.5 && until > -0.25 && armedFor?.from !== current.id) {
+        const incoming = spareTrackId() === upcoming.id ? spareElement() : null;
+        // Not buffered in time: no mix this once, the song simply ends into the next.
+        if (!incoming || !mix.armMix(el, incoming, plan, until)) return true;
+        const timer = setTimeout(() => {
+          armedFor = null;
+          const still = get();
+          if (still.current?.id !== current.id || still.upcoming()[0]?.id !== upcoming.id || !still.isPlaying) {
+            mix.disarm();
+            return;
+          }
+          crossfading = true;
+          pendingMix = plan;
+          get().reportPlayed(true);
+          void get().next(true);
+        }, Math.max(0, until * 1000 - 25));
+        armedFor = { from: current.id, timer };
+      }
+      return true;
+    };
     const transitionAhead = (el: HTMLAudioElement) => {
       const { remote, repeat, isPlaying, current } = get();
+      if (automixAhead(el)) return;
       if (remote || !isPlaying || !current || repeat === 'one') return;
       if (!Number.isFinite(el.duration) || el.duration <= 0) return;
       const { crossfade, gapless } = useAudioSettings.getState();
@@ -818,13 +910,24 @@ async function load(
   const overlapMs = pendingCrossfadeMs;
   pendingCrossfadeMs = 0;
   crossfading = false;
+  // An AutoMix transition is only ever this load; anything else calls it off.
+  let mixPlan = pendingMix;
+  pendingMix = null;
+  if (!mixPlan) stopAutomix();
   // The notification and lock screen show the new song straight away.
   if (attempt === 0 && !keepElement) setMediaSession(track, null, mediaHandlers(get));
   // The next track may already be buffered in the spare element: switch to it.
   const outgoing = keepElement ? null : takePreloaded(track.id);
   let el = audio();
+  if (mixPlan && (!outgoing || outgoing === el)) {
+    // The next song was not in the other deck after all: a plain start.
+    automix?.mix.abortMix();
+    mixPlan = null;
+  }
   if (outgoing && outgoing !== el) {
-    if (overlapMs > 0) void fadeElement(outgoing, 0, overlapMs).then(() => outgoing.pause());
+    // AutoMix takes the outgoing deck out itself, on the beat.
+    if (mixPlan) automix?.mix.prepareIncoming(el, mixPlan);
+    else if (overlapMs > 0) void fadeElement(outgoing, 0, overlapMs).then(() => outgoing.pause());
     else outgoing.pause();
   }
   resumeEffects();
@@ -841,7 +944,7 @@ async function load(
     if (!outgoing || el.src !== src) el.src = src;
     levelTrack(el, track);
     if (resumeAt) el.currentTime = resumeAt;
-    el.playbackRate = get().speed;
+    el.playbackRate = mixPlan ? mixPlan.rate : get().speed;
     if (positionAt) el.currentTime = Math.max(0, positionAt());
     // Start silent and ramp up: without this every track begins with a click.
     cancelFade();
@@ -850,13 +953,19 @@ async function load(
       set({ isLoading: false, isPlaying: false, error: null });
       return;
     }
-    el.volume = 0;
+    // AutoMix fades on the channel strip, not with the element's volume.
+    el.volume = mixPlan ? get().volume : 0;
     try {
       await el.play();
     } catch (error) {
       // The spare had never been allowed to make sound. The element that was playing
       // a moment ago was: put the new song there instead of stopping the music.
       if (!(error instanceof DOMException && error.name === 'NotAllowedError' && outgoing)) throw error;
+      if (mixPlan) {
+        // The other deck may not make sound yet: no mix, the song just changes.
+        automix?.mix.abortMix();
+        mixPlan = null;
+      }
       const position = el.currentTime;
       el.pause();
       el = swapBack();
@@ -870,7 +979,8 @@ async function load(
     }
     // The first bytes took a while; catch up with the room.
     if (positionAt && Math.abs(el.currentTime - positionAt()) > 1) el.currentTime = positionAt();
-    void fadeTo(get().volume, overlapMs > 0 ? overlapMs : FADE_IN_MS);
+    if (mixPlan && outgoing) automix?.mix.runMix(outgoing, el, mixPlan);
+    else void fadeTo(get().volume, overlapMs > 0 ? overlapMs : FADE_IN_MS);
     set({ isLoading: false, error: null });
   } catch (error) {
     // Whatever failed, the element must not be left silent for the next attempt.

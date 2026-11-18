@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import type { Track } from '@/api/client';
 import { CreditsSheet } from '@/components/Credits';
+import { MixPanel } from '@/components/MixPanel';
 import { DevicesSheet } from '@/components/Devices';
 import {
   ChevronIcon,
@@ -563,6 +564,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                   <h1 id={fullTitleId} className="truncate text-[23px] font-bold tracking-tight">{track.title}</h1>
                   <p className="mt-1 truncate text-[14px] text-[var(--ink-dim)]">{artistNames(track)}</p>
                   <ChannelChip track={track} />
+                  <MixPanel track={track} />
                 </motion.div>
               </AnimatePresence>
             </div>
