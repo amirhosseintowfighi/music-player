@@ -23,6 +23,8 @@ from tests.integration.helpers import item, make_channel
 from tests.integration.test_bot import USER, RecordingSession, send, tg  # noqa: F401
 from tmusic_common.stream_ticket import verify
 
+pytestmark = pytest.mark.usefixtures("postgres_search")
+
 _n = iter(range(50_000, 60_000))
 
 

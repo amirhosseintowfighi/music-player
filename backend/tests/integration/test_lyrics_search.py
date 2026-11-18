@@ -18,6 +18,9 @@ from app.services.meili import LYRICS_FIELDS
 from tests.conftest import bearer, login
 from tests.integration.helpers import item, make_channel, subscribe
 
+# What search returns, not the engine behind it: see the Meilisearch test below.
+pytestmark = pytest.mark.usefixtures("postgres_search")
+
 LRC = "[ar: Ebi]\n[00:01.00] Shabe Eshgh o Mahtab\n[00:05.50] Dele man dar havaye to"
 
 
