@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import type { Track } from '@/api/client';
 import { CreditsSheet } from '@/components/Credits';
+import { MixPanel } from '@/components/MixPanel';
 import { DevicesSheet } from '@/components/Devices';
 import {
   ChevronIcon,
@@ -543,6 +544,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                   <h1 id={fullTitleId} className="truncate text-[23px] font-bold tracking-tight">{track.title}</h1>
                   <p className="mt-1 truncate text-[14px] text-[var(--ink-dim)]">{artistNames(track)}</p>
                   <ChannelChip track={track} />
+                  <MixPanel track={track} />
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -669,6 +671,18 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
           <CreditsSheet track={track} open={creditsOpen} onClose={() => setCreditsOpen(false)} />
 
           <Sheet open={optionsOpen} onClose={() => setOptionsOpen(false)} title={t('common.more')}>
+            <button
+              type="button"
+              onClick={() => {
+                haptic('light');
+                setOptionsOpen(false);
+                setOpen(false);
+                useUi.getState().setCarMode(true);
+              }}
+              className="mb-5 flex w-full items-center gap-3 rounded-xl bg-[var(--fill)] px-3.5 py-3 text-start text-[13.5px] font-semibold"
+            >
+              🚗 {t('car.open')}
+            </button>
             <p className="mb-2 px-1 text-[12.5px] text-[var(--ink-dim)]">{t('player.speed')}</p>
             <div className="mb-5 flex gap-2">
               {SPEEDS.map((value) => (

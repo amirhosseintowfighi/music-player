@@ -18,6 +18,12 @@ interface CachedTicket extends StreamTicket {
 
 const tickets = new Map<number, CachedTicket>();
 
+/** Data saver, as the audio settings decide it (set from there to keep imports one-way). */
+let saverCheck: () => boolean = () => false;
+export function setSaverCheck(check: () => boolean): void {
+  saverCheck = check;
+}
+
 /**
  * Two elements, one playing. The spare holds the *next* track, already buffered, so
  * a track can start the instant the last one ends (gapless) or while it is still
@@ -167,6 +173,11 @@ export function spareTrackId(): number | null {
   return spareTrack;
 }
 
+/** The element holding the next track, when one is loaded there (AutoMix's other deck). */
+export function spareElement(): HTMLAudioElement | null {
+  return spareTrack !== null && elements.length >= 2 ? spare() : null;
+}
+
 /** Buffers ``track`` in the spare element so it can start without waiting. */
 export async function preloadNext(track: Track): Promise<void> {
   if (single || spareTrack === track.id) return;
@@ -217,9 +228,8 @@ export async function ticketFor(trackId: number, prefetch = false): Promise<Stre
   const cached = tickets.get(trackId);
   const fresh_enough = cached && cached.expires_at * 1000 - TICKET_SAFETY_MS > Date.now();
   if (fresh_enough && (prefetch || !cached.prefetch)) return cached;
-  const fresh = await post<StreamTicket>(
-    `/v1/tracks/${trackId}/stream${prefetch ? '?prefetch=1' : ''}`,
-  );
+  const params = [prefetch && 'prefetch=1', saverCheck() && 'saver=1'].filter(Boolean).join('&');
+  const fresh = await post<StreamTicket>(`/v1/tracks/${trackId}/stream${params ? `?${params}` : ''}`);
   tickets.set(trackId, { ...fresh, fetchedAt: Date.now(), prefetch });
   return fresh;
 }
@@ -231,6 +241,8 @@ export async function ticketFor(trackId: number, prefetch = false): Promise<Stre
  * see, and the browser cache keeps whatever arrived.
  */
 export async function prefetch(trackId: number, bytes = 256 * 1024): Promise<void> {
+  // Data saver: the next song starts a moment later rather than costing data early.
+  if (saverCheck()) return;
   try {
     const ticket = await ticketFor(trackId, true);
     await fetch(ticket.url, { headers: { Range: `bytes=0-${bytes - 1}` } });

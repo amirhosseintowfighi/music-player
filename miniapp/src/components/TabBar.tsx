@@ -28,7 +28,7 @@ export function TabBar() {
         <NavLink
           key={to}
           to={to}
-          data-tour={to === '/' ? 'tab-home' : to === '/search' ? 'tab-search' : to === '/library' ? 'tab-library' : undefined}
+          data-tour={to === '/' ? 'tab-home' : `tab-${to.slice(1)}`}
           end={to === '/'}
           onClick={() => haptic('select')}
           className={({ isActive }) =>

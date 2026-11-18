@@ -26,6 +26,7 @@ TEXTS: dict[str, dict[Lang, str]] = {
             "راهنما:\n"
             "• افزودن کانال عمومی: @username یا لینک t.me بفرست، یا یک پست را فوروارد کن.\n"
             "• کانال خصوصی خودت: من را ادمین کانال کن؛ از آن به بعد آهنگ‌های جدید اضافه می‌شوند.\n"
+            "• در هر چتی بنویس @{bot} و اسم آهنگ تا همان‌جا برای دوستت بفرستی\n"
             "• /jam با دوستانت هم‌زمان موزیک گوش بده\n"
             "• /lang تغییر زبان"
         ),
@@ -33,6 +34,7 @@ TEXTS: dict[str, dict[Lang, str]] = {
             "Help:\n"
             "• Public channel: send @username or a t.me link, or forward a post.\n"
             "• Your private channel: make me an admin; new tracks are added from then on.\n"
+            "• In any chat, type @{bot} and a song name to send it right there\n"
             "• /jam listen together with friends, in sync\n"
             "• /lang change language"
         ),
@@ -76,8 +78,14 @@ TEXTS: dict[str, dict[Lang, str]] = {
     },
     "banned": {"fa": "دسترسی شما محدود شده است.", "en": "Your access has been restricted."},
     "admin_connected": {
-        "fa": "✅ کانال «{title}» وصل شد. آهنگ‌های جدیدش خودکار اضافه می‌شوند.",
-        "en": "✅ «{title}» is connected. New tracks will be added automatically.",
+        "fa": (
+            "✅ کانال «{title}» وصل شد. آهنگ‌های جدیدش خودکار اضافه می‌شوند.\n"
+            "آمار پخش کانالت را با /owner ببین."
+        ),
+        "en": (
+            "✅ «{title}» is connected. New tracks will be added automatically.\n"
+            "See how it does with /owner."
+        ),
     },
     "upload_added": {
         "fa": "🎵 «{title}» اضافه شد. حالا در اپ قابل پخش است.",
@@ -160,6 +168,26 @@ TEXTS: dict[str, dict[Lang, str]] = {
         "fa": "این هفته {tracks} آهنگ تازه در {channels} کانالت اضافه شد.",
         "en": "{tracks} new tracks landed in {channels} of your channels this week.",
     },
+    "notify_recap": {
+        "fa": "🎧 هفته‌ات در نوکس: {minutes} دقیقه موزیک، {plays} بار پخش.",
+        "en": "🎧 Your week in Noax: {minutes} minutes of music, {plays} plays.",
+    },
+    "notify_recap_track": {
+        "fa": "🔁 آهنگ هفته‌ات: «{title}»",
+        "en": "🔁 Your song of the week: «{title}»",
+    },
+    "notify_recap_artist": {
+        "fa": "⭐ خوانندهٔ هفته‌ات: {artist}",
+        "en": "⭐ Your artist of the week: {artist}",
+    },
+    "notify_recap_new": {
+        "fa": "🆕 {tracks} آهنگ تازه در کانال‌هایت منتظر توست.",
+        "en": "🆕 {tracks} new tracks are waiting in your channels.",
+    },
+    "notify_recap_end": {
+        "fa": "Discover Weekly این هفته هم آماده است.",
+        "en": "This week's Discover Weekly is ready too.",
+    },
     "notify_new_release": {
         "fa": "\U0001f195 آهنگ تازه از {artist}: «{title}»",
         "en": "\U0001f195 New from {artist}: «{title}»",
@@ -207,6 +235,28 @@ TEXTS: dict[str, dict[Lang, str]] = {
     "jam_full": {"fa": "این جم پر است.", "en": "This Jam is full."},
     "jam_ended": {"fa": "جم تمام شد. 👋", "en": "The Jam has ended. 👋"},
     "jam_left": {"fa": "از جم خارج شدی.", "en": "You left the Jam."},
+    # ── channel owners ──
+    "owner_intro": {
+        "fa": (
+            "📊 صاحب کانال موزیک هستی؟\n"
+            "ببین آهنگ‌های کانالت در نوکس چقدر پخش می‌شوند: پخش‌ها، شنونده‌ها، "
+            "پرطرفدارترین آهنگ‌ها و چند نفر کانالت را به کتابخانه‌شان اضافه کرده‌اند.\n\n"
+            "اول @{bot} را ادمین کانالت کن (فقط اجازهٔ دیدن پیام‌ها کافی است)، بعد صفحه را باز کن."
+        ),
+        "en": (
+            "📊 Do you run a music channel?\n"
+            "See how your channel does in Noax: plays, listeners, your most played songs "
+            "and how many people added it to their library.\n\n"
+            "First make @{bot} an admin of your channel (no extra rights needed), "
+            "then open the page."
+        ),
+    },
+    "owner_open": {"fa": "📊 صفحهٔ صاحب کانال", "en": "📊 Channel owner page"},
+    # ── inline mode: @bot <song> in any chat ──
+    "inline_open": {"fa": "🎧 گوش دادن در نوکس", "en": "🎧 Listen in Noax"},
+    "inline_button": {"fa": "باز کردن نوکس", "en": "Open Noax"},
+    "inline_caption": {"fa": "🎧 با @{bot}", "en": "🎧 via @{bot}"},
+    "inline_card": {"fa": "🎵 «{title}» — {artist}", "en": "🎵 «{title}» — {artist}"},
     "error": {
         "fa": "مشکلی پیش آمد، کمی بعد دوباره امتحان کن.",
         "en": "Something went wrong, please try again shortly.",

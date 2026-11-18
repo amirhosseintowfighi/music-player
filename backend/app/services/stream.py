@@ -108,7 +108,14 @@ _SOURCES_SQL = text(
 )
 
 
-async def pick_source(session: AsyncSession, track_id: int, bot_id: int, bot_max: int) -> Source:
+# Data saver only switches copies for a real saving: a few percent is not worth
+# giving up the Bot API path for.
+SAVER_MIN_SAVING = 0.8
+
+
+async def pick_source(
+    session: AsyncSession, track_id: int, bot_id: int, bot_max: int, *, saver: bool = False
+) -> Source:
     track = await session.get(Track, track_id)
     if track is None or track.hidden:
         raise NotFound("track not found")
@@ -126,7 +133,14 @@ async def pick_source(session: AsyncSession, track_id: int, bot_id: int, bot_max
     if not candidates:
         raise Unavailable("track is not playable right now", reason="no_source")
     best = candidates[0]
-    via_bot = bool(bot_ok)
+    if saver:
+        # Data saver: the smallest copy of the same song (a 128 kbps re-upload rather
+        # than the 320 kbps original). Only copies we can stream straight away count.
+        ready = bot_ok + [r for r in mtproto_ok if r.resolve_status == "resolved"]
+        smallest = min(ready, key=lambda r: r.file_size, default=best)
+        if 0 < smallest.file_size < best.file_size * SAVER_MIN_SAVING:
+            best = smallest
+    via_bot = best in bot_ok
     return Source(
         track_id=root,
         row_id=best.id,
@@ -220,6 +234,7 @@ async def issue_ticket(
     http: httpx.AsyncClient | None = None,
     *,
     prefetch: bool = False,
+    saver: bool = False,
 ) -> StreamOut:
     """A signed URL for one track.
 
@@ -228,7 +243,9 @@ async def issue_ticket(
     kilobytes. When the track is actually played, the client asks again without the
     flag and gets a full, counted ticket (ADR-003 §2-3).
     """
-    source = await pick_source(session, track_id, settings.bot_id, settings.bot_api_max_download)
+    source = await pick_source(
+        session, track_id, settings.bot_id, settings.bot_api_max_download, saver=saver
+    )
     if not source.resolved and http is not None:
         # A crawled track nobody has played yet: the catalogue knows the message, not
         # the file. One MTProto read fills that in, once, and the answer is kept
@@ -243,7 +260,7 @@ async def issue_ticket(
             raise Unavailable("track is not playable right now", reason="resolving")
         metrics.PLAYBACK_INLINE_RESOLVE.labels("resolved").inc()
         source = await pick_source(
-            session, track_id, settings.bot_id, settings.bot_api_max_download
+            session, track_id, settings.bot_id, settings.bot_api_max_download, saver=saver
         )
     if not prefetch:
         plan = await plans.get_plan(session, claims.plan)

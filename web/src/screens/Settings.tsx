@@ -10,8 +10,10 @@ import { usePrivateSession, useSetPrivateSession } from '@/api/listening';
 import { JamIcon } from '@/components/icons';
 import { Credit, Glass, cx } from '@/components/ui';
 import { useI18n, type Key } from '@/i18n';
+import { fragileWebView } from '@/lib/perf';
 import { EQ_PRESETS, useAudioSettings, type EqPreset } from '@/store/audio';
 import { useUi } from '@/store/ui';
+import { useInstall } from '@/lib/install';
 import { resetTour, TOUR_REPLAY_EVENT } from '@/lib/tour';
 
 function Row({ label, hint, children, labelId }: { label: string; hint?: string; children: React.ReactNode; labelId?: string }) {
@@ -120,6 +122,14 @@ function PlaybackSettings() {
     <>
       <h2 className="mb-2 mt-5 px-1 text-[13px] font-semibold text-[var(--ink-dim)]">{t('audio.title')}</h2>
       <Glass className="mb-3 divide-y divide-[var(--separator)]">
+        <Row label={`🎛 ${t('automix.title')}`} hint={fragileWebView() ? t('automix.unavailable') : t('automix.hint')}>
+          <Toggle
+            on={audio.automix && !fragileWebView()}
+            onChange={(automix) => audio.set({ automix })}
+            label={t('automix.title')}
+          />
+        </Row>
+        {!audio.automix && (
         <div className="px-3.5 py-3">
           <div className="flex items-center justify-between">
             <p className="text-[14px]">{t('audio.crossfade')}</p>
@@ -139,9 +149,33 @@ function PlaybackSettings() {
           />
           <p className="mt-0.5 text-[11.5px] text-[var(--ink-faint)]">{t('audio.crossfade.hint', { max: n(12) })}</p>
         </div>
+        )}
         <Row label={t('audio.gapless')} hint={t('audio.gapless.hint')}>
           <Toggle on={audio.gapless} onChange={(gapless) => audio.set({ gapless })} label={t('audio.gapless')} />
         </Row>
+        <div className="px-3.5 py-3">
+          <p className="text-[14px]">{t('audio.saver')}</p>
+          <p className="mt-0.5 text-[11.5px] text-[var(--ink-faint)]">{t('audio.saver.hint')}</p>
+          <div className="mt-2.5 flex gap-2" role="radiogroup" aria-label={t('audio.saver')}>
+            {(['off', 'cellular', 'always'] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                role="radio"
+                aria-checked={audio.saver === mode}
+                onClick={() => audio.set({ saver: mode })}
+                className={cx(
+                  'flex-1 rounded-full px-3 py-1.5 text-[12px] transition-colors',
+                  audio.saver === mode
+                    ? 'bg-[var(--accent)] font-bold text-[var(--accent-ink)]'
+                    : 'bg-[var(--fill)] text-[var(--ink-dim)]',
+                )}
+              >
+                {t(`audio.saver.${mode}`)}
+              </button>
+            ))}
+          </div>
+        </div>
         <Row label={t('audio.normalize')} hint={t('audio.normalize.hint')}>
           <Toggle on={audio.normalize} onChange={(normalize) => audio.set({ normalize })} label={t('audio.normalize')} />
         </Row>
@@ -179,6 +213,29 @@ function PlaybackSettings() {
   );
 }
 
+/** Install as an app (Windows, Android, macOS) where the browser offers it. */
+function InstallCard() {
+  const { t } = useI18n();
+  const prompt = useInstall((s) => s.prompt);
+  const install = useInstall((s) => s.install);
+  if (!prompt) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => void install()}
+      className="mb-3 flex w-full items-center gap-3 rounded-[var(--radius-glass)] bg-[var(--accent)] px-3.5 py-3 text-start text-[var(--accent-ink)] transition-transform active:scale-[0.98]"
+    >
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-black/15 text-[17px]" aria-hidden>
+        ⬇
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-[14px] font-bold">{t('install.title')}</span>
+        <span className="block truncate text-[12px] opacity-80">{t('install.hint')}</span>
+      </span>
+    </button>
+  );
+}
+
 export function Settings() {
   const { t } = useI18n();
   const me = useMe();
@@ -195,6 +252,19 @@ export function Settings() {
     <div className="px-4 pt-4 tv-safe [container-type:inline-size]">
       <h1 className="mb-4 text-[clamp(18px,2.5cqw,22px)] font-bold">{t('settings.title')}</h1>
 
+      <InstallCard />
+      <a
+        href="#/owner"
+        className="mb-3 flex items-center gap-3 rounded-[var(--radius-glass)] bg-[var(--card)] px-3.5 py-3 transition-transform active:scale-[0.98]"
+      >
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--fill)] text-[17px]" aria-hidden>
+          📊
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14px] font-semibold">{t('owner.title')}</span>
+          <span className="block truncate text-[12px] text-[var(--ink-dim)]">{t('owner.entryHint')}</span>
+        </span>
+      </a>
       <a
         href="#/jam"
         className="mb-3 flex items-center gap-3 rounded-[var(--radius-glass)] bg-[var(--card)] px-3.5 py-3 transition-transform active:scale-[0.98]"

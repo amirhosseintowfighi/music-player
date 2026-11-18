@@ -1,14 +1,27 @@
 {
+  "id": "/",
   "name": "Noax",
   "short_name": "Noax",
+  "description": "Your Telegram music channels as one music app: search, playlists, lyrics, offline and listening together.",
+  "lang": "fa",
+  "dir": "auto",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "orientation": "any",
   "background_color": "#000000",
   "theme_color": "#07080c",
+  "categories": ["music", "entertainment"],
+  "launch_handler": { "client_mode": "focus-existing" },
   "icons": [
     { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
     { "src": "/icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "جست‌وجو", "short_name": "Search", "url": "/#/search", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "کتابخانه", "short_name": "Library", "url": "/#/library", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "دانلودها", "short_name": "Downloads", "url": "/#/downloads", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
   ]
 }

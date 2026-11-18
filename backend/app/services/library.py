@@ -9,7 +9,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from sqlalchemy import TextClause, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.domain.text.normalizer import normalize_key
 from app.errors import NotFound
 from app.models import Artist, Track, TrackArtist
-from app.schemas import AlbumOut, ArtistOut, ArtistRef, TrackChannelRef, TrackOut
+from app.schemas import AlbumOut, ArtistOut, ArtistRef, MixAnalysis, TrackChannelRef, TrackOut
 from app.services.pagination import cursor_datetime, cursor_int, decode_cursor, encode_cursor
 
 Lang = Literal["fa", "en"]
@@ -153,6 +153,8 @@ async def hydrate_tracks(
                 liked=t.id in liked,
                 channel=channels.get(t.id),
                 palette=t.cover_palette,
+                loudness=None if t.loudness_db is None else round(t.loudness_db, 1),
+                mix=_mix(t.mix_analysis),
             )
         )
     return out
@@ -585,6 +587,63 @@ async def get_artist(session: AsyncSession, artist_id: int, lang: Lang) -> Artis
         latin_name=artist.latin_name,
         tracks_count=artist.tracks_count,
         image_url=artist.image_url,
+    )
+
+
+def _mix(raw: dict[str, Any] | None) -> MixAnalysis | None:
+    if not raw:
+        return None
+    try:
+        return MixAnalysis.model_validate(raw)
+    except ValueError:
+        return None  # an older shape: re-measured by the next listener
+
+
+# Better analyses may replace a stored one, from this many listeners at most.
+MIX_MAX_REPORTS = 5
+
+
+async def remember_mix(session: AsyncSession, track_id: int, analysis: MixAnalysis) -> None:
+    """Keeps the most trustworthy analysis: a newer analyser, or a steadier beat."""
+    await session.execute(
+        text(
+            "UPDATE tracks SET mix_analysis = CAST(:a AS jsonb), mix_reports = mix_reports + 1"
+            " WHERE id = (SELECT COALESCE(canonical_track_id, id) FROM tracks WHERE id = :id)"
+            "   AND mix_reports < :max"
+            "   AND (mix_analysis IS NULL"
+            "        OR (mix_analysis->>'v')::int < :v"
+            "        OR ((mix_analysis->>'v')::int = :v"
+            "            AND (mix_analysis->>'confidence')::float < :conf))"
+        ).bindparams(
+            a=analysis.model_dump_json(),
+            id=track_id,
+            max=MIX_MAX_REPORTS,
+            v=analysis.v,
+            conf=analysis.confidence,
+        )
+    )
+
+
+# A few listeners agreeing is enough; after that the level is settled and costs nothing.
+LOUDNESS_MAX_REPORTS = 5
+
+
+async def remember_loudness(session: AsyncSession, track_id: int, db: float) -> None:
+    """Folds one client's measurement into the canonical track's running mean.
+
+    Like the palette, measured by listeners because the core never touches audio
+    bytes. Deliberately leaves ``updated_at`` alone: the level is not searchable, and
+    touching it would push every played track through the search sync again.
+    """
+    await session.execute(
+        text(
+            "UPDATE tracks SET"
+            " loudness_db = CASE WHEN loudness_db IS NULL THEN :db"
+            "   ELSE (loudness_db * loudness_reports + :db) / (loudness_reports + 1) END,"
+            " loudness_reports = loudness_reports + 1"
+            " WHERE id = (SELECT COALESCE(canonical_track_id, id) FROM tracks WHERE id = :id)"
+            "   AND loudness_reports < :max"
+        ).bindparams(db=db, id=track_id, max=LOUDNESS_MAX_REPORTS)
     )
 
 

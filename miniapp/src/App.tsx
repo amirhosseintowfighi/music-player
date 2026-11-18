@@ -49,7 +49,9 @@ const PlaylistScreen = lazy(() => import('@/screens/Playlists').then((m) => ({ d
 const SharedPlaylistScreen = lazy(() => import('@/screens/Playlists').then((m) => ({ default: m.SharedPlaylistScreen })));
 const LikedScreen = lazy(() => import('@/screens/Playlists').then((m) => ({ default: m.LikedScreen })));
 const Search = lazy(() => import('@/screens/Search').then((m) => ({ default: m.Search })));
+const OwnerScreen = lazy(() => import('@/screens/Owner').then((m) => ({ default: m.OwnerScreen })));
 const Tour = lazy(() => import('@/components/Tour'));
+const CarMode = lazy(() => import('@/components/CarMode').then((m) => ({ default: m.CarMode })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -196,6 +198,7 @@ function Shell() {
   const thumbs = useThumbs(current ? [current.id] : []);
   const currentThumb = current ? thumbs[current.id] : undefined;
   const actionTrack = useUi((s) => s.actionTrack);
+  const carMode = useUi((s) => s.carMode);
   const setActionTrack = useUi((s) => s.setActionTrack);
   usePlaybackSync();
   useResume();
@@ -296,6 +299,7 @@ function Shell() {
             <Route path="/friends" element={<FriendsFeedScreen />} />
             <Route path="/wrapped" element={<Wrapped />} />
             <Route path="/jam" element={<JamScreen />} />
+            <Route path="/owner" element={<OwnerScreen />} />
             <Route path="/blend" element={<BlendScreen />} />
             <Route path="/blend/:code" element={<BlendScreen />} />
             <Route path="/jam/:code" element={<JamScreen />} />
@@ -313,6 +317,11 @@ function Shell() {
       {current && (
         <Suspense fallback={null}>
           <FullPlayer thumbs={thumbs} />
+        </Suspense>
+      )}
+      {carMode && current && (
+        <Suspense fallback={null}>
+          <CarMode thumb={currentThumb} />
         </Suspense>
       )}
       <Paywall />
@@ -356,6 +365,8 @@ function Gate({ children }: { children: React.ReactNode }) {
         else if (param.startsWith('jam_')) window.location.hash = `#/jam/${param.slice(4)}`;
         // A Blend invite: make the Blend with whoever sent it.
         else if (param.startsWith('bl_')) window.location.hash = `#/blend/${param.slice(3)}`;
+        // A channel owner's page (/owner in the bot, or a link the bot sent).
+        else if (param === 'owner') window.location.hash = '#/owner';
         // The forced-join gate. It is deliberately not on the playback path: it runs
         // once here, and an unreachable check lets the listener in (the server
         // decides that, not this screen).

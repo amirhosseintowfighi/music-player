@@ -45,6 +45,8 @@ const SharedPlaylistScreen = lazy(() => import('@/screens/Playlists').then((m) =
 const LikedScreen = lazy(() => import('@/screens/Playlists').then((m) => ({ default: m.LikedScreen })));
 const Search = lazy(() => import('@/screens/Search').then((m) => ({ default: m.Search })));
 const Tour = lazy(() => import('@/components/Tour'));
+const OwnerScreen = lazy(() => import('@/screens/Owner').then((m) => ({ default: m.OwnerScreen })));
+const CarMode = lazy(() => import('@/components/CarMode').then((m) => ({ default: m.CarMode })));
 const Downloads = lazy(() => import('@/screens/Downloads').then((m) => ({ default: m.Downloads })));
 
 // Keep TABS_MOBILE for BottomNav; DesktopShell owns desktop tabs.
@@ -65,6 +67,7 @@ function BottomNav() {
           key={to}
           to={to}
           end={to === '/'}
+          data-tour={to === '/' ? 'tab-home' : `tab-${to.slice(1)}`}
           className={({ isActive }) => cx('grid min-w-14 justify-items-center gap-1 px-3 py-1 text-[10px] font-medium', isActive ? 'text-[var(--accent)]' : 'text-[var(--ink-dim)]')}
         >
           <Icon size={22} />
@@ -256,6 +259,7 @@ function Shell() {
   const thumbs = useThumbs(current ? [current.id] : []);
   const currentThumb = current ? thumbs[current.id] : undefined;
   const actionTrack = useUi((s) => s.actionTrack);
+  const carMode = useUi((s) => s.carMode);
   const setActionTrack = useUi((s) => s.setActionTrack);
   const isOnline = useOnline();
   const { containerRef: contentNavRef } = useSpatialNav<HTMLDivElement>();
@@ -331,6 +335,7 @@ function Shell() {
                   <Route path="/friends" element={<FriendsFeedScreen />} />
                   <Route path="/wrapped" element={<Wrapped />} />
                   <Route path="/jam" element={<JamScreen />} />
+                  <Route path="/owner" element={<OwnerScreen />} />
                   <Route path="/blend" element={<BlendScreen />} />
                   <Route path="/blend/:code" element={<BlendScreen />} />
                   <Route path="/jam/:code" element={<JamScreen />} />
@@ -345,6 +350,7 @@ function Shell() {
           <BottomNav />
         </div>
         {current && <Suspense fallback={null}><FullPlayer thumbs={thumbs} /></Suspense>}
+        {carMode && current && <Suspense fallback={null}><CarMode thumb={currentThumb} /></Suspense>}
         <Paywall />
         <TrackActions track={actionTrack} open={Boolean(actionTrack)} onClose={() => setActionTrack(null)} />
         <ShareSheetHost />

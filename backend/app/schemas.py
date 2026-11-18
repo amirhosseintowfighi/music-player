@@ -169,6 +169,10 @@ class TrackOut(ApiModel):
     channel: TrackChannelRef | None = None
     # Dominant cover colours, so the player can paint before the artwork loads.
     palette: str | None = None
+    # Measured level in dBFS (0017), so the player can even it out from the first second.
+    loudness: float | None = None
+    # AutoMix (0017): tempo, beats, key and sections, once a listener has measured them.
+    mix: MixAnalysis | None = None
 
 
 class ArtistOut(ApiModel):
@@ -221,6 +225,9 @@ class SearchOut(ApiModel):
     offset: int
     limit: int
     degraded: bool = Field(False, description="true when served by the Postgres fallback")
+    lyric_matches: list[int] = Field(
+        default_factory=list, description="ids of results found by their lyrics"
+    )
 
 
 class SuggestOut(ApiModel):
@@ -849,6 +856,30 @@ class ReportTrackOut(ApiModel):
 HEX_COLOR = r"^#[0-9a-fA-F]{6}$"
 
 
+class MixAnalysis(ApiModel):
+    """How a song is built, for AutoMix. Measured on the client from the audio.
+
+    Times are seconds from the start of the file. ``key`` is a Camelot position:
+    0–11 are 1A–12A (minor), 12–23 are 1B–12B (major); null when no key was clear.
+    """
+
+    v: int = Field(ge=1, le=100, description="analyser version; a newer one supersedes")
+    bpm: float = Field(ge=50, le=220)
+    beat: float = Field(ge=0, le=36_000, description="first beat")
+    downbeat: float = Field(ge=0, le=36_000, description="first beat of a bar")
+    key: int | None = Field(default=None, ge=0, le=23)
+    intro: float = Field(ge=0, le=36_000, description="where the intro ends")
+    outro: float = Field(ge=0, le=36_000, description="where the outro starts")
+    confidence: float = Field(ge=0, le=1, description="how regular the beat is")
+
+
+class LoudnessIn(ApiModel):
+    """How loud this client measured a track: mean level in dBFS over what it played."""
+
+    db: float = Field(ge=-60, le=0)
+    seconds: int = Field(ge=20, le=36_000, description="how much of the track was measured")
+
+
 class PaletteIn(ApiModel):
     """Three dominant colours of a track's artwork, as ``#rrggbb``."""
 
@@ -1146,3 +1177,38 @@ class ClientEventOut(ApiModel):
 class ClientLogOut(ApiModel):
     summary: dict[str, dict[str, int]]
     items: list[ClientEventOut]
+
+
+# ── channel owners (0017) ──
+
+
+class OwnerClaimIn(ApiModel):
+    channel: str = Field(min_length=2, max_length=200, description="@username or t.me link")
+
+
+class OwnerChannelOut(ApiModel):
+    """How one channel does in the app. Aggregates only: never who listened."""
+
+    id: int
+    username: str | None
+    title: str | None
+    tracks_count: int
+    app_followers: int = Field(description="people who added it to their library")
+    plays_7d: int
+    listeners_7d: int
+    plays_30d: int
+    listeners_30d: int
+    minutes_30d: int
+    daily: list[int] = Field(description="plays per day for the last 30 days, oldest first")
+    top_tracks: list[TrackOut]
+
+
+class StoryImageIn(ApiModel):
+    """A share card drawn by the client, base64 of a PNG or JPEG."""
+
+    image: str = Field(min_length=100, max_length=2_100_000)
+
+
+class StoryImageOut(ApiModel):
+    url: str
+    expires_in: int

@@ -3,14 +3,40 @@ import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-import { useI18n } from '@/i18n';
-import { hasSeenTour, markTourSeen, TOUR_REPLAY_EVENT, resolveStepRect, TOUR_STEPS } from '@/lib/tour';
-import { haptic } from '@/lib/telegram';
+import { useI18n, type Key } from '@/i18n';
+import { getTargetRect, hasSeenTour, markTourSeen, TOUR_REPLAY_EVENT, resolveStepRect, TOUR_STEPS } from '@/lib/tour';
+import { BOT_USERNAME, haptic } from '@/lib/telegram';
 import { useUi } from '@/store/ui';
 
 const GAP = 12;
 const PAD = 8;
 const RADIUS = 16;
+const CARD_W = 360;
+
+/**
+ * A step's text, with bot commands and @usernames as small left-to-right chips:
+ * inside Persian text "/jam" would otherwise render as "jam/".
+ */
+export function TourBody({ text }: { text: string }) {
+  const parts = text.split(/(\/[a-z]+|@[A-Za-z0-9_]{3,})/);
+  return (
+    <>
+      {parts.map((part, i) =>
+        i % 2 === 1 ? (
+                    <code
+            key={i}
+            dir="ltr"
+            className="mx-0.5 inline-block rounded-md bg-[var(--fill)] px-1.5 font-mono text-[12px] leading-5 text-[var(--ink)]"
+          >
+            {part}
+          </code>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
 
 function usePrefersReducedMotion(): boolean {
   const [v, setV] = useState(false);
@@ -75,7 +101,15 @@ export default function Tour() {
     if (!s) return;
     if (s.navigateTo && location.pathname !== s.navigateTo) {
       navigate(s.navigateTo);
-      setTimeout(() => {
+      // The screen is lazy and animates in: wait for the real target a little before
+      // settling for the fallback (otherwise "+" loses to the tab every time).
+      let tries = 0;
+      const settle = () => {
+        tries += 1;
+        if (s.target && !getTargetRect(s.target) && tries < 10) {
+          setTimeout(settle, 150);
+          return;
+        }
         const resolved = resolveStepRect(s);
         setRect(resolved.rect);
         setPlacement(resolved.placement);
@@ -85,7 +119,8 @@ export default function Tour() {
             el?.scrollIntoView({ block: 'center', behavior: reduced || lowPerf ? 'auto' : 'smooth' });
           } catch { /* ignore */ }
         }
-      }, 220);
+      };
+      setTimeout(settle, 220);
       return;
     }
     const resolved = resolveStepRect(s);
@@ -147,7 +182,7 @@ export default function Tour() {
     } else {
       top = Math.max(16, Math.min(vh - ttH - 16, (vh - ttH) / 2));
     }
-    const left = Math.max(16, Math.min(vw - 16 - 320, (vw - 320) / 2));
+    const left = Math.max(16, Math.min(vw - 16 - CARD_W, (vw - CARD_W) / 2));
     if (top !== undefined) setTooltipPos({ top, left });
     else if (bottom !== undefined) setTooltipPos({ bottom, left });
     else setTooltipPos({ left });
@@ -157,6 +192,11 @@ export default function Tour() {
     markTourSeen();
     setReady(false);
     try { haptic('light'); } catch { /* ignore */ }
+  }, []);
+
+  const back = useCallback(() => {
+    try { haptic('select'); } catch { /* ignore */ }
+    setIndex((i) => Math.max(0, i - 1));
   }, []);
 
   const next = useCallback(() => {
@@ -219,7 +259,7 @@ export default function Tour() {
   const tipStyle: React.CSSProperties = isCenter
     ? {
       width: 'calc(100vw - 32px)',
-      maxWidth: 320,
+      maxWidth: CARD_W,
       left: 0,
       right: 0,
       top: 0,
@@ -230,7 +270,7 @@ export default function Tour() {
     }
     : {
       width: 'calc(100vw - 32px)',
-      maxWidth: 320,
+      maxWidth: CARD_W,
       left: tooltipPos?.left ?? 16,
       ...(tooltipPos?.top !== undefined ? { top: tooltipPos.top } : {}),
       ...(tooltipPos?.bottom !== undefined ? { bottom: tooltipPos.bottom } : {}),
@@ -268,16 +308,18 @@ export default function Tour() {
             animate={reduced ? { opacity: 1 } : { opacity: 1, y: 0, scale: 1 }}
             exit={reduced ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
             transition={reduced ? { duration: 0.12 } : { duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="fixed z-[61] max-w-[320px] rounded-[20px] border border-[var(--separator)] bg-[var(--card)] p-4 shadow-xl"
+            className="fixed z-[61] max-h-[calc(100vh-32px)] max-w-[360px] overflow-y-auto rounded-[20px] border border-[var(--separator)] bg-[var(--card)] p-4 shadow-xl"
             style={tipStyle}
             role="document"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between gap-2">
               <h2 id="tour-title" className="text-[15px] font-bold leading-6">{t(step.titleKey as never)}</h2>
-              <span className="shrink-0 text-[11px] font-medium text-[var(--ink-faint)]">{index + 1} / {TOUR_STEPS.length}</span>
+              <span dir="ltr" className="shrink-0 text-[11px] font-medium text-[var(--ink-faint)]">{index + 1} / {TOUR_STEPS.length}</span>
             </div>
-            <p id="tour-body" className="mt-1.5 text-[13px] leading-6 text-[var(--ink-dim)]">{t(step.bodyKey as never)}</p>
+            <p id="tour-body" className="mt-1.5 whitespace-pre-line text-[13px] leading-6 text-[var(--ink-dim)]">
+              <TourBody text={t(step.bodyKey as Key, { bot: BOT_USERNAME })} />
+            </p>
             <div className="mt-3 flex items-center gap-1.5" aria-hidden>
               {TOUR_STEPS.map((s, i) => (
                 <span key={s.id} className={i === index ? 'h-1.5 w-5 rounded-full bg-[var(--accent)]' : 'h-1.5 w-1.5 rounded-full bg-[var(--fill-strong)]'} />
@@ -285,6 +327,11 @@ export default function Tour() {
             </div>
             <div className="mt-4 flex items-center justify-between gap-2">
               <button ref={skipRef} type="button" onClick={skip} className="rounded-full bg-[var(--fill)] px-4 py-2 text-[13px] font-medium">{t('tour.skip' as never)}</button>
+              {index > 0 && (
+                <button type="button" onClick={back} className="ms-auto rounded-full px-3 py-2 text-[13px] font-medium text-[var(--ink-dim)]">
+                  {t('tour.back' as never)}
+                </button>
+              )}
               <button ref={nextRef} type="button" onClick={next} className="rounded-full bg-[var(--accent)] px-5 py-2 text-[13px] font-bold text-[var(--accent-ink)]">{index >= TOUR_STEPS.length - 1 ? (t('tour.done.cta' as never)) : (t('tour.next' as never))}</button>
             </div>
           </motion.div>

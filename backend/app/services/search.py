@@ -15,7 +15,14 @@ from app.domain.text.normalizer import normalize_key
 from app.errors import Unavailable
 from app.models import SearchHistory
 from app.services.library import TrackFilters, filter_sql
-from app.services.meili import PRIMARY_FIELDS, SKELETON_FIELDS, SKELETON_WEIGHT, MeiliClient
+from app.services.meili import (
+    LYRICS_FIELDS,
+    LYRICS_WEIGHT,
+    PRIMARY_FIELDS,
+    SKELETON_FIELDS,
+    SKELETON_WEIGHT,
+    MeiliClient,
+)
 from tmusic_common.logging import get_logger
 
 log = get_logger(__name__)
@@ -23,6 +30,8 @@ log = get_logger(__name__)
 SYNC_WATERMARK_KEY = "search:sync:wm"
 SYNC_LAG_S = 10
 MIN_SKELETON_LEN = 2
+# One word is in thousands of songs; a few words in a row are what people remember.
+MIN_LYRICS_WORDS = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,6 +39,12 @@ class SearchHit:
     ids: list[int]
     total: int
     degraded: bool
+    # Found by their words, not their title or artist: the UI says so.
+    lyric_ids: frozenset[int] = frozenset()
+
+
+def wants_lyrics(q: str) -> bool:
+    return len(normalize_key(q).split()) >= MIN_LYRICS_WORDS
 
 
 def _quote(value: str) -> str:
@@ -73,6 +88,17 @@ def build_queries(q: str, filters: list[str]) -> list[dict[str, Any]]:
                 "federationOptions": {"weight": SKELETON_WEIGHT},
             }
         )
+    if wants_lyrics(q):
+        queries.append(
+            {
+                "q": norm,
+                "filter": filters,
+                "attributesToSearchOn": LYRICS_FIELDS,
+                "federationOptions": {"weight": LYRICS_WEIGHT},
+                # Every word, in order or near it: a line, not a bag of common words.
+                "matchingStrategy": "all",
+            }
+        )
     return queries
 
 
@@ -88,13 +114,19 @@ async def search_tracks(
 ) -> SearchHit:
     if channel_ids is not None and not channel_ids:
         return SearchHit([], 0, False)
+    queries = build_queries(q, meili_filters(channel_ids, filters))
+    lyrics_at = len(queries) - 1 if queries[-1]["attributesToSearchOn"] == LYRICS_FIELDS else -1
     try:
-        result = await meili.federated_search(
-            build_queries(q, meili_filters(channel_ids, filters)), limit, offset
+        result = await meili.federated_search(queries, limit, offset)
+        hits = result.get("hits", [])
+        ids = [int(h["id"]) for h in hits]
+        lyric_ids = frozenset(
+            int(h["id"])
+            for h in hits
+            if (h.get("_federation") or {}).get("queriesPosition") == lyrics_at
         )
-        ids = [int(h["id"]) for h in result.get("hits", [])]
         total = int(result.get("estimatedTotalHits", len(ids)))
-        return SearchHit(ids, total, False)
+        return SearchHit(ids, total, False, lyric_ids)
     except Unavailable:
         log.warning("search.fallback_to_postgres")
         return await _pg_search(session, q, channel_ids, filters, limit, offset)
@@ -140,8 +172,27 @@ async def _pg_search(
         )
     ).all()
     ids = [r.id for r in rows]
+    lyric_ids: list[int] = []
+    if wants_lyrics(q) and len(ids) < limit:
+        # The rest of the page from the words of the songs (first page only: this is
+        # the fallback, and paging two lists together exactly is not worth it here).
+        lyric_rows = (
+            await session.execute(
+                text(
+                    "SELECT t.id FROM tracks t JOIN track_lyrics l ON l.track_id = t.id "
+                    "WHERE t.canonical_track_id IS NULL AND NOT t.hidden "
+                    "AND l.search_text LIKE :like AND NOT (t.id = ANY(:seen))"
+                    + where
+                    + " ORDER BY t.channels_count DESC, t.id LIMIT :lim"
+                ).bindparams(like=like, seen=ids, lim=limit - len(ids), **params)
+            )
+        ).all()
+        lyric_ids = [r.id for r in lyric_rows] if offset == 0 else []
+        ids += lyric_ids
     # Exact totals are too expensive here; report "at least what we have".
-    return SearchHit(ids, offset + len(ids) + (1 if len(ids) == limit else 0), True)
+    return SearchHit(
+        ids, offset + len(ids) + (1 if len(ids) == limit else 0), True, frozenset(lyric_ids)
+    )
 
 
 async def record_history(session: AsyncSession, user_id: int, q: str, results: int) -> None:
@@ -193,8 +244,10 @@ _DOCS_SQL = text(
                    'latin', a.latin_name, 'aliases', a.aliases) ORDER BY ta.position)
                FROM track_artists ta JOIN artists a ON a.id = ta.artist_id
                WHERE ta.track_id = t.id AND NOT a.hidden
-           ), '[]') AS artists
+           ), '[]') AS artists,
+           l.search_text AS lyrics
     FROM tracks t
+    LEFT JOIN track_lyrics l ON l.track_id = t.id AND l.found
     WHERE t.id = ANY(:ids)
     """
 )
@@ -223,6 +276,7 @@ def _document(row: Any) -> dict[str, Any]:
         "channels_count": row.channels_count,
         "plays_7d": row.plays_7d,
         "created_at": row.created_at,
+        "lyrics": row.lyrics or "",
     }
 
 

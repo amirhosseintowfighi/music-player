@@ -4,14 +4,16 @@ from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, Query
 
-from app.api.deps import Claims, SessionDep, WritableClaims
-from app.errors import LimitReached
+from app.api.deps import Claims, RedisDep, SessionDep, WritableClaims
+from app.errors import InvalidInput, LimitReached
 from app.schemas import (
     AlbumOut,
     AlbumPageOut,
     AlbumRef,
     ArtistOut,
     ArtistPageOut,
+    LoudnessIn,
+    MixAnalysis,
     Page,
     PaletteIn,
     ReportTrackIn,
@@ -155,6 +157,45 @@ async def report_track(
         session, claims.user_id, track_id, reason=body.reason, details=body.details
     )
     return ReportTrackOut(id=report.id, status=report.status)
+
+
+@router.put("/tracks/{track_id}/loudness", status_code=204)
+async def set_loudness(
+    track_id: int,
+    body: LoudnessIn,
+    claims: WritableClaims,
+    session: SessionDep,
+    redis: RedisDep,
+) -> None:
+    """How loud this client measured the track, for volume levelling (0017).
+
+    One report per listener per track counts, and only the first few listeners: the
+    value only ever sets a gain within a few dB, so it cannot be used to do harm, and
+    nobody can drag the mean around by repeating themselves.
+    """
+    assert claims.user_id
+    if await redis.set(f"loud:{track_id}:{claims.user_id}", "1", nx=True, ex=90 * 86400):
+        await library.remember_loudness(session, track_id, body.db)
+
+
+@router.put("/tracks/{track_id}/mix", status_code=204)
+async def set_mix(
+    track_id: int,
+    body: MixAnalysis,
+    claims: WritableClaims,
+    session: SessionDep,
+    redis: RedisDep,
+) -> None:
+    """How the song is built, measured by this client, for AutoMix (0017).
+
+    Like loudness: once per listener per track, and only ever replaced by a newer
+    analyser or a steadier beat. Its worst case is a less elegant transition.
+    """
+    assert claims.user_id
+    if body.outro < body.intro or body.downbeat < body.beat:
+        raise InvalidInput("sections out of order", reason="bad_mix")
+    if await redis.set(f"mix:{track_id}:{claims.user_id}", "1", nx=True, ex=90 * 86400):
+        await library.remember_mix(session, track_id, body)
 
 
 @router.put("/tracks/{track_id}/palette", status_code=204)

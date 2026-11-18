@@ -281,7 +281,9 @@ build_frontends() {
     compose --profile build run --rm frontend
   else
     docker run --rm -v "$ROOT:/src" -w /src \
-      -e VITE_API_URL="https://api.$domain" -e VITE_BOT_USERNAME="$bot" node:22-alpine \
+      -e VITE_API_URL="https://api.$domain" -e VITE_BOT_USERNAME="$bot" \
+      -e ANDROID_PACKAGE="$(env_value ANDROID_PACKAGE)" -e ANDROID_CERT_SHA256="$(env_value ANDROID_CERT_SHA256)" \
+      node:22-alpine \
       sh -ec "cd /src/miniapp && npm ci --no-audit --no-fund && npm run build && cd /src/admin && npm ci --no-audit --no-fund && npm run build"
   fi
 }

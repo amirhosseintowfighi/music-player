@@ -2,9 +2,9 @@ import type { Track } from '@/api/client';
 import { Sheet } from '@/components/ui';
 import { useI18n } from '@/i18n';
 import { artistNames } from '@/lib/format';
-import { buildShareUrl, shareTrack } from '@/lib/share';
+import { buildShareUrl, shareTrack, shareTrackToStory } from '@/lib/share';
 import { drawCard } from '@/lib/shareCard';
-import { BOT_USERNAME, openExternalLink, openTelegramLink } from '@/lib/telegram';
+import { BOT_USERNAME, canShareToStory, openExternalLink, openTelegramLink } from '@/lib/telegram';
 import { useUi } from '@/store/ui';
 
 export function ShareSheet({
@@ -29,6 +29,22 @@ export function ShareSheet({
   return (
     <Sheet open={open} onClose={onClose} title={t('share.choose')}>
       <div className="flex flex-col gap-2 pb-2">
+        {canShareToStory() && (
+          <button
+            type="button"
+            className="flex w-full items-center gap-3 rounded-xl bg-[var(--accent)] px-3.5 py-3 text-start text-[13.5px] font-bold text-[var(--accent-ink)]"
+            onClick={async () => {
+              try {
+                if (!(await shareTrackToStory(track, coverSrc))) toast(t('app.error'), 'error');
+              } catch {
+                toast(t('app.error'), 'error');
+              }
+              onClose();
+            }}
+          >
+            ⭕ {t('share.story')}
+          </button>
+        )}
         <button
           type="button"
           className="flex w-full items-center gap-3 rounded-xl bg-[var(--fill)] px-3.5 py-3 text-start text-[13.5px]"

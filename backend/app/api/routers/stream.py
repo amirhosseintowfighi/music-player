@@ -28,6 +28,7 @@ async def stream_ticket(
     settings: SettingsDep,
     http: HttpDep,
     prefetch: bool = False,
+    saver: bool = False,
 ) -> StreamOut:
     """Signed URL on a streaming edge. Short TTL; the client asks again when it expires.
 
@@ -38,9 +39,12 @@ async def stream_ticket(
 
     `?prefetch=1` warms the next track up: it does not count against the daily limit
     and the ticket it returns can only read the first few hundred kilobytes.
+
+    `?saver=1` is data saver: the smallest ready copy of the song, when one is
+    meaningfully smaller than the one we would otherwise pick.
     """
     return await stream.issue_ticket(
-        session, redis, settings, claims, track_id, http, prefetch=prefetch
+        session, redis, settings, claims, track_id, http, prefetch=prefetch, saver=saver
     )
 
 

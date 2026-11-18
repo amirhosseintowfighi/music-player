@@ -190,6 +190,7 @@ export function Search() {
                   key={track.id}
                   track={track}
                   {...(thumbs[track.id] ? { thumb: thumbs[track.id] as string } : {})}
+                  {...(results.data.lyric_matches?.includes(track.id) ? { trailing: t('search.byLyrics') } : {})}
                   onPlay={() => void play({ queue: tracks, index, source: 'search' })}
                 />
               ))}

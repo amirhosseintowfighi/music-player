@@ -27,6 +27,7 @@ from app.services import (
     crawling,
     follows,
     lastfm,
+    lyrics,
     metadata,
     notifications,
     recommendations,
@@ -386,6 +387,13 @@ async def enrich_lastfm(ctx: Ctx) -> dict[str, int]:
     settings = get_settings()
     async with session_scope(_maker(ctx)) as session:
         return await lastfm.enrich_batch(session, ctx["http"], settings)
+
+
+async def backfill_lyrics(ctx: Ctx) -> dict[str, int]:
+    """Fetches lyrics before anyone asks, so songs are findable by their words (0017)."""
+    settings = get_settings()
+    async with session_scope(_maker(ctx)) as session:
+        return await lyrics.backfill(session, ctx["http"], settings)
 
 
 async def refresh_blends(ctx: Ctx) -> int:

@@ -24,3 +24,8 @@ infra/certs/
 # scripts/deploy.sh: its state (what is running, what ran before) and local dumps.
 .deploy/
 backups/
+
+# Android app signing key (apps/android/make-keystore.sh): never in git.
+*.keystore
+*.jks
+apps/android/build/
