@@ -23,3 +23,9 @@ CREATE TABLE IF NOT EXISTS channel_owners (
     PRIMARY KEY (channel_id, user_id)
 );
 CREATE INDEX IF NOT EXISTS channel_owners_user ON channel_owners (user_id);
+
+-- AutoMix: how a song is built, for mixing one into the next like a DJ — tempo,
+-- beat grid, key, where the intro ends and the outro starts. Measured by the first
+-- clients that play it (the core never touches audio), kept as one small document.
+ALTER TABLE tracks ADD COLUMN IF NOT EXISTS mix_analysis jsonb;
+ALTER TABLE tracks ADD COLUMN IF NOT EXISTS mix_reports smallint NOT NULL DEFAULT 0;

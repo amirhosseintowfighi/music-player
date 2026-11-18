@@ -1,4 +1,4 @@
-"""growth: lyrics search, per-track loudness, channel owners
+"""growth: lyrics search, per-track loudness, channel owners, AutoMix analysis
 
 Revision ID: 0017
 Revises: 0016
@@ -20,6 +20,8 @@ def upgrade() -> None:
 def downgrade() -> None:
     run_sql(
         "DROP TABLE IF EXISTS channel_owners;"
+        "ALTER TABLE tracks DROP COLUMN IF EXISTS mix_analysis;"
+        "ALTER TABLE tracks DROP COLUMN IF EXISTS mix_reports;"
         "ALTER TABLE tracks DROP COLUMN IF EXISTS loudness_db;"
         "ALTER TABLE tracks DROP COLUMN IF EXISTS loudness_reports;"
         "ALTER TABLE track_lyrics DROP COLUMN IF EXISTS search_text;"

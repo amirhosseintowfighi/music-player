@@ -171,6 +171,8 @@ class TrackOut(ApiModel):
     palette: str | None = None
     # Measured level in dBFS (0017), so the player can even it out from the first second.
     loudness: float | None = None
+    # AutoMix (0017): tempo, beats, key and sections, once a listener has measured them.
+    mix: MixAnalysis | None = None
 
 
 class ArtistOut(ApiModel):
@@ -852,6 +854,23 @@ class ReportTrackOut(ApiModel):
 
 
 HEX_COLOR = r"^#[0-9a-fA-F]{6}$"
+
+
+class MixAnalysis(ApiModel):
+    """How a song is built, for AutoMix. Measured on the client from the audio.
+
+    Times are seconds from the start of the file. ``key`` is a Camelot position:
+    0–11 are 1A–12A (minor), 12–23 are 1B–12B (major); null when no key was clear.
+    """
+
+    v: int = Field(ge=1, le=100, description="analyser version; a newer one supersedes")
+    bpm: float = Field(ge=50, le=220)
+    beat: float = Field(ge=0, le=36_000, description="first beat")
+    downbeat: float = Field(ge=0, le=36_000, description="first beat of a bar")
+    key: int | None = Field(default=None, ge=0, le=23)
+    intro: float = Field(ge=0, le=36_000, description="where the intro ends")
+    outro: float = Field(ge=0, le=36_000, description="where the outro starts")
+    confidence: float = Field(ge=0, le=1, description="how regular the beat is")
 
 
 class LoudnessIn(ApiModel):

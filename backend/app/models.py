@@ -264,6 +264,9 @@ class Track(Base):
     # Measured by the clients that played it (0017): dBFS, a running mean.
     loudness_db: Mapped[float | None] = mapped_column(Float)
     loudness_reports: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    # AutoMix (0017): tempo, beat grid, key, intro/outro — see schemas.MixAnalysis.
+    mix_analysis: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    mix_reports: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     cdn_url: Mapped[str | None] = mapped_column(Text)
     cdn_url_fetched_at: Mapped[datetime | None] = mapped_column(TS)
     resolve_status: Mapped[str] = mapped_column(Text, server_default="resolved")

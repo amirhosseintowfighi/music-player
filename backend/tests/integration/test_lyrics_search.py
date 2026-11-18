@@ -147,3 +147,39 @@ async def test_loudness_is_a_running_mean_of_distinct_listeners(
     await session.commit()
     body = (await client.get("/v1/search", params={"q": "pol"}, headers=first)).json()
     assert body["items"][0]["loudness"] == -12.0
+
+
+# ── AutoMix analysis: measured by listeners, the steadiest one kept ───────────
+
+MIX = {"v": 1, "bpm": 124.0, "beat": 0.42, "downbeat": 0.42, "key": 7, "intro": 15.9,
+       "outro": 170.2, "confidence": 0.6}  # fmt: skip
+
+
+async def test_mix_analysis_keeps_the_steadiest_and_travels_with_the_track(
+    client: httpx.AsyncClient, session: AsyncSession, songs: dict[str, int]
+) -> None:
+    track = songs["Pol"]
+    url = f"/v1/tracks/{track}/mix"
+    a = bearer(await login(client, 7501))
+    b = bearer(await login(client, 7502))
+    c = bearer(await login(client, 7503))
+    assert (await client.put(url, json=MIX, headers=a)).status_code == 204
+    # Shakier than what we have: ignored.
+    await client.put(url, json={**MIX, "bpm": 90.0, "confidence": 0.2}, headers=b)
+    # Steadier: replaces it.
+    await client.put(url, json={**MIX, "bpm": 125.0, "confidence": 0.9}, headers=c)
+    stored = await session.scalar(select(Track.mix_analysis).where(Track.id == track))
+    assert stored is not None and stored["bpm"] == 125.0
+
+    # Nonsense is refused.
+    bad = await client.put(url, json={**MIX, "intro": 200, "outro": 10}, headers=a)
+    assert bad.status_code in (400, 422)
+    assert (await client.put(url, json={**MIX, "bpm": 400}, headers=a)).status_code == 422
+
+    channel_id = await session.scalar(text("SELECT id FROM channels WHERE username = 'lyricchan'"))
+    user_id = await session.scalar(text("SELECT id FROM users WHERE tg_id = 7501"))
+    await subscribe(session, int(user_id), int(channel_id))
+    await session.commit()
+    body = (await client.get("/v1/search", params={"q": "pol"}, headers=a)).json()
+    assert body["items"][0]["mix"]["bpm"] == 125.0
+    assert body["items"][0]["mix"]["key"] == 7
