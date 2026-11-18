@@ -8,7 +8,7 @@ from typing import Any
 
 import httpx
 import pytest
-from sqlalchemy import select, text, update
+from sqlalchemy import func, select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Channel, EdgeNode, Track, User
@@ -268,6 +268,40 @@ async def test_search_finglish_scope_and_filters(
         "history": [],
         "tracks": [],
     }
+
+
+@pytest.mark.usefixtures("need_meili")
+async def test_search_by_lyrics_in_meilisearch(
+    client: httpx.AsyncClient,
+    session: AsyncSession,
+    meili: MeiliClient,
+    redis: Any,
+    lib: dict[str, Any],
+) -> None:
+    """A line of the song finds it through the federated lyrics query (0017)."""
+    from app.models import TrackLyrics
+    from app.services import lyrics
+
+    moein = lib["ids"]["AgADmoein"]
+    words = "Dele man dar havaye to mimanad"
+    session.add(
+        TrackLyrics(
+            track_id=moein, found=True, plain=words, search_text=lyrics.search_text(None, words)
+        )
+    )
+    await session.execute(update(Track).where(Track.id == moein).values(updated_at=func.now()))
+    await session.commit()
+    await sync(session, meili, redis)
+
+    resp = await client.get("/v1/search", params={"q": "dele man dar havaye"}, headers=lib["auth"])
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["degraded"] is False
+    assert [t["id"] for t in body["items"]] == [moein]
+    assert body["lyric_matches"] == [moein]
+    # Two words do not ask the lyrics index at all, so a title still wins plainly.
+    title = (await client.get("/v1/search", params={"q": "moein"}, headers=lib["auth"])).json()
+    assert title["lyric_matches"] == []
 
 
 @pytest.mark.usefixtures("need_meili")

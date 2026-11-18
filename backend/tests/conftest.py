@@ -161,6 +161,22 @@ async def meili(
 
 
 @pytest.fixture
+def postgres_search(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Search answered by the Postgres fallback, whether or not Meilisearch is up.
+
+    For tests about what a search returns rather than about the search engine:
+    with Meilisearch running (CI) its index would be empty until synced.
+    """
+
+    async def unavailable(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        from app.errors import Unavailable
+
+        raise Unavailable("search backend unreachable")
+
+    monkeypatch.setattr(MeiliClient, "federated_search", unavailable)
+
+
+@pytest.fixture
 def need_meili(meili_available: bool) -> None:
     if not meili_available:
         pytest.skip("Meilisearch not reachable at TEST_MEILI_URL")
