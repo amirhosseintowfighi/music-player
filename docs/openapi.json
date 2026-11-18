@@ -4991,6 +4991,57 @@
         }
       }
     },
+    "/v1/tracks/{track_id}/mix": {
+      "put": {
+        "tags": [
+          "library"
+        ],
+        "summary": "Set Mix",
+        "description": "How the song is built, measured by this client, for AutoMix (0017).\n\nLike loudness: once per listener per track, and only ever replaced by a newer\nanalyser or a steadier beat. Its worst case is a less elegant transition.",
+        "operationId": "set_mix_v1_tracks__track_id__mix_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Track Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MixAnalysis"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/tracks/{track_id}/palette": {
       "put": {
         "tags": [
@@ -11972,6 +12023,84 @@
         "title": "MetadataReviewOut",
         "description": "A track the parser was unsure about, or a listener reported."
       },
+      "MixAnalysis": {
+        "properties": {
+          "v": {
+            "type": "integer",
+            "maximum": 100.0,
+            "minimum": 1.0,
+            "title": "V",
+            "description": "analyser version; a newer one supersedes"
+          },
+          "bpm": {
+            "type": "number",
+            "maximum": 220.0,
+            "minimum": 50.0,
+            "title": "Bpm"
+          },
+          "beat": {
+            "type": "number",
+            "maximum": 36000.0,
+            "minimum": 0.0,
+            "title": "Beat",
+            "description": "first beat"
+          },
+          "downbeat": {
+            "type": "number",
+            "maximum": 36000.0,
+            "minimum": 0.0,
+            "title": "Downbeat",
+            "description": "first beat of a bar"
+          },
+          "key": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 23.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Key"
+          },
+          "intro": {
+            "type": "number",
+            "maximum": 36000.0,
+            "minimum": 0.0,
+            "title": "Intro",
+            "description": "where the intro ends"
+          },
+          "outro": {
+            "type": "number",
+            "maximum": 36000.0,
+            "minimum": 0.0,
+            "title": "Outro",
+            "description": "where the outro starts"
+          },
+          "confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Confidence",
+            "description": "how regular the beat is"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "v",
+          "bpm",
+          "beat",
+          "downbeat",
+          "intro",
+          "outro",
+          "confidence"
+        ],
+        "title": "MixAnalysis",
+        "description": "How a song is built, for AutoMix. Measured on the client from the audio.\n\nTimes are seconds from the start of the file. ``key`` is a Camelot position:\n0–11 are 1A–12A (minor), 12–23 are 1B–12B (major); null when no key was clear."
+      },
       "MoveTrackIn": {
         "properties": {
           "track_id": {
@@ -14481,6 +14610,16 @@
               }
             ],
             "title": "Loudness"
+          },
+          "mix": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MixAnalysis"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "additionalProperties": false,

@@ -1560,6 +1560,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/tracks/{track_id}/mix": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set Mix
+         * @description How the song is built, measured by this client, for AutoMix (0017).
+         *
+         *     Like loudness: once per listener per track, and only ever replaced by a newer
+         *     analyser or a steadier beat. Its worst case is a less elegant transition.
+         */
+        put: operations["set_mix_v1_tracks__track_id__mix_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tracks/{track_id}/palette": {
         parameters: {
             query?: never;
@@ -3976,6 +3999,49 @@ export interface components {
             /** Channel Title */
             channel_title?: string | null;
         };
+        /**
+         * MixAnalysis
+         * @description How a song is built, for AutoMix. Measured on the client from the audio.
+         *
+         *     Times are seconds from the start of the file. ``key`` is a Camelot position:
+         *     0–11 are 1A–12A (minor), 12–23 are 1B–12B (major); null when no key was clear.
+         */
+        MixAnalysis: {
+            /**
+             * V
+             * @description analyser version; a newer one supersedes
+             */
+            v: number;
+            /** Bpm */
+            bpm: number;
+            /**
+             * Beat
+             * @description first beat
+             */
+            beat: number;
+            /**
+             * Downbeat
+             * @description first beat of a bar
+             */
+            downbeat: number;
+            /** Key */
+            key?: number | null;
+            /**
+             * Intro
+             * @description where the intro ends
+             */
+            intro: number;
+            /**
+             * Outro
+             * @description where the outro starts
+             */
+            outro: number;
+            /**
+             * Confidence
+             * @description how regular the beat is
+             */
+            confidence: number;
+        };
         /** MoveTrackIn */
         MoveTrackIn: {
             /** Track Id */
@@ -4892,6 +4958,7 @@ export interface components {
             palette?: string | null;
             /** Loudness */
             loudness?: number | null;
+            mix?: components["schemas"]["MixAnalysis"] | null;
         };
         /** TrackSourceOut */
         TrackSourceOut: {
@@ -7924,6 +7991,39 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["LoudnessIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    set_mix_v1_tracks__track_id__mix_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MixAnalysis"];
             };
         };
         responses: {

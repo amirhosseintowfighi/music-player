@@ -173,6 +173,11 @@ export function spareTrackId(): number | null {
   return spareTrack;
 }
 
+/** The element holding the next track, when one is loaded there (AutoMix's other deck). */
+export function spareElement(): HTMLAudioElement | null {
+  return spareTrack !== null && elements.length >= 2 ? spare() : null;
+}
+
 /** Buffers ``track`` in the spare element so it can start without waiting. */
 export async function preloadNext(track: Track): Promise<void> {
   if (single || spareTrack === track.id) return;
