@@ -9,6 +9,9 @@ from app.schemas import (
     AddTracksIn,
     CreatePlaylistIn,
     CreateSmartPlaylistIn,
+    ImportIn,
+    ImportLineOut,
+    ImportOut,
     MoveTrackIn,
     PlaylistDetailOut,
     PlaylistOut,
@@ -17,7 +20,7 @@ from app.schemas import (
     SmartRulesIn,
     UpdatePlaylistIn,
 )
-from app.services import library, playlists, smart_playlists
+from app.services import importer, library, playlists, smart_playlists
 
 router = APIRouter(prefix="/v1/playlists", tags=["playlists"])
 
@@ -225,3 +228,33 @@ async def join_collaboration(
     playlist = await playlists.by_slug(session, slug)
     await playlists.add_collaborator(session, playlist.id, playlist.user_id, claims.user_id)
     return _out(playlist, settings, is_owner=False, can_edit=True)
+
+
+@router.post("/import/match", response_model=ImportOut)
+async def match_import(body: ImportIn, claims: Claims, session: SessionDep) -> ImportOut:
+    """Matches a pasted list of songs (or an exported CSV) against the catalogue.
+
+    Nothing is saved: the client shows what was found and creates the playlist with
+    the ``track_ids`` it keeps (``POST /v1/playlists``).
+    """
+    wanted, skipped = importer.parse(body.text)
+    found = await importer.match(session, wanted)
+    ids = [m.track_id for m in found if m.track_id is not None]
+    tracks = {
+        t.id: t
+        for t in await library.hydrate_tracks(session, ids, claims.lang, viewer_id=claims.user_id)
+    }
+    lines = [
+        ImportLineOut(
+            line=m.line,
+            track=tracks.get(m.track_id) if m.track_id is not None else None,
+            score=m.score,
+        )
+        for m in found
+    ]
+    return ImportOut(
+        lines=lines,
+        matched=sum(1 for line in lines if line.track is not None),
+        total=len(lines),
+        skipped=skipped,
+    )

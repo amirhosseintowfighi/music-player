@@ -1389,3 +1389,24 @@ class AchievementsOut(ApiModel):
     badges: list[BadgeOut]
     earned: int
     total: int
+
+
+# ── playlist import (from text / an exported CSV) ──
+
+
+class ImportIn(ApiModel):
+    text: str = Field(min_length=1, max_length=100_000)
+
+
+class ImportLineOut(ApiModel):
+    line: str
+    track: TrackOut | None = None
+    score: float
+
+
+class ImportOut(ApiModel):
+    lines: list[ImportLineOut]
+    matched: int
+    total: int
+    # Lines that held nothing to match on: links, separators.
+    skipped: int

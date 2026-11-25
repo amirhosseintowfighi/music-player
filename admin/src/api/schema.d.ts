@@ -2728,6 +2728,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/playlists/import/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Match Import
+         * @description Matches a pasted list of songs (or an exported CSV) against the catalogue.
+         *
+         *     Nothing is saved: the client shows what was found and creates the playlist with
+         *     the ``track_ids`` it keeps (``POST /v1/playlists``).
+         */
+        post: operations["match_import_v1_playlists_import_match_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/quiz": {
         parameters: {
             query?: never;
@@ -4206,6 +4229,30 @@ export interface components {
             blocked: number;
             /** Invalid */
             invalid: string[];
+        };
+        /** ImportIn */
+        ImportIn: {
+            /** Text */
+            text: string;
+        };
+        /** ImportLineOut */
+        ImportLineOut: {
+            /** Line */
+            line: string;
+            track?: components["schemas"]["TrackOut"] | null;
+            /** Score */
+            score: number;
+        };
+        /** ImportOut */
+        ImportOut: {
+            /** Lines */
+            lines: components["schemas"]["ImportLineOut"][];
+            /** Matched */
+            matched: number;
+            /** Total */
+            total: number;
+            /** Skipped */
+            skipped: number;
         };
         /** JamAddIn */
         JamAddIn: {
@@ -10805,6 +10852,39 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlaylistOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_import_v1_playlists_import_match_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportOut"];
                 };
             };
             /** @description Validation Error */

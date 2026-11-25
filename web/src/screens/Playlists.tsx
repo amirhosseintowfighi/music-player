@@ -17,12 +17,14 @@ import {
 } from '@/api/playlists';
 import { useArtist } from '@/api/hooks';
 import { useFolderActions, useFolders, usePins, usePlaylistRecommendations } from '@/api/listening';
-import { ChevronIcon, FolderIcon, PinIcon, PlayIcon, PlusIcon, ShuffleIcon, SparkleIcon } from '@/components/icons';
+import { ChevronIcon, DownloadIcon, FolderIcon, PinIcon, PlayIcon, PlusIcon, ShuffleIcon, SparkleIcon } from '@/components/icons';
 import { PinButton } from '@/components/PinButton';
 import { TrackRow } from '@/components/TrackRow';
 import { Cover, EmptyState, Glass, Sheet, Spinner, cx } from '@/components/ui';
 import { CreatePlaylistSheet } from '@/components/CreatePlaylistSheet';
 import { SmartPlaylistSheet } from '@/components/SmartPlaylistSheet';
+import { ImportPlaylistSheet } from '@/components/ImportPlaylistSheet';
+import { importStrings } from '@/i18n/packs/import';
 import { useRefreshSmartPlaylist } from '@/api/smart';
 import { usePack } from '@/i18n/pack';
 import { smartStrings } from '@/i18n/packs/smart';
@@ -111,6 +113,8 @@ export function Playlists() {
   const { remove: removeFolder } = useFolderActions();
   const [createOpen, setCreateOpen] = useState(false);
   const [smartOpen, setSmartOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const ti = usePack(importStrings);
   const [sort, setSort] = useState<SortKey>('recent');
   const [filter, setFilter] = useState<FilterKey>('all');
   const [folder, setFolder] = useState<number | null>(null);
@@ -158,6 +162,15 @@ export function Playlists() {
             className="tv-hit grid h-9 w-9 place-items-center rounded-full bg-[var(--fill)] text-[var(--accent)] transition-transform active:scale-90"
           >
             <SparkleIcon size={17} />
+          </button>
+          <button
+            type="button" data-focusable
+            aria-label={ti('import.title')}
+            title={ti('import.title')}
+            onClick={() => setImportOpen(true)}
+            className="tv-hit grid h-9 w-9 place-items-center rounded-full bg-[var(--fill)] text-[var(--accent)] transition-transform active:scale-90"
+          >
+            <DownloadIcon size={16} />
           </button>
           <button
             type="button"
@@ -269,6 +282,7 @@ export function Playlists() {
 
       <CreatePlaylistSheet open={createOpen} onClose={() => setCreateOpen(false)} />
       <SmartPlaylistSheet open={smartOpen} onClose={() => setSmartOpen(false)} />
+      <ImportPlaylistSheet open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 }

@@ -8350,6 +8350,53 @@
         }
       }
     },
+    "/v1/playlists/import/match": {
+      "post": {
+        "tags": [
+          "playlists"
+        ],
+        "summary": "Match Import",
+        "description": "Matches a pasted list of songs (or an exported CSV) against the catalogue.\n\nNothing is saved: the client shows what was found and creates the playlist with\nthe ``track_ids`` it keeps (``POST /v1/playlists``).",
+        "operationId": "match_import_v1_playlists_import_match_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/v1/quiz": {
       "post": {
         "tags": [
@@ -12632,6 +12679,83 @@
           "invalid"
         ],
         "title": "ImportChannelsOut"
+      },
+      "ImportIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ImportIn"
+      },
+      "ImportLineOut": {
+        "properties": {
+          "line": {
+            "type": "string",
+            "title": "Line"
+          },
+          "track": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrackOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "line",
+          "score"
+        ],
+        "title": "ImportLineOut"
+      },
+      "ImportOut": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/ImportLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "matched": {
+            "type": "integer",
+            "title": "Matched"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lines",
+          "matched",
+          "total",
+          "skipped"
+        ],
+        "title": "ImportOut"
       },
       "JamAddIn": {
         "properties": {
