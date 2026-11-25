@@ -1,8 +1,11 @@
 import { useNavigate } from 'react-router-dom';
 
+import { useStreak } from '@/api/achievements';
+
 import { usePack } from '@/i18n/pack';
 import { extrasStrings } from '@/i18n/packs/extras';
 import { haptic } from '@/lib/telegram';
+import { cx } from '@/components/ui';
 
 type Extra = { key: keyof typeof extrasStrings.fa; glyph: string; to: string };
 
@@ -17,6 +20,7 @@ export function ExtrasRow() {
   const navigate = useNavigate();
   return (
     <div className="no-scrollbar -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1" data-tour="extras">
+      <StreakChip />
       {EXTRAS.map((extra) => (
         <button
           key={extra.to}
@@ -32,5 +36,28 @@ export function ExtrasRow() {
         </button>
       ))}
     </div>
+  );
+}
+
+/** The listener's streak, first in the row: the reason to come back tomorrow. */
+function StreakChip() {
+  const tp = usePack(extrasStrings);
+  const navigate = useNavigate();
+  const streak = useStreak();
+  const count = streak.data?.current ?? 0;
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        haptic('select');
+        navigate('/achievements');
+      }}
+      className={cx(
+        'flex shrink-0 items-center gap-1.5 rounded-full px-3.5 py-2 text-[12.5px] font-semibold transition-transform active:scale-95',
+        count > 0 && !streak.data?.today_done ? 'bg-[var(--accent)] text-[var(--accent-ink)]' : 'bg-[var(--fill)]',
+      )}
+    >
+      {count > 0 ? tp('extras.streakDays', { count }) : `🔥 ${tp('extras.streak')}`}
+    </button>
   );
 }

@@ -13,6 +13,7 @@ from redis.asyncio import Redis
 from app.api.deps import maintenance_gate
 from app.api.middleware import RequestContextMiddleware
 from app.api.routers import (
+    achievements,
     admin,
     alarms,
     auth,
@@ -147,6 +148,7 @@ def create_app(settings: Settings | None = None, state: AppState | None = None) 
     for module in (
         health,
         auth,
+        achievements,
         admin,
         alarms,
         channels,

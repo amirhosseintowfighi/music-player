@@ -1361,3 +1361,31 @@ class AlarmOut(ApiModel):
 class WakeOut(ApiModel):
     alarm: AlarmOut
     items: list[TrackOut]
+
+
+# ── streaks and badges (0021) ──
+
+
+class StreakOut(ApiModel):
+    current: int
+    longest: int
+    today_done: bool
+    # The last seven days in the listener's time zone, oldest first.
+    week: list[bool]
+
+
+class BadgeOut(ApiModel):
+    code: str
+    goal: int
+    progress: int
+    earned: bool
+    earned_at: datetime | None = None
+    # Earned since the listener last looked.
+    new: bool = False
+
+
+class AchievementsOut(ApiModel):
+    streak: StreakOut
+    badges: list[BadgeOut]
+    earned: int
+    total: int

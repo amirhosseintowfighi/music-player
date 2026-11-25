@@ -713,3 +713,15 @@ class Alarm(Base):
     next_fire_at: Mapped[datetime | None] = mapped_column(TS)
     last_fired_at: Mapped[datetime | None] = mapped_column(TS)
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class UserBadge(Base):
+    """A badge a listener has earned (0021); computed, then remembered with its date."""
+
+    __tablename__ = "user_badges"
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    badge: Mapped[str] = mapped_column(Text, primary_key=True)
+    earned_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    seen: Mapped[bool] = mapped_column(Boolean, server_default="false")

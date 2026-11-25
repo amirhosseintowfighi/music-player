@@ -50,6 +50,7 @@ const SharedPlaylistScreen = lazy(() => import('@/screens/Playlists').then((m) =
 const LikedScreen = lazy(() => import('@/screens/Playlists').then((m) => ({ default: m.LikedScreen })));
 const Search = lazy(() => import('@/screens/Search').then((m) => ({ default: m.Search })));
 const OwnerScreen = lazy(() => import('@/screens/Owner').then((m) => ({ default: m.OwnerScreen })));
+const AchievementsScreen = lazy(() => import('@/screens/Achievements').then((m) => ({ default: m.AchievementsScreen })));
 const WakeScreen = lazy(() => import('@/screens/Wake').then((m) => ({ default: m.WakeScreen })));
 const AlarmsScreen = lazy(() => import('@/screens/Wake').then((m) => ({ default: m.AlarmsScreen })));
 const QuizScreen = lazy(() => import('@/screens/Quiz').then((m) => ({ default: m.QuizScreen })));
@@ -303,6 +304,7 @@ function Shell() {
             <Route path="/wrapped" element={<Wrapped />} />
             <Route path="/jam" element={<JamScreen />} />
             <Route path="/owner" element={<OwnerScreen />} />
+            <Route path="/achievements" element={<AchievementsScreen />} />
             <Route path="/wake/:id" element={<WakeScreen />} />
             <Route path="/alarms" element={<AlarmsScreen />} />
             <Route path="/quiz" element={<QuizScreen />} />

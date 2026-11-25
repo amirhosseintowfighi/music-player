@@ -393,6 +393,80 @@
         ]
       }
     },
+    "/v1/me/streak": {
+      "get": {
+        "tags": [
+          "achievements"
+        ],
+        "summary": "My Streak",
+        "description": "Just the streak: cheap enough for the home screen.",
+        "operationId": "my_streak_v1_me_streak_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreakOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/me/achievements": {
+      "get": {
+        "tags": [
+          "achievements"
+        ],
+        "summary": "My Achievements",
+        "description": "The streak and every badge, with progress. Newly reached badges are recorded.",
+        "operationId": "my_achievements_v1_me_achievements_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AchievementsOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/me/achievements/seen": {
+      "post": {
+        "tags": [
+          "achievements"
+        ],
+        "summary": "Achievements Seen",
+        "description": "The listener has seen their new badges: stop calling them new.",
+        "operationId": "achievements_seen_v1_me_achievements_seen_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/admin/login": {
       "post": {
         "tags": [
@@ -9663,6 +9737,37 @@
   },
   "components": {
     "schemas": {
+      "AchievementsOut": {
+        "properties": {
+          "streak": {
+            "$ref": "#/components/schemas/StreakOut"
+          },
+          "badges": {
+            "items": {
+              "$ref": "#/components/schemas/BadgeOut"
+            },
+            "type": "array",
+            "title": "Badges"
+          },
+          "earned": {
+            "type": "integer",
+            "title": "Earned"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "streak",
+          "badges",
+          "earned",
+          "total"
+        ],
+        "title": "AchievementsOut"
+      },
       "AddChannelIn": {
         "properties": {
           "ref": {
@@ -10610,6 +10715,52 @@
           "created_at"
         ],
         "title": "AuditEntryOut"
+      },
+      "BadgeOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "goal": {
+            "type": "integer",
+            "title": "Goal"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress"
+          },
+          "earned": {
+            "type": "boolean",
+            "title": "Earned"
+          },
+          "earned_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earned At"
+          },
+          "new": {
+            "type": "boolean",
+            "title": "New",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "goal",
+          "progress",
+          "earned"
+        ],
+        "title": "BadgeOut"
       },
       "BanIn": {
         "properties": {
@@ -15621,6 +15772,38 @@
           "expires_in"
         ],
         "title": "StoryImageOut"
+      },
+      "StreakOut": {
+        "properties": {
+          "current": {
+            "type": "integer",
+            "title": "Current"
+          },
+          "longest": {
+            "type": "integer",
+            "title": "Longest"
+          },
+          "today_done": {
+            "type": "boolean",
+            "title": "Today Done"
+          },
+          "week": {
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array",
+            "title": "Week"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "current",
+          "longest",
+          "today_done",
+          "week"
+        ],
+        "title": "StreakOut"
       },
       "StreamOut": {
         "properties": {
