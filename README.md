@@ -31,6 +31,7 @@
 | + شبکهٔ اجتماعی (§۵)، اعلان‌ها (§۵)، تگ ID3، manifest های k8s (§۳) | ✅ |
 | **بازطراحی ایندکس ([ADR-002](docs/ADR-002-indexing-strategy.md))**: کرالر پیش‌نمایش وب، resolve تنبل، کشف کانال، صفحات کرالر در پنل، حذف pool اکانت | ✅ |
 | ۱۰ تا ۱۳ پخش و متادیتا ([ADR-003](docs/ADR-003-playback-and-metadata.md)) | ⏳ منتظر تأیید |
+| + پلی‌لیست هوشمند، بازی «آهنگ را حدس بزن»، زنگ بیداری و حالت تمرکز، استریک و نشان‌ها، وارد کردن پلی‌لیست، نظر و واکنش روی آهنگ، آمار گوش دادن، `/random` `/daily` `/stats` `/quiz` در بات ([API.md](docs/API.md#آپشن‌های-تازه-مهاجرت‌های-۰۰۱۸-تا-۰۰۲۳)) | ✅ |
 
 ## ساختار
 
@@ -127,6 +128,8 @@ docker compose run --rm edge python -m tmusic_indexer.login acc1
 ## اجرای تست‌ها بدون Docker
 
 به PostgreSQL 16 (با `pg_trgm` و `citext`) و Meilisearch v1.53 نیاز است. اگر Meilisearch در دسترس نباشد، تست‌های سرچ skip می‌شوند.
+
+بعد از تغییر API، `bash scripts/gen-api.sh` هم `docs/openapi.json` و هم `schema.d.ts` هر سه فرانت را دوباره می‌سازد (CI این دو را با کد مقایسه می‌کند).
 
 ```bash
 uv venv --python 3.12 .venv
