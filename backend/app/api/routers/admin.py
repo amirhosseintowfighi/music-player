@@ -61,7 +61,7 @@ from app.security.tokens import TokenError
 from app.services import admin as admin_service
 from app.services import auth as auth_service
 from app.services import broadcast as broadcast_service
-from app.services import clientlog, subscriptions
+from app.services import clientlog, comments, subscriptions
 from tmusic_common.logging import get_logger
 
 log = get_logger(__name__)
@@ -321,6 +321,22 @@ async def hide_track(
 ) -> dict[str, bool]:
     track = await admin_service.set_track_hidden(session, claims, track_id, hidden, reason)
     return {"hidden": track.hidden}
+
+
+@router.get("/comments")
+async def recent_comments(claims: Claims, session: SessionDep) -> list[dict[str, object]]:
+    """The newest comments on songs (0022), for moderation."""
+    admin_service.require(claims, "content.edit")
+    return await comments.recent_for_review(session)
+
+
+@router.post("/comments/{comment_id}/hide")
+async def hide_comment(comment_id: int, claims: Claims, session: SessionDep) -> dict[str, bool]:
+    """Takes a comment on a song down (0022). Hidden, not deleted: it stays auditable."""
+    admin_service.require(claims, "content.edit")
+    await comments.hide(session, comment_id)
+    await admin_service.audit(session, claims, "comment.hide", "comment", comment_id)
+    return {"hidden": True}
 
 
 @router.post("/channels/{channel_id}/status")

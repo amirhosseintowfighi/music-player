@@ -20,6 +20,7 @@ import { ChevronIcon, PlayIcon, ShuffleIcon } from '@/components/icons';
 import { useI18n } from '@/i18n';
 import { useThumbs } from '@/player/thumbs';
 import { usePlayer, type PlaySource } from '@/store/player';
+import { TrackSocial } from '@/components/TrackSocial';
 
 function Header({
   title,
@@ -404,6 +405,9 @@ export function TrackScreen() {
         thumb={thumbs[track.data.id]}
       />
       <TrackList tracks={[track.data]} thumbs={thumbs} source="shared" sourceId={track.data.id} />
+      <div className="mt-5 pb-6">
+        <TrackSocial trackId={track.data.id} />
+      </div>
     </div>
   );
 }

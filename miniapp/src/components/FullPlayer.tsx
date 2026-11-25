@@ -3,6 +3,9 @@ import { useEffect, useId, useRef, useState } from 'react';
 
 import type { Track } from '@/api/client';
 import { CreditsSheet } from '@/components/Credits';
+import { CommentsSheet } from '@/components/TrackSocial';
+import { usePack } from '@/i18n/pack';
+import { talkStrings } from '@/i18n/packs/talk';
 import { MixPanel } from '@/components/MixPanel';
 import { DevicesSheet } from '@/components/Devices';
 import {
@@ -388,6 +391,8 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
   const [lyricsOpen, setLyricsOpen] = useState(false);
   const [devicesOpen, setDevicesOpen] = useState(false);
   const [creditsOpen, setCreditsOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const tTalk = usePack(talkStrings);
   const devices = useConnect((s) => s.devices.length);
   const jamListeners = useJam((s) => s.jam?.members.length ?? 0);
   const inJam = useJam((s) => Boolean(s.jam));
@@ -652,6 +657,10 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
                 <InfoIcon size={16} />
                 {t('credits.title')}
               </Glass>
+              <Glass className="flex items-center gap-2 px-3.5 py-2 text-[12.5px]" onClick={() => setCommentsOpen(true)}>
+                <span aria-hidden>💬</span>
+                {tTalk('talk.title')}
+              </Glass>
               <Glass
                 className="flex items-center gap-2 px-3.5 py-2 text-[12.5px]"
                 onClick={async () => {
@@ -669,6 +678,7 @@ export function FullPlayer({ thumbs }: { thumbs: Record<number, string> }) {
           <QueueSheet open={queueOpen} onClose={() => setQueueOpen(false)} thumbs={thumbs} />
           <DevicesSheet open={devicesOpen} onClose={() => setDevicesOpen(false)} />
           <CreditsSheet track={track} open={creditsOpen} onClose={() => setCreditsOpen(false)} />
+          <CommentsSheet trackId={track.id} open={commentsOpen} onClose={() => setCommentsOpen(false)} />
 
           <Sheet open={optionsOpen} onClose={() => setOptionsOpen(false)} title={t('common.more')}>
             <button

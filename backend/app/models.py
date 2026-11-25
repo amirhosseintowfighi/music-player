@@ -725,3 +725,28 @@ class UserBadge(Base):
     badge: Mapped[str] = mapped_column(Text, primary_key=True)
     earned_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
     seen: Mapped[bool] = mapped_column(Boolean, server_default="false")
+
+
+class TrackComment(Base):
+    """A comment on a song (0022), optionally at a moment in it."""
+
+    __tablename__ = "track_comments"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    track_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("tracks.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    body: Mapped[str] = mapped_column(Text)
+    at_second: Mapped[int | None] = mapped_column(Integer)
+    hidden: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class TrackReaction(Base):
+    __tablename__ = "track_reactions"
+    track_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    emoji: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())

@@ -1410,3 +1410,40 @@ class ImportOut(ApiModel):
     total: int
     # Lines that held nothing to match on: links, separators.
     skipped: int
+
+
+# ── comments and reactions on a song (0022) ──
+
+Reaction = Literal["fire", "heart", "cry", "love", "party", "clap"]
+
+
+class CommentIn(ApiModel):
+    body: str = Field(min_length=1, max_length=500)
+    # A moment in the song the comment is about, in seconds.
+    at_second: int | None = Field(None, ge=0, le=24 * 3600)
+
+
+class CommentAuthor(ApiModel):
+    id: int
+    first_name: str
+    username: str | None = None
+
+
+class CommentOut(ApiModel):
+    id: int
+    author: CommentAuthor
+    body: str
+    at_second: int | None = None
+    created_at: datetime
+    mine: bool
+
+
+class CommentPageOut(ApiModel):
+    items: list[CommentOut]
+    next_cursor: str | None = None
+    total: int
+
+
+class ReactionsOut(ApiModel):
+    counts: dict[str, int]
+    mine: list[Reaction]
