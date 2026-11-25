@@ -47,6 +47,7 @@ KINDS = (
     "system",
     "new_release",
     "alarm",
+    "daily_song",
 )
 # Asked for a minute ago by the listener themselves: never held back for quiet hours.
 IMMEDIATE = frozenset({"alarm"})
@@ -61,6 +62,8 @@ DEFAULTS: dict[str, bool] = {
     "system": True,
     "new_release": True,
     "alarm": True,
+    # Opt-in: asked for with /daily in the bot.
+    "daily_song": False,
 }
 QUIET_START_HOUR = 23
 QUIET_END_HOUR = 9
@@ -233,6 +236,8 @@ def render(kind: str, payload: dict[str, Any], lang: str) -> str:
         )
     if kind == "discover_ready":
         return t("notify_discover", lang)
+    if kind == "daily_song":
+        return t("notify_daily_song", lang, title=payload.get("title", ""))
     if kind == "alarm":
         label = str(payload.get("label") or "")
         if payload.get("title"):
@@ -260,7 +265,10 @@ def keyboard(settings: Settings, lang: str, open_path: str | None = None) -> Inl
     label = "open_player"
     if open_path:
         url = f"{url.split('#', 1)[0]}#/{open_path.lstrip('/')}"
-        label = "wake_up" if open_path.startswith("wake/") else label
+        if open_path.startswith("wake/"):
+            label = "wake_up"
+        elif open_path.startswith("track/"):
+            label = "play_song"
     return InlineKeyboardMarkup(
         inline_keyboard=[[InlineKeyboardButton(text=t(label, lang), web_app=WebAppInfo(url=url))]]
     )

@@ -491,7 +491,7 @@ export const en: Record<keyof typeof fa, string> = {
   'tour.player.title': 'The player',
   'tour.player.body': 'What is playing stays down here. Tap it for the full player: lyrics, the queue, a sleep timer, Jam (listen with friends, in sync), playing on another device and car mode.',
   'tour.bot.title': 'What does the bot do in chat?',
-  'tour.bot.body': 'The bot chat is for quick things:\n• send a channel’s username or link to add it\n• in any chat, type @{bot} and a song name to send it right there\n• /jam start a Jam and send its link to friends\n• /owner if you run a channel, see its stats\n• /help for help and /lang to change language\nYour weekly recap and new songs from your artists arrive there too.',
+  'tour.bot.body': 'The bot chat is for quick things:\n• send a channel’s username or link to add it\n• in any chat, type @{bot} and a song name to send it right there\n• /jam start a Jam and send its link to friends\n• /owner if you run a channel, see its stats\n• /random a random song, /daily a song a day, /stats your week, /quiz guess the song\n• /help for help and /lang to change language\nYour weekly recap and new songs from your artists arrive there too.',
   'tour.more.title': 'More',
   'tour.more.body': 'Language, theme, playback (even loudness, data saver, crossfade and equaliser), Jam and plans live here. You can replay this tour from here any time.',
   'tour.back': 'Back',

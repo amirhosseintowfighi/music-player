@@ -26,6 +26,7 @@ from app.services import (
     blends,
     broadcast,
     crawling,
+    daily_song,
     follows,
     lastfm,
     lyrics,
@@ -328,6 +329,12 @@ async def deliver_notifications(ctx: Ctx) -> dict[str, int]:
         return await notifications.deliver(maker, bot, settings)
     finally:
         await bot.session.close()
+
+
+async def queue_daily_songs(ctx: Ctx) -> int:
+    """Hourly: the song of the day for everyone whose late morning it now is (opt-in)."""
+    async with session_scope(_maker(ctx)) as session:
+        return await daily_song.queue_due(session)
 
 
 async def ring_alarms(ctx: Ctx) -> dict[str, int]:

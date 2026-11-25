@@ -24,6 +24,7 @@ from redis.asyncio import Redis
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
+from app.bot import extras as bot_extras
 from app.bot import payments as bot_payments
 from app.bot.inline import on_inline_query
 from app.bot.texts import t
@@ -471,6 +472,7 @@ def build_router() -> Router:
     router.message.register(on_lang, Command("lang"))
     router.message.register(on_owner, Command("owner"))
     router.message.register(on_jam, Command("jam"))
+    bot_extras.register(router)
     router.callback_query.register(on_jam_button, F.data.startswith("jam:"))
     router.callback_query.register(on_lang_chosen, F.data.in_({"lang:fa", "lang:en"}))
     router.message.register(on_forward, F.forward_origin)

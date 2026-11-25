@@ -88,9 +88,11 @@ def test_early_morning_waits_for_the_same_morning_not_tomorrow() -> None:
 
 async def test_defaults_are_on_and_editable(session: AsyncSession) -> None:
     user = await make_user(session, 82001)
-    assert await notifications.get_prefs(session, user.id) == dict.fromkeys(
-        notifications.KINDS, True
-    )
+    # Everything is on, except the song of the day, which people ask for with /daily.
+    assert await notifications.get_prefs(session, user.id) == {
+        **dict.fromkeys(notifications.KINDS, True),
+        "daily_song": False,
+    }
 
     updated = await notifications.set_prefs(session, user.id, {"digest": False}, None)
     assert updated["digest"] is False
