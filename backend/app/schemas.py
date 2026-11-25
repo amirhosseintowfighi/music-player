@@ -254,6 +254,29 @@ class StreamOut(ApiModel):
 # ── playlists, likes, history (phase 5) ──
 
 
+class SmartRules(ApiModel):
+    """What a smart playlist is made of (0018). Every rule is optional; together they AND.
+
+    ``source`` is where songs are drawn from: the channels in the listener's library,
+    the songs they liked, or the whole catalogue.
+    """
+
+    source: Literal["library", "likes", "catalog"] = "library"
+    artist_ids: list[int] = Field(default_factory=list, max_length=20)
+    channel_ids: list[int] = Field(default_factory=list, max_length=20)
+    language: Literal["fa", "en", "ar", "tr", "ku", "other"] | None = None
+    min_duration: int | None = Field(None, ge=0, le=7200)
+    max_duration: int | None = Field(None, ge=0, le=7200)
+    year_from: int | None = Field(None, ge=1900, le=2100)
+    year_to: int | None = Field(None, ge=1900, le=2100)
+    # Songs the listener has not played in this many days (or never).
+    not_played_days: int | None = Field(None, ge=1, le=365)
+    # Songs the listener has played at least this many times.
+    min_my_plays: int | None = Field(None, ge=1, le=1000)
+    sort: Literal["recent", "popular", "random", "most_played", "least_played"] = "recent"
+    limit: int = Field(50, ge=5, le=200)
+
+
 class PlaylistOut(ApiModel):
     id: int
     name: str
@@ -267,6 +290,7 @@ class PlaylistOut(ApiModel):
         "release_radar",
         "blend",
         "daylist",
+        "smart",
     ]
     is_public: bool
     is_collaborative: bool
@@ -281,6 +305,9 @@ class PlaylistOut(ApiModel):
     folder_id: int | None = None
     # Plays from it do not shape the owner's recommendations.
     exclude_from_taste: bool = False
+    # Only for kind == "smart".
+    rules: SmartRules | None = None
+    refreshed_at: datetime | None = None
 
 
 class PlaylistDetailOut(PlaylistOut):
@@ -291,6 +318,21 @@ class CreatePlaylistIn(ApiModel):
     name: str = Field(min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
     track_ids: list[int] = Field(default_factory=list, max_length=500)
+
+
+class CreateSmartPlaylistIn(ApiModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+    rules: SmartRules
+
+
+class SmartRulesIn(ApiModel):
+    rules: SmartRules
+
+
+class SmartPreviewOut(ApiModel):
+    total: int
+    items: list[TrackOut]
 
 
 class UpdatePlaylistIn(ApiModel):
@@ -1212,3 +1254,4 @@ class StoryImageIn(ApiModel):
 class StoryImageOut(ApiModel):
     url: str
     expires_in: int
+

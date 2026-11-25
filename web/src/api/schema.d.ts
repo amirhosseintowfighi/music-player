@@ -2431,6 +2431,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/playlists/smart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Smart Playlist
+         * @description A playlist made of rules; its songs are picked now and kept up to date.
+         */
+        post: operations["create_smart_playlist_v1_playlists_smart_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/playlists/smart/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Smart Playlist
+         * @description What a set of rules would pick, without saving anything: for the rule editor.
+         */
+        post: operations["preview_smart_playlist_v1_playlists_smart_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/playlists/{playlist_id}/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Smart Rules */
+        put: operations["update_smart_rules_v1_playlists__playlist_id__rules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/playlists/{playlist_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Smart Playlist */
+        post: operations["refresh_smart_playlist_v1_playlists__playlist_id__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/playlists/{playlist_id}": {
         parameters: {
             query?: never;
@@ -3552,6 +3626,14 @@ export interface components {
             /** Track Ids */
             track_ids?: number[];
         };
+        /** CreateSmartPlaylistIn */
+        CreateSmartPlaylistIn: {
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            rules: components["schemas"]["SmartRules"];
+        };
         /** CreditsOut */
         CreditsOut: {
             track: components["schemas"]["TrackOut"];
@@ -4435,7 +4517,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio" | "release_radar" | "blend" | "daylist";
+            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio" | "release_radar" | "blend" | "daylist" | "smart";
             /** Is Public */
             is_public: boolean;
             /** Is Collaborative */
@@ -4472,6 +4554,9 @@ export interface components {
              * @default false
              */
             exclude_from_taste: boolean;
+            rules?: components["schemas"]["SmartRules"] | null;
+            /** Refreshed At */
+            refreshed_at?: string | null;
             /** Items */
             items: components["schemas"]["TrackOut"][];
         };
@@ -4487,7 +4572,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio" | "release_radar" | "blend" | "daylist";
+            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio" | "release_radar" | "blend" | "daylist" | "smart";
             /** Is Public */
             is_public: boolean;
             /** Is Collaborative */
@@ -4524,6 +4609,9 @@ export interface components {
              * @default false
              */
             exclude_from_taste: boolean;
+            rules?: components["schemas"]["SmartRules"] | null;
+            /** Refreshed At */
+            refreshed_at?: string | null;
         };
         /** PrivateSessionIn */
         PrivateSessionIn: {
@@ -4771,6 +4859,61 @@ export interface components {
         SettingIn: {
             /** Value */
             value: unknown;
+        };
+        /** SmartPreviewOut */
+        SmartPreviewOut: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["TrackOut"][];
+        };
+        /**
+         * SmartRules
+         * @description What a smart playlist is made of (0018). Every rule is optional; together they AND.
+         *
+         *     ``source`` is where songs are drawn from: the channels in the listener's library,
+         *     the songs they liked, or the whole catalogue.
+         */
+        SmartRules: {
+            /**
+             * Source
+             * @default library
+             * @enum {string}
+             */
+            source: "library" | "likes" | "catalog";
+            /** Artist Ids */
+            artist_ids?: number[];
+            /** Channel Ids */
+            channel_ids?: number[];
+            /** Language */
+            language?: ("fa" | "en" | "ar" | "tr" | "ku" | "other") | null;
+            /** Min Duration */
+            min_duration?: number | null;
+            /** Max Duration */
+            max_duration?: number | null;
+            /** Year From */
+            year_from?: number | null;
+            /** Year To */
+            year_to?: number | null;
+            /** Not Played Days */
+            not_played_days?: number | null;
+            /** Min My Plays */
+            min_my_plays?: number | null;
+            /**
+             * Sort
+             * @default recent
+             * @enum {string}
+             */
+            sort: "recent" | "popular" | "random" | "most_played" | "least_played";
+            /**
+             * Limit
+             * @default 50
+             */
+            limit: number;
+        };
+        /** SmartRulesIn */
+        SmartRulesIn: {
+            rules: components["schemas"]["SmartRules"];
         };
         /**
          * StoryImageIn
@@ -9636,6 +9779,138 @@ export interface operations {
         responses: {
             /** @description Successful Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_smart_playlist_v1_playlists_smart_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSmartPlaylistIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_smart_playlist_v1_playlists_smart_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SmartRulesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmartPreviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_smart_rules_v1_playlists__playlist_id__rules_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SmartRulesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_smart_playlist_v1_playlists__playlist_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

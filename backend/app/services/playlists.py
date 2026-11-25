@@ -31,6 +31,12 @@ class Access:
     can_edit: bool
 
 
+def _not_smart(playlist: Playlist) -> None:
+    """A smart playlist's songs come from its rules (0018), never from hand edits."""
+    if playlist.kind == "smart":
+        raise InvalidInput("a smart playlist is edited through its rules", reason="smart_playlist")
+
+
 def new_slug() -> str:
     return "".join(secrets.choice(SLUG_ALPHABET) for _ in range(10))
 
@@ -161,6 +167,7 @@ async def add_tracks(
     found = await access(session, playlist_id, user_id)
     if not found.can_edit:
         raise Forbidden("no write access to this playlist")
+    _not_smart(found.playlist)
     if not track_ids:
         return 0
     # Always store the canonical id so the same song cannot appear twice.
@@ -208,6 +215,7 @@ async def remove_track(
     found = await access(session, playlist_id, user_id)
     if not found.can_edit:
         raise Forbidden("no write access to this playlist")
+    _not_smart(found.playlist)
     result = await session.execute(
         delete(PlaylistTrack)
         .where(PlaylistTrack.playlist_id == playlist_id, PlaylistTrack.track_id == track_id)
@@ -225,6 +233,7 @@ async def move_track(
     found = await access(session, playlist_id, user_id)
     if not found.can_edit:
         raise Forbidden("no write access to this playlist")
+    _not_smart(found.playlist)
     if track_id == after_track_id:
         raise InvalidInput("cannot move a track after itself")
 

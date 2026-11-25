@@ -7470,6 +7470,204 @@
         ]
       }
     },
+    "/v1/playlists/smart": {
+      "post": {
+        "tags": [
+          "playlists"
+        ],
+        "summary": "Create Smart Playlist",
+        "description": "A playlist made of rules; its songs are picked now and kept up to date.",
+        "operationId": "create_smart_playlist_v1_playlists_smart_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSmartPlaylistIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/playlists/smart/preview": {
+      "post": {
+        "tags": [
+          "playlists"
+        ],
+        "summary": "Preview Smart Playlist",
+        "description": "What a set of rules would pick, without saving anything: for the rule editor.",
+        "operationId": "preview_smart_playlist_v1_playlists_smart_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmartRulesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartPreviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/playlists/{playlist_id}/rules": {
+      "put": {
+        "tags": [
+          "playlists"
+        ],
+        "summary": "Update Smart Rules",
+        "operationId": "update_smart_rules_v1_playlists__playlist_id__rules_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "playlist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Playlist Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmartRulesIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/playlists/{playlist_id}/refresh": {
+      "post": {
+        "tags": [
+          "playlists"
+        ],
+        "summary": "Refresh Smart Playlist",
+        "operationId": "refresh_smart_playlist_v1_playlists__playlist_id__refresh_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "playlist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Playlist Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/playlists/{playlist_id}": {
       "get": {
         "tags": [
@@ -10785,6 +10983,38 @@
         ],
         "title": "CreatePlaylistIn"
       },
+      "CreateSmartPlaylistIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/SmartRules"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "rules"
+        ],
+        "title": "CreateSmartPlaylistIn"
+      },
       "CreditsOut": {
         "properties": {
           "track": {
@@ -13204,7 +13434,8 @@
               "radio",
               "release_radar",
               "blend",
-              "daylist"
+              "daylist",
+              "smart"
             ],
             "title": "Kind"
           },
@@ -13288,6 +13519,28 @@
             "type": "boolean",
             "title": "Exclude From Taste",
             "default": false
+          },
+          "rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SmartRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refreshed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshed At"
           },
           "items": {
             "items": {
@@ -13345,7 +13598,8 @@
               "radio",
               "release_radar",
               "blend",
-              "daylist"
+              "daylist",
+              "smart"
             ],
             "title": "Kind"
           },
@@ -13429,6 +13683,28 @@
             "type": "boolean",
             "title": "Exclude From Taste",
             "default": false
+          },
+          "rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SmartRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refreshed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshed At"
           }
         },
         "additionalProperties": false,
@@ -14081,6 +14357,191 @@
           "value"
         ],
         "title": "SettingIn"
+      },
+      "SmartPreviewOut": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total",
+          "items"
+        ],
+        "title": "SmartPreviewOut"
+      },
+      "SmartRules": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "library",
+              "likes",
+              "catalog"
+            ],
+            "title": "Source",
+            "default": "library"
+          },
+          "artist_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Artist Ids"
+          },
+          "channel_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Channel Ids"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fa",
+                  "en",
+                  "ar",
+                  "tr",
+                  "ku",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "min_duration": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7200.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Duration"
+          },
+          "max_duration": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7200.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Duration"
+          },
+          "year_from": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 1900.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year From"
+          },
+          "year_to": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 1900.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year To"
+          },
+          "not_played_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 365.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Not Played Days"
+          },
+          "min_my_plays": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min My Plays"
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "recent",
+              "popular",
+              "random",
+              "most_played",
+              "least_played"
+            ],
+            "title": "Sort",
+            "default": "recent"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 5.0,
+            "title": "Limit",
+            "default": 50
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SmartRules",
+        "description": "What a smart playlist is made of (0018). Every rule is optional; together they AND.\n\n``source`` is where songs are drawn from: the channels in the listener's library,\nthe songs they liked, or the whole catalogue."
+      },
+      "SmartRulesIn": {
+        "properties": {
+          "rules": {
+            "$ref": "#/components/schemas/SmartRules"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rules"
+        ],
+        "title": "SmartRulesIn"
       },
       "StoryImageIn": {
         "properties": {

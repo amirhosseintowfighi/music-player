@@ -332,6 +332,9 @@ class Playlist(Base):
         BigInteger, ForeignKey("playlist_folders.id", ondelete="SET NULL")
     )
     exclude_from_taste: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    # Smart playlists (0018): the rules, and when their songs were last rebuilt.
+    rules: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    refreshed_at: Mapped[datetime | None] = mapped_column(TS)
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
 
@@ -676,3 +679,4 @@ class ChannelOwner(Base):
         BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     verified_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+

@@ -23,13 +23,17 @@ export function formatNumber(value: number, lang: Lang): string {
   return new Intl.NumberFormat(lang === 'fa' ? 'fa-IR' : 'en-US').format(value);
 }
 
-export function translate(lang: Lang, key: Key, vars?: Record<string, string | number>): string {
-  const template = DICTS[lang][key] ?? DICTS.en[key] ?? String(key);
+/** Fills `{name}` placeholders; numbers are written in the UI's digits. */
+export function fill(template: string, lang: Lang, vars?: Record<string, string | number>): string {
   if (!vars) return template;
   return template.replace(/\{(\w+)\}/g, (match, name: string) => {
     const value = vars[name];
     return value === undefined ? match : typeof value === 'number' ? formatNumber(value, lang) : value;
   });
+}
+
+export function translate(lang: Lang, key: Key, vars?: Record<string, string | number>): string {
+  return fill(DICTS[lang][key] ?? DICTS.en[key] ?? String(key), lang, vars);
 }
 
 export function I18nProvider({ lang, children }: { lang: Lang; children: ReactNode }) {
