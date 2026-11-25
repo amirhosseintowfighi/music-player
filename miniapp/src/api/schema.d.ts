@@ -3224,6 +3224,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Stats
+         * @description Minutes per day and per hour, top songs and artists, and the period before.
+         *
+         *     ``days`` is 7 or 30.
+         */
+        get: operations["my_stats_v1_me_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tracks/thumbs": {
         parameters: {
             query?: never;
@@ -4502,6 +4524,38 @@ export interface components {
             /** Likes Count */
             likes_count: number;
         };
+        /** ListeningStatsOut */
+        ListeningStatsOut: {
+            /** Days */
+            days: number;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Minutes */
+            minutes: number;
+            /** Plays */
+            plays: number;
+            /** Songs */
+            songs: number;
+            /** Artists */
+            artists: number;
+            /** Previous Minutes */
+            previous_minutes: number;
+            /** Daily Minutes */
+            daily_minutes: number[];
+            /** Hourly Plays */
+            hourly_plays: number[];
+            /** Top Tracks */
+            top_tracks: components["schemas"]["StatsTrackOut"][];
+            /** Top Artists */
+            top_artists: components["schemas"]["StatsArtistOut"][];
+            /** Sources */
+            sources: {
+                [key: string]: number;
+            };
+        };
         /**
          * LoudnessIn
          * @description How loud this client measured a track: mean level in dBFS over what it played.
@@ -5536,6 +5590,21 @@ export interface components {
         /** SmartRulesIn */
         SmartRulesIn: {
             rules: components["schemas"]["SmartRules"];
+        };
+        /** StatsArtistOut */
+        StatsArtistOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Plays */
+            plays: number;
+        };
+        /** StatsTrackOut */
+        StatsTrackOut: {
+            track: components["schemas"]["TrackOut"];
+            /** Plays */
+            plays: number;
         };
         /**
          * StoryImageIn
@@ -11970,6 +12039,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationPrefsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_stats_v1_me_stats_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListeningStatsOut"];
                 };
             };
             /** @description Validation Error */

@@ -6,11 +6,13 @@ export const extrasStrings = definePack(
     'extras.alarms': 'زنگ و تمرکز',
     'extras.streak': 'استریک',
     'extras.streakDays': '🔥 {count} روز',
+    'extras.stats': 'آمار من',
   },
   {
     'extras.quiz': 'Guess the song',
     'extras.alarms': 'Alarm & focus',
     'extras.streak': 'Streak',
     'extras.streakDays': '🔥 {count} days',
+    'extras.stats': 'My stats',
   },
 );

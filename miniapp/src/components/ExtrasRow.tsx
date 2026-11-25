@@ -10,6 +10,7 @@ import { cx } from '@/components/ui';
 type Extra = { key: keyof typeof extrasStrings.fa; glyph: string; to: string };
 
 const EXTRAS: Extra[] = [
+  { key: 'extras.stats', glyph: '📊', to: '/stats' },
   { key: 'extras.quiz', glyph: '🎮', to: '/quiz' },
   { key: 'extras.alarms', glyph: '⏰', to: '/alarms' },
 ];

@@ -1447,3 +1447,32 @@ class CommentPageOut(ApiModel):
 class ReactionsOut(ApiModel):
     counts: dict[str, int]
     mine: list[Reaction]
+
+
+# ── listening stats ──
+
+
+class StatsArtistOut(ApiModel):
+    id: int
+    name: str
+    plays: int
+
+
+class StatsTrackOut(ApiModel):
+    track: TrackOut
+    plays: int
+
+
+class ListeningStatsOut(ApiModel):
+    days: int
+    start: date
+    minutes: int
+    plays: int
+    songs: int
+    artists: int
+    previous_minutes: int
+    daily_minutes: list[int]
+    hourly_plays: list[int]
+    top_tracks: list[StatsTrackOut]
+    top_artists: list[StatsArtistOut]
+    sources: dict[str, int]

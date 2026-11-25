@@ -10040,6 +10040,55 @@
         ]
       }
     },
+    "/v1/me/stats": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "My Stats",
+        "description": "Minutes per day and per hour, top songs and artists, and the period before.\n\n``days`` is 7 or 30.",
+        "operationId": "my_stats_v1_me_stats_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 7,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListeningStatsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/tracks/thumbs": {
       "post": {
         "tags": [
@@ -13604,6 +13653,91 @@
         ],
         "title": "LikeOut"
       },
+      "ListeningStatsOut": {
+        "properties": {
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "minutes": {
+            "type": "integer",
+            "title": "Minutes"
+          },
+          "plays": {
+            "type": "integer",
+            "title": "Plays"
+          },
+          "songs": {
+            "type": "integer",
+            "title": "Songs"
+          },
+          "artists": {
+            "type": "integer",
+            "title": "Artists"
+          },
+          "previous_minutes": {
+            "type": "integer",
+            "title": "Previous Minutes"
+          },
+          "daily_minutes": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Daily Minutes"
+          },
+          "hourly_plays": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Hourly Plays"
+          },
+          "top_tracks": {
+            "items": {
+              "$ref": "#/components/schemas/StatsTrackOut"
+            },
+            "type": "array",
+            "title": "Top Tracks"
+          },
+          "top_artists": {
+            "items": {
+              "$ref": "#/components/schemas/StatsArtistOut"
+            },
+            "type": "array",
+            "title": "Top Artists"
+          },
+          "sources": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Sources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "days",
+          "start",
+          "minutes",
+          "plays",
+          "songs",
+          "artists",
+          "previous_minutes",
+          "daily_minutes",
+          "hourly_plays",
+          "top_tracks",
+          "top_artists",
+          "sources"
+        ],
+        "title": "ListeningStatsOut"
+      },
       "LoudnessIn": {
         "properties": {
           "db": {
@@ -16458,6 +16592,48 @@
           "rules"
         ],
         "title": "SmartRulesIn"
+      },
+      "StatsArtistOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "plays": {
+            "type": "integer",
+            "title": "Plays"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "plays"
+        ],
+        "title": "StatsArtistOut"
+      },
+      "StatsTrackOut": {
+        "properties": {
+          "track": {
+            "$ref": "#/components/schemas/TrackOut"
+          },
+          "plays": {
+            "type": "integer",
+            "title": "Plays"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "track",
+          "plays"
+        ],
+        "title": "StatsTrackOut"
       },
       "StoryImageIn": {
         "properties": {
