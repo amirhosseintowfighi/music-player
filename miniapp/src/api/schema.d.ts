@@ -1015,6 +1015,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/alarms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Alarms */
+        get: operations["my_alarms_v1_alarms_get"];
+        put?: never;
+        /** Create Alarm */
+        post: operations["create_alarm_v1_alarms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alarms/{alarm_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Alarm */
+        delete: operations["delete_alarm_v1_alarms__alarm_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Alarm */
+        patch: operations["update_alarm_v1_alarms__alarm_id__patch"];
+        trace?: never;
+    };
+    "/v1/alarms/{alarm_id}/wake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wake
+         * @description What the alarm plays: opened from the button on the bot's wake-up message.
+         */
+        get: operations["wake_v1_alarms__alarm_id__wake_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/library/channels": {
         parameters: {
             query?: never;
@@ -3204,6 +3260,71 @@ export interface components {
              * @default true
              */
             is_active: boolean;
+        };
+        /** AlarmIn */
+        AlarmIn: {
+            /** Minute Of Day */
+            minute_of_day: number;
+            /**
+             * Days
+             * @default 127
+             */
+            days: number;
+            /** Tz Offset Minutes */
+            tz_offset_minutes: number;
+            /** Label */
+            label?: string | null;
+            /**
+             * Source
+             * @default likes
+             * @enum {string}
+             */
+            source: "likes" | "playlist" | "daylist" | "recent";
+            /** Playlist Id */
+            playlist_id?: number | null;
+        };
+        /** AlarmOut */
+        AlarmOut: {
+            /** Id */
+            id: number;
+            /** Minute Of Day */
+            minute_of_day: number;
+            /** Days */
+            days: number;
+            /** Tz Offset Minutes */
+            tz_offset_minutes: number;
+            /** Label */
+            label: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "likes" | "playlist" | "daylist" | "recent";
+            /** Playlist Id */
+            playlist_id: number | null;
+            /** Enabled */
+            enabled: boolean;
+            /** Next Fire At */
+            next_fire_at: string | null;
+            /** Last Fired At */
+            last_fired_at: string | null;
+        };
+        /** AlarmPatchIn */
+        AlarmPatchIn: {
+            /** Minute Of Day */
+            minute_of_day?: number | null;
+            /** Days */
+            days?: number | null;
+            /** Tz Offset Minutes */
+            tz_offset_minutes?: number | null;
+            /** Label */
+            label?: string | null;
+            /** Source */
+            source?: ("likes" | "playlist" | "daylist" | "recent") | null;
+            /** Playlist Id */
+            playlist_id?: number | null;
+            /** Enabled */
+            enabled?: boolean | null;
         };
         /** AlbumOut */
         AlbumOut: {
@@ -5440,6 +5561,12 @@ export interface components {
             /** Context */
             ctx?: Record<string, never>;
         };
+        /** WakeOut */
+        WakeOut: {
+            alarm: components["schemas"]["AlarmOut"];
+            /** Items */
+            items: components["schemas"]["TrackOut"][];
+        };
         /**
          * WebWidgetLoginIn
          * @description Telegram Login Widget payload for the standalone Web App.
@@ -7326,6 +7453,154 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ClientLogOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_alarms_v1_alarms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlarmOut"][];
+                };
+            };
+        };
+    };
+    create_alarm_v1_alarms_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlarmIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlarmOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_alarm_v1_alarms__alarm_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alarm_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_alarm_v1_alarms__alarm_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alarm_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlarmPatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlarmOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wake_v1_alarms__alarm_id__wake_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alarm_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WakeOut"];
                 };
             };
             /** @description Validation Error */

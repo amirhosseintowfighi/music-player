@@ -61,6 +61,7 @@ class WorkerSettings:
         jobs.notify_new_tracks,
         jobs.notify_weekly_digest,
         jobs.deliver_notifications,
+        jobs.ring_alarms,
         jobs.rebuild_wrapped,
         jobs.probe_metadata,
         jobs.prewarm_resolver,
@@ -84,6 +85,8 @@ class WorkerSettings:
         cron(jobs.notify_new_tracks, hour={6, 12, 16}, minute={0}, unique=True),
         cron(jobs.notify_weekly_digest, weekday=4, hour={12}, minute={0}, unique=True),
         cron(jobs.deliver_notifications, minute=set(range(60)), unique=True),
+        # Wake-up alarms: on the minute, sent straight away.
+        cron(jobs.ring_alarms, minute=set(range(60)), second={0}, unique=True),
         # 09:00 Tehran (UTC+3:30) — a renewal reminder at 3am helps nobody.
         cron(jobs.subscriptions_daily, hour={5}, minute={30}, unique=True),
         # The matrix first, then the per-user mixes that read it.

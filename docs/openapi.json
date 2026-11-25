@@ -3120,6 +3120,223 @@
         }
       }
     },
+    "/v1/alarms": {
+      "get": {
+        "tags": [
+          "alarms"
+        ],
+        "summary": "My Alarms",
+        "operationId": "my_alarms_v1_alarms_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlarmOut"
+                  },
+                  "type": "array",
+                  "title": "Response My Alarms V1 Alarms Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "alarms"
+        ],
+        "summary": "Create Alarm",
+        "operationId": "create_alarm_v1_alarms_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlarmIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlarmOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/alarms/{alarm_id}": {
+      "patch": {
+        "tags": [
+          "alarms"
+        ],
+        "summary": "Update Alarm",
+        "operationId": "update_alarm_v1_alarms__alarm_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alarm_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alarm Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlarmPatchIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlarmOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "alarms"
+        ],
+        "summary": "Delete Alarm",
+        "operationId": "delete_alarm_v1_alarms__alarm_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alarm_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alarm Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/alarms/{alarm_id}/wake": {
+      "get": {
+        "tags": [
+          "alarms"
+        ],
+        "summary": "Wake",
+        "description": "What the alarm plays: opened from the button on the bot's wake-up message.",
+        "operationId": "wake_v1_alarms__alarm_id__wake_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alarm_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alarm Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WakeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/library/channels": {
       "get": {
         "tags": [
@@ -9812,6 +10029,262 @@
         ],
         "title": "AdminUpsertIn"
       },
+      "AlarmIn": {
+        "properties": {
+          "minute_of_day": {
+            "type": "integer",
+            "maximum": 1439.0,
+            "minimum": 0.0,
+            "title": "Minute Of Day"
+          },
+          "days": {
+            "type": "integer",
+            "maximum": 127.0,
+            "minimum": 0.0,
+            "title": "Days",
+            "default": 127
+          },
+          "tz_offset_minutes": {
+            "type": "integer",
+            "maximum": 840.0,
+            "minimum": -720.0,
+            "title": "Tz Offset Minutes"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "likes",
+              "playlist",
+              "daylist",
+              "recent"
+            ],
+            "title": "Source",
+            "default": "likes"
+          },
+          "playlist_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "minute_of_day",
+          "tz_offset_minutes"
+        ],
+        "title": "AlarmIn"
+      },
+      "AlarmOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "minute_of_day": {
+            "type": "integer",
+            "title": "Minute Of Day"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "tz_offset_minutes": {
+            "type": "integer",
+            "title": "Tz Offset Minutes"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "likes",
+              "playlist",
+              "daylist",
+              "recent"
+            ],
+            "title": "Source"
+          },
+          "playlist_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Id"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "next_fire_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Fire At"
+          },
+          "last_fired_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fired At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "minute_of_day",
+          "days",
+          "tz_offset_minutes",
+          "label",
+          "source",
+          "playlist_id",
+          "enabled",
+          "next_fire_at",
+          "last_fired_at"
+        ],
+        "title": "AlarmOut"
+      },
+      "AlarmPatchIn": {
+        "properties": {
+          "minute_of_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1439.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minute Of Day"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 127.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "tz_offset_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 840.0,
+                "minimum": -720.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tz Offset Minutes"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "likes",
+                  "playlist",
+                  "daylist",
+                  "recent"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "playlist_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Id"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AlarmPatchIn"
+      },
       "AlbumOut": {
         "properties": {
           "album": {
@@ -16086,6 +16559,27 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WakeOut": {
+        "properties": {
+          "alarm": {
+            "$ref": "#/components/schemas/AlarmOut"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "alarm",
+          "items"
+        ],
+        "title": "WakeOut"
       },
       "WebWidgetLoginIn": {
         "properties": {

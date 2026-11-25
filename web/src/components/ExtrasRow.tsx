@@ -6,7 +6,10 @@ import { haptic } from '@/lib/telegram';
 
 type Extra = { key: keyof typeof extrasStrings.fa; glyph: string; to: string };
 
-const EXTRAS: Extra[] = [{ key: 'extras.quiz', glyph: '🎮', to: '/quiz' }];
+const EXTRAS: Extra[] = [
+  { key: 'extras.quiz', glyph: '🎮', to: '/quiz' },
+  { key: 'extras.alarms', glyph: '⏰', to: '/alarms' },
+];
 
 /** The things to do besides listening: one row of chips on Home. */
 export function ExtrasRow() {

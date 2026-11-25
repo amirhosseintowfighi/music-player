@@ -693,3 +693,23 @@ class QuizGame(Base):
     correct: Mapped[int] = mapped_column(SmallInteger, server_default="0")
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
     finished_at: Mapped[datetime | None] = mapped_column(TS)
+
+
+class Alarm(Base):
+    """A wake-up alarm (0020): the bot's message at the listener's chosen minute."""
+
+    __tablename__ = "alarms"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    label: Mapped[str | None] = mapped_column(Text)
+    minute_of_day: Mapped[int] = mapped_column(SmallInteger)
+    days: Mapped[int] = mapped_column(SmallInteger, server_default="127")
+    tz_offset_minutes: Mapped[int] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(Text, server_default="likes")
+    playlist_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("playlists.id", ondelete="SET NULL")
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    next_fire_at: Mapped[datetime | None] = mapped_column(TS)
+    last_fired_at: Mapped[datetime | None] = mapped_column(TS)
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())

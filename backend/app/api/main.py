@@ -14,6 +14,7 @@ from app.api.deps import maintenance_gate
 from app.api.middleware import RequestContextMiddleware
 from app.api.routers import (
     admin,
+    alarms,
     auth,
     channels,
     discover,
@@ -147,6 +148,7 @@ def create_app(settings: Settings | None = None, state: AppState | None = None) 
         health,
         auth,
         admin,
+        alarms,
         channels,
         discover,
         jams,

@@ -1318,3 +1318,46 @@ class QuizBoardOut(ApiModel):
     my_games: int
     my_best: int
     my_week_best: int
+
+
+# ── wake-up alarms (0020) ──
+
+AlarmSource = Literal["likes", "playlist", "daylist", "recent"]
+
+
+class AlarmIn(ApiModel):
+    minute_of_day: int = Field(ge=0, le=1439)
+    # A bit per weekday, Monday = 1 … Sunday = 64; 0 rings once.
+    days: int = Field(127, ge=0, le=127)
+    tz_offset_minutes: int = Field(ge=-720, le=840)
+    label: str | None = Field(None, max_length=60)
+    source: AlarmSource = "likes"
+    playlist_id: int | None = None
+
+
+class AlarmPatchIn(ApiModel):
+    minute_of_day: int | None = Field(None, ge=0, le=1439)
+    days: int | None = Field(None, ge=0, le=127)
+    tz_offset_minutes: int | None = Field(None, ge=-720, le=840)
+    label: str | None = Field(None, max_length=60)
+    source: AlarmSource | None = None
+    playlist_id: int | None = None
+    enabled: bool | None = None
+
+
+class AlarmOut(ApiModel):
+    id: int
+    minute_of_day: int
+    days: int
+    tz_offset_minutes: int
+    label: str | None
+    source: AlarmSource
+    playlist_id: int | None
+    enabled: bool
+    next_fire_at: datetime | None
+    last_fired_at: datetime | None
+
+
+class WakeOut(ApiModel):
+    alarm: AlarmOut
+    items: list[TrackOut]

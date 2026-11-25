@@ -196,6 +196,15 @@ TEXTS: dict[str, dict[Lang, str]] = {
         "fa": "\U0001f195 {count} آهنگ تازه از {artist}، از جمله «{title}»",
         "en": "\U0001f195 {count} new tracks from {artist}, including «{title}»",
     },
+    "notify_alarm": {
+        "fa": "⏰ صبح بخیر! {label}\nبا «{title}» بیدار شو.",
+        "en": "⏰ Good morning! {label}\nWake up to «{title}».",
+    },
+    "notify_alarm_plain": {
+        "fa": "⏰ وقت بیدار شدن است! {label}",
+        "en": "⏰ Time to wake up! {label}",
+    },
+    "wake_up": {"fa": "▶️ پخش آهنگ بیداری", "en": "▶️ Play my wake-up music"},
     "notify_discover": {
         "fa": "\u2728 «کشف هفتگی» تازه‌ات آماده است.",
         "en": "\u2728 Your new Discover Weekly is ready.",
