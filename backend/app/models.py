@@ -680,3 +680,16 @@ class ChannelOwner(Base):
     )
     verified_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
 
+
+class QuizGame(Base):
+    """Guess the song (0019). ``questions`` keeps the answers; the API never shows them early."""
+
+    __tablename__ = "quiz_games"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    source: Mapped[str] = mapped_column(Text)
+    questions: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    score: Mapped[int] = mapped_column(Integer, server_default="0")
+    correct: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(TS)

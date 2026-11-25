@@ -2612,6 +2612,100 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/quiz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Game
+         * @description A new game. ``not_enough_songs`` means the library is too small: try ``catalog``.
+         */
+        post: operations["start_game_v1_quiz_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quiz/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Board
+         * @description This week's best scores: you and the people you follow, or everyone.
+         */
+        get: operations["board_v1_quiz_board_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quiz/{game_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Game */
+        get: operations["get_game_v1_quiz__game_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quiz/{game_id}/questions/{index}/clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Question Clip
+         * @description The clip to guess from: a capped ticket that never spends the daily play limit.
+         */
+        post: operations["question_clip_v1_quiz__game_id__questions__index__clip_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quiz/{game_id}/questions/{index}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Question */
+        post: operations["answer_question_v1_quiz__game_id__questions__index__answer_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/search": {
         parameters: {
             query?: never;
@@ -4707,6 +4801,114 @@ export interface components {
         PublicProfileIn: {
             /** Public */
             public: boolean;
+        };
+        /** QuizAnswerIn */
+        QuizAnswerIn: {
+            /** Choice Id */
+            choice_id: number;
+        };
+        /** QuizAnswerOut */
+        QuizAnswerOut: {
+            /** Correct */
+            correct: boolean;
+            /** Answer Id */
+            answer_id: number;
+            /** Points */
+            points: number;
+            /** Score */
+            score: number;
+            /** Finished */
+            finished: boolean;
+            answer?: components["schemas"]["TrackOut"] | null;
+        };
+        /** QuizBoardOut */
+        QuizBoardOut: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "friends" | "global";
+            /** Entries */
+            entries: components["schemas"]["QuizLeaderOut"][];
+            /** My Games */
+            my_games: number;
+            /** My Best */
+            my_best: number;
+            /** My Week Best */
+            my_week_best: number;
+        };
+        /** QuizChoiceOut */
+        QuizChoiceOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Artist */
+            artist: string;
+        };
+        /** QuizGameOut */
+        QuizGameOut: {
+            /** Id */
+            id: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "library" | "catalog";
+            /** Questions */
+            questions: components["schemas"]["QuizQuestionOut"][];
+            /** Score */
+            score: number;
+            /** Correct */
+            correct: number;
+            /** Finished */
+            finished: boolean;
+            /** Max Score */
+            max_score: number;
+        };
+        /** QuizLeaderOut */
+        QuizLeaderOut: {
+            /** Rank */
+            rank: number;
+            /** User Id */
+            user_id: number;
+            /** First Name */
+            first_name: string;
+            /** Username */
+            username?: string | null;
+            /** Best Score */
+            best_score: number;
+            /** Games */
+            games: number;
+            /** Is Me */
+            is_me: boolean;
+        };
+        /** QuizQuestionOut */
+        QuizQuestionOut: {
+            /** Index */
+            index: number;
+            /** Choices */
+            choices: components["schemas"]["QuizChoiceOut"][];
+            /** Answered */
+            answered?: number | null;
+            /** Answer Id */
+            answer_id?: number | null;
+            /** Correct */
+            correct?: boolean | null;
+            /**
+             * Points
+             * @default 0
+             */
+            points: number;
+        };
+        /** QuizStartIn */
+        QuizStartIn: {
+            /**
+             * Source
+             * @default library
+             * @enum {string}
+             */
+            source: "library" | "catalog";
         };
         /** RefreshIn */
         RefreshIn: {
@@ -10171,6 +10373,169 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlaylistOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_game_v1_quiz_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizStartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizGameOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    board_v1_quiz_board_get: {
+        parameters: {
+            query?: {
+                scope?: "friends" | "global";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizBoardOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_game_v1_quiz__game_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizGameOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    question_clip_v1_quiz__game_id__questions__index__clip_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: number;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_question_v1_quiz__game_id__questions__index__answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: number;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizAnswerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizAnswerOut"];
                 };
             };
             /** @description Validation Error */

@@ -1255,3 +1255,66 @@ class StoryImageOut(ApiModel):
     url: str
     expires_in: int
 
+
+# ── guess the song (0019) ──
+
+
+class QuizStartIn(ApiModel):
+    source: Literal["library", "catalog"] = "library"
+
+
+class QuizChoiceOut(ApiModel):
+    id: int
+    title: str
+    artist: str
+
+
+class QuizQuestionOut(ApiModel):
+    index: int
+    choices: list[QuizChoiceOut]
+    # Filled in once answered: what the player picked, and the right one.
+    answered: int | None = None
+    answer_id: int | None = None
+    correct: bool | None = None
+    points: int = 0
+
+
+class QuizGameOut(ApiModel):
+    id: int
+    source: Literal["library", "catalog"]
+    questions: list[QuizQuestionOut]
+    score: int
+    correct: int
+    finished: bool
+    max_score: int
+
+
+class QuizAnswerIn(ApiModel):
+    choice_id: int
+
+
+class QuizAnswerOut(ApiModel):
+    correct: bool
+    answer_id: int
+    points: int
+    score: int
+    finished: bool
+    answer: TrackOut | None = None
+
+
+class QuizLeaderOut(ApiModel):
+    rank: int
+    user_id: int
+    first_name: str
+    username: str | None = None
+    best_score: int
+    games: int
+    is_me: bool
+
+
+class QuizBoardOut(ApiModel):
+    scope: Literal["friends", "global"]
+    entries: list[QuizLeaderOut]
+    my_games: int
+    my_best: int
+    my_week_best: int

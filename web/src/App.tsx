@@ -46,6 +46,7 @@ const LikedScreen = lazy(() => import('@/screens/Playlists').then((m) => ({ defa
 const Search = lazy(() => import('@/screens/Search').then((m) => ({ default: m.Search })));
 const Tour = lazy(() => import('@/components/Tour'));
 const OwnerScreen = lazy(() => import('@/screens/Owner').then((m) => ({ default: m.OwnerScreen })));
+const QuizScreen = lazy(() => import('@/screens/Quiz').then((m) => ({ default: m.QuizScreen })));
 const CarMode = lazy(() => import('@/components/CarMode').then((m) => ({ default: m.CarMode })));
 const Downloads = lazy(() => import('@/screens/Downloads').then((m) => ({ default: m.Downloads })));
 
@@ -336,6 +337,7 @@ function Shell() {
                   <Route path="/wrapped" element={<Wrapped />} />
                   <Route path="/jam" element={<JamScreen />} />
                   <Route path="/owner" element={<OwnerScreen />} />
+                  <Route path="/quiz" element={<QuizScreen />} />
                   <Route path="/blend" element={<BlendScreen />} />
                   <Route path="/blend/:code" element={<BlendScreen />} />
                   <Route path="/jam/:code" element={<JamScreen />} />
