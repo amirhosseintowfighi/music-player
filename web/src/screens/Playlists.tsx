@@ -17,13 +17,19 @@ import {
 } from '@/api/playlists';
 import { useArtist } from '@/api/hooks';
 import { useFolderActions, useFolders, usePins, usePlaylistRecommendations } from '@/api/listening';
-import { ChevronIcon, FolderIcon, PinIcon, PlayIcon, PlusIcon, ShuffleIcon, SparkleIcon } from '@/components/icons';
+import { ChevronIcon, DownloadIcon, FolderIcon, PinIcon, PlayIcon, PlusIcon, ShuffleIcon, SparkleIcon } from '@/components/icons';
 import { PinButton } from '@/components/PinButton';
 import { TrackRow } from '@/components/TrackRow';
 import { Cover, EmptyState, Glass, Sheet, Spinner, cx } from '@/components/ui';
 import { CreatePlaylistSheet } from '@/components/CreatePlaylistSheet';
+import { SmartPlaylistSheet } from '@/components/SmartPlaylistSheet';
+import { ImportPlaylistSheet } from '@/components/ImportPlaylistSheet';
+import { importStrings } from '@/i18n/packs/import';
+import { useRefreshSmartPlaylist } from '@/api/smart';
+import { usePack } from '@/i18n/pack';
+import { smartStrings } from '@/i18n/packs/smart';
 import { useI18n } from '@/i18n';
-import { duration } from '@/lib/format';
+import { duration, relativeTime } from '@/lib/format';
 import { haptic, openTelegramLink } from '@/lib/telegram';
 import { useThumbs } from '@/player/thumbs';
 import { usePlayer } from '@/store/player';
@@ -47,7 +53,7 @@ function PinnedPlaylist({ playlist, playlistId }: { playlist: Playlist | undefin
     <PinnedTile
       title={playlist.name}
       seed={playlist.name}
-      glyph={playlist.kind === 'blend' ? '◑' : MADE_FOR_YOU.has(playlist.kind) ? '✦' : '≡'}
+      glyph={glyphFor(playlist.kind)}
       onClick={() => navigate(`/playlist/${playlistId}`)}
     />
   );
@@ -72,6 +78,12 @@ type SortKey = 'recent' | 'alpha' | 'created';
 type FilterKey = 'all' | 'mine' | 'made' | 'blend';
 const MADE_FOR_YOU = new Set(['discover_weekly', 'daily_mix', 'release_radar', 'daylist']);
 
+function glyphFor(kind: string): string {
+  if (kind === 'blend') return '◑';
+  if (kind === 'smart') return '⚡';
+  return MADE_FOR_YOU.has(kind) ? '✦' : '≡';
+}
+
 function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
@@ -94,11 +106,15 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 
 export function Playlists() {
   const { t, lang } = useI18n();
+  const tp = usePack(smartStrings);
   const navigate = useNavigate();
   const playlists = usePlaylists();
   const folders = useFolders();
   const { remove: removeFolder } = useFolderActions();
   const [createOpen, setCreateOpen] = useState(false);
+  const [smartOpen, setSmartOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const ti = usePack(importStrings);
   const [sort, setSort] = useState<SortKey>('recent');
   const [filter, setFilter] = useState<FilterKey>('all');
   const [folder, setFolder] = useState<number | null>(null);
@@ -115,7 +131,7 @@ export function Playlists() {
       if (folder !== null) return playlist.folder_id === folder;
       // Pinned ones sit above everything else instead of appearing twice.
       if (filter === 'all' && pinnedPlaylists.has(playlist.id)) return false;
-      if (filter === 'mine') return playlist.kind === 'manual' && playlist.is_owner;
+      if (filter === 'mine') return (playlist.kind === 'manual' || playlist.kind === 'smart') && playlist.is_owner;
       if (filter === 'made') return MADE_FOR_YOU.has(playlist.kind);
       if (filter === 'blend') return playlist.kind === 'blend';
       // Filed playlists live in their folder, not at the top level.
@@ -136,15 +152,36 @@ export function Playlists() {
     <div className="px-4 pt-4 tv-safe [container-type:inline-size]">
       <div className="flex items-center justify-between">
         <h1 className="text-[clamp(18px,2.5cqw,22px)] font-bold">{openFolder ? openFolder.name : t('library.playlists')}</h1>
-        <button
-          type="button"
-          aria-label={t('playlist.new')}
-          data-focusable
-          onClick={() => setCreateOpen(true)}
-          className="tv-hit grid h-9 w-9 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] transition-transform active:scale-90"
-        >
-          <PlusIcon size={18} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            aria-label={tp('smart.new')}
+            title={tp('smart.new')}
+            data-focusable
+            onClick={() => setSmartOpen(true)}
+            className="tv-hit grid h-9 w-9 place-items-center rounded-full bg-[var(--fill)] text-[var(--accent)] transition-transform active:scale-90"
+          >
+            <SparkleIcon size={17} />
+          </button>
+          <button
+            type="button" data-focusable
+            aria-label={ti('import.title')}
+            title={ti('import.title')}
+            onClick={() => setImportOpen(true)}
+            className="tv-hit grid h-9 w-9 place-items-center rounded-full bg-[var(--fill)] text-[var(--accent)] transition-transform active:scale-90"
+          >
+            <DownloadIcon size={16} />
+          </button>
+          <button
+            type="button"
+            aria-label={t('playlist.new')}
+            data-focusable
+            onClick={() => setCreateOpen(true)}
+            className="tv-hit grid h-9 w-9 place-items-center rounded-full bg-[var(--accent)] text-[var(--accent-ink)] transition-transform active:scale-90"
+          >
+            <PlusIcon size={18} />
+          </button>
+        </div>
       </div>
 
       <div className="tv-row no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-1">
@@ -225,7 +262,7 @@ export function Playlists() {
             className="flex items-center gap-3 p-3"
             onClick={() => navigate(`/playlist/${playlist.id}`)}
           >
-            <Cover seed={playlist.name} size={48} glyph={playlist.kind === 'blend' ? '◑' : MADE_FOR_YOU.has(playlist.kind) ? '✦' : '≡'} />
+            <Cover seed={playlist.name} size={48} glyph={glyphFor(playlist.kind)} />
             <div className="min-w-0 flex-1">
               <p className="truncate text-[14px] font-semibold">{playlist.name}</p>
               <p className="truncate text-[11.5px] text-[var(--ink-faint)]">
@@ -244,6 +281,8 @@ export function Playlists() {
       </div>
 
       <CreatePlaylistSheet open={createOpen} onClose={() => setCreateOpen(false)} />
+      <SmartPlaylistSheet open={smartOpen} onClose={() => setSmartOpen(false)} />
+      <ImportPlaylistSheet open={importOpen} onClose={() => setImportOpen(false)} />
     </div>
   );
 }
@@ -486,6 +525,7 @@ function FolderPicker({ playlistId, folderId, onDone }: { playlistId: number; fo
 
 export function PlaylistScreen() {
   const { t, lang } = useI18n();
+  const tp = usePack(smartStrings);
   const id = Number(useParams().id);
   const query = usePlaylist(id);
   const move = useMoveInPlaylist(id);
@@ -497,6 +537,8 @@ export function PlaylistScreen() {
   const toast = useUi((s) => s.toast);
   const showUpsell = useUi((s) => s.showUpsell);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const refreshSmart = useRefreshSmartPlaylist(id);
   const [order, setOrder] = useState<Track[]>([]);
 
   const items = useMemo(() => query.data?.items ?? [], [query.data]);
@@ -512,6 +554,7 @@ export function PlaylistScreen() {
   }
   if (!query.data) return <EmptyState title={t('app.error')} />;
   const playlist = query.data;
+  const smart = playlist.kind === 'smart';
 
   const commitOrder = (next: Track[]) => {
     setOrder(next);
@@ -526,7 +569,11 @@ export function PlaylistScreen() {
     <div className="px-4 tv-safe [container-type:inline-size]">
       <PlaylistHeader
         title={playlist.name}
-        subtitle={`${t('library.count', { count: playlist.tracks_count })} · ${duration(playlist.duration_total, lang)}`}
+        subtitle={
+          smart
+            ? `⚡ ${tp('smart.label')} · ${t('library.count', { count: playlist.tracks_count })} · ${tp('smart.updated', { when: relativeTime(playlist.refreshed_at, lang) })}`
+            : `${t('library.count', { count: playlist.tracks_count })} · ${duration(playlist.duration_total, lang)}`
+        }
         tracks={items}
         source="playlist"
         sourceId={playlist.id}
@@ -541,7 +588,22 @@ export function PlaylistScreen() {
       />
 
       {items.length === 0 ? (
-        <EmptyState title={t('playlist.emptyTracks')} />
+        smart ? (
+          <EmptyState title={tp('smart.empty')} body={tp('smart.emptyHint')} cta={tp('smart.editRules')} onCta={() => setRulesOpen(true)} />
+        ) : (
+          <EmptyState title={t('playlist.emptyTracks')} />
+        )
+      ) : smart || !playlist.can_edit ? (
+        <Glass className="rise mt-3 p-1.5">
+          {items.map((track, index) => (
+            <TrackRow
+              key={track.id}
+              track={track}
+              thumb={thumbs[track.id] ?? null}
+              onPlay={() => void play({ queue: items, index, source: 'playlist', sourceId: playlist.id })}
+            />
+          ))}
+        </Glass>
       ) : (
         <Glass className="rise mt-3 p-1.5">
           <Reorder.Group axis="y" values={order} onReorder={commitOrder} as="div">
@@ -563,6 +625,33 @@ export function PlaylistScreen() {
       )}
 
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={playlist.name}>
+        {playlist.is_owner && smart && (
+          <>
+            <button
+              type="button"
+              className="w-full rounded-xl bg-[var(--fill)] px-4 py-3 text-start text-[13.5px]"
+              onClick={() => {
+                setMenuOpen(false);
+                setRulesOpen(true);
+              }}
+            >
+              ⚡ {tp('smart.editRules')}
+            </button>
+            <button
+              type="button"
+              disabled={refreshSmart.isPending}
+              className="mb-3 mt-2 w-full rounded-xl bg-[var(--fill)] px-4 py-3 text-start text-[13.5px] disabled:opacity-50"
+              onClick={() =>
+                refreshSmart.mutate(undefined, {
+                  onSuccess: () => toast(tp('smart.refreshed'), 'success'),
+                  onError: () => toast(t('app.error'), 'error'),
+                })
+              }
+            >
+              {refreshSmart.isPending ? <Spinner size={14} /> : `↻ ${tp('smart.refresh')}`}
+            </button>
+          </>
+        )}
         {playlist.is_owner && (
           <>
             <FolderPicker playlistId={playlist.id} folderId={playlist.folder_id ?? null} onDone={() => setMenuOpen(false)} />
@@ -677,6 +766,14 @@ export function PlaylistScreen() {
         )}
         {!playlist.is_owner && <p className="px-1 text-[13px] text-[var(--ink-dim)]">{t('playlist.collaborating')}</p>}
       </Sheet>
+      {smart && playlist.is_owner && (
+        <SmartPlaylistSheet
+          open={rulesOpen}
+          onClose={() => setRulesOpen(false)}
+          playlistId={playlist.id}
+          initial={playlist.rules ?? null}
+        />
+      )}
     </div>
   );
 }

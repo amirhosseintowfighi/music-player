@@ -21,10 +21,12 @@ from app.db import session_scope
 from app.models import EdgeNode, User
 from app.redis_util import resolve
 from app.services import (
+    alarms,
     artistinfo,
     blends,
     broadcast,
     crawling,
+    daily_song,
     follows,
     lastfm,
     lyrics,
@@ -327,6 +329,33 @@ async def deliver_notifications(ctx: Ctx) -> dict[str, int]:
         return await notifications.deliver(maker, bot, settings)
     finally:
         await bot.session.close()
+
+
+async def queue_daily_songs(ctx: Ctx) -> int:
+    """Hourly: the song of the day for everyone whose late morning it now is (opt-in)."""
+    async with session_scope(_maker(ctx)) as session:
+        return await daily_song.queue_due(session)
+
+
+async def ring_alarms(ctx: Ctx) -> dict[str, int]:
+    """Every minute: queues the wake-up messages that are due and sends them at once.
+
+    Sending here instead of waiting for deliver_notifications saves up to a minute,
+    which is the difference between an alarm and a reminder. Both may run at the
+    same time; the queue is claimed with SKIP LOCKED, so nothing is sent twice.
+    """
+    settings = get_settings()
+    maker = _maker(ctx)
+    async with session_scope(maker) as session:
+        queued = await alarms.ring_due(session)
+    if not queued:
+        return {"queued": 0}
+    bot = build_bot(settings)
+    try:
+        sent = await notifications.deliver(maker, bot, settings)
+    finally:
+        await bot.session.close()
+    return {"queued": queued, **sent}
 
 
 async def rebuild_wrapped(ctx: Ctx) -> dict[str, int]:

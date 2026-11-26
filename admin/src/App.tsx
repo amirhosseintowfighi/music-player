@@ -8,6 +8,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Broadcasts } from '@/screens/Broadcasts';
 import { Candidates } from '@/screens/Candidates';
 import { ClientLog } from '@/screens/ClientLog';
+import { Comments } from '@/screens/Comments';
 import { Crawler } from '@/screens/Crawler';
 import { Metadata } from '@/screens/Metadata';
 import { Dashboard } from '@/screens/Dashboard';
@@ -24,6 +25,7 @@ const NAV = [
   { to: '/candidates', label: 'کانال‌های پیشنهادی', permission: 'content.view' },
   { to: '/crawler', label: 'کرالر', permission: 'system.view' },
   { to: '/metadata', label: 'بازبینی متادیتا', permission: 'content.view' },
+  { to: '/comments', label: 'نظرها', permission: 'content.edit' },
   { to: '/broadcasts', label: 'پیام همگانی', permission: 'broadcast.send' },
   { to: '/health', label: 'سلامت', permission: 'system.view' },
   { to: '/settings', label: 'تنظیمات', permission: 'system.edit' },
@@ -80,6 +82,7 @@ function Shell({ me, onLogout }: { me: AdminMe; onLogout: () => void }) {
         <Route path="/candidates" element={<Candidates />} />
         <Route path="/crawler" element={<Crawler />} />
         <Route path="/metadata" element={<Metadata />} />
+        <Route path="/comments" element={<Comments />} />
         <Route path="/broadcasts" element={<Broadcasts />} />
         <Route path="/health" element={<Health />} />
         <Route path="/settings" element={<Settings me={me} />} />

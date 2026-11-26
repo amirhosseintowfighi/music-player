@@ -46,7 +46,11 @@ KINDS = (
     "payment",
     "system",
     "new_release",
+    "alarm",
+    "daily_song",
 )
+# Asked for a minute ago by the listener themselves: never held back for quiet hours.
+IMMEDIATE = frozenset({"alarm"})
 # Money and account news default on; discovery chatter defaults on but is easy to mute;
 # the weekly digest is opt-out because it is the one people tire of first.
 DEFAULTS: dict[str, bool] = {
@@ -57,6 +61,9 @@ DEFAULTS: dict[str, bool] = {
     "payment": True,
     "system": True,
     "new_release": True,
+    "alarm": True,
+    # Opt-in: asked for with /daily in the bot.
+    "daily_song": False,
 }
 QUIET_START_HOUR = 23
 QUIET_END_HOUR = 9
@@ -126,7 +133,7 @@ async def enqueue(session: AsyncSession, notices: list[Notice]) -> int:
         if blocked or banned or not wants(prefs, notice.kind):
             continue
         when = notice.send_after or now
-        delayed = next_allowed(when, offset)
+        delayed = when if notice.kind in IMMEDIATE else next_allowed(when, offset)
         values.append(
             {
                 "user_id": notice.user_id,
@@ -229,6 +236,15 @@ def render(kind: str, payload: dict[str, Any], lang: str) -> str:
         )
     if kind == "discover_ready":
         return t("notify_discover", lang)
+    if kind == "daily_song":
+        return t("notify_daily_song", lang, title=payload.get("title", ""))
+    if kind == "alarm":
+        label = str(payload.get("label") or "")
+        if payload.get("title"):
+            return t("notify_alarm", lang, label=label, title=payload["title"]).replace(
+                "! \n", "!\n"
+            )
+        return t("notify_alarm_plain", lang, label=label).rstrip()
     if kind == "new_release":
         key = "notify_new_release" if payload.get("count", 1) == 1 else "notify_new_releases"
         return t(
@@ -241,17 +257,20 @@ def render(kind: str, payload: dict[str, Any], lang: str) -> str:
     return str(payload.get("text", ""))
 
 
-def keyboard(settings: Settings, lang: str) -> InlineKeyboardMarkup:
+def keyboard(settings: Settings, lang: str, open_path: str | None = None) -> InlineKeyboardMarkup:
+    """The "open the app" button; ``open_path`` lands on a screen (``wake/3`` → ``#/wake/3``)."""
     from app.bot.texts import t
 
+    url = settings.webapp_url
+    label = "open_player"
+    if open_path:
+        url = f"{url.split('#', 1)[0]}#/{open_path.lstrip('/')}"
+        if open_path.startswith("wake/"):
+            label = "wake_up"
+        elif open_path.startswith("track/"):
+            label = "play_song"
     return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=t("open_player", lang), web_app=WebAppInfo(url=settings.webapp_url)
-                )
-            ]
-        ]
+        inline_keyboard=[[InlineKeyboardButton(text=t(label, lang), web_app=WebAppInfo(url=url))]]
     )
 
 
@@ -271,8 +290,14 @@ async def deliver(
         if not body:
             continue
         try:
+            payload = notice["payload"] if isinstance(notice["payload"], dict) else {}
+            open_path = payload.get("open")
             await bot.send_message(
-                notice["tg_id"], body, reply_markup=keyboard(settings, notice["lang"])
+                notice["tg_id"],
+                body,
+                reply_markup=keyboard(
+                    settings, notice["lang"], str(open_path) if open_path else None
+                ),
             )
             sent += 1
         except TelegramForbiddenError:

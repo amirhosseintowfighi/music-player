@@ -254,6 +254,29 @@ class StreamOut(ApiModel):
 # ── playlists, likes, history (phase 5) ──
 
 
+class SmartRules(ApiModel):
+    """What a smart playlist is made of (0018). Every rule is optional; together they AND.
+
+    ``source`` is where songs are drawn from: the channels in the listener's library,
+    the songs they liked, or the whole catalogue.
+    """
+
+    source: Literal["library", "likes", "catalog"] = "library"
+    artist_ids: list[int] = Field(default_factory=list, max_length=20)
+    channel_ids: list[int] = Field(default_factory=list, max_length=20)
+    language: Literal["fa", "en", "ar", "tr", "ku", "other"] | None = None
+    min_duration: int | None = Field(None, ge=0, le=7200)
+    max_duration: int | None = Field(None, ge=0, le=7200)
+    year_from: int | None = Field(None, ge=1900, le=2100)
+    year_to: int | None = Field(None, ge=1900, le=2100)
+    # Songs the listener has not played in this many days (or never).
+    not_played_days: int | None = Field(None, ge=1, le=365)
+    # Songs the listener has played at least this many times.
+    min_my_plays: int | None = Field(None, ge=1, le=1000)
+    sort: Literal["recent", "popular", "random", "most_played", "least_played"] = "recent"
+    limit: int = Field(50, ge=5, le=200)
+
+
 class PlaylistOut(ApiModel):
     id: int
     name: str
@@ -267,6 +290,7 @@ class PlaylistOut(ApiModel):
         "release_radar",
         "blend",
         "daylist",
+        "smart",
     ]
     is_public: bool
     is_collaborative: bool
@@ -281,6 +305,9 @@ class PlaylistOut(ApiModel):
     folder_id: int | None = None
     # Plays from it do not shape the owner's recommendations.
     exclude_from_taste: bool = False
+    # Only for kind == "smart".
+    rules: SmartRules | None = None
+    refreshed_at: datetime | None = None
 
 
 class PlaylistDetailOut(PlaylistOut):
@@ -291,6 +318,21 @@ class CreatePlaylistIn(ApiModel):
     name: str = Field(min_length=1, max_length=100)
     description: str | None = Field(None, max_length=500)
     track_ids: list[int] = Field(default_factory=list, max_length=500)
+
+
+class CreateSmartPlaylistIn(ApiModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=500)
+    rules: SmartRules
+
+
+class SmartRulesIn(ApiModel):
+    rules: SmartRules
+
+
+class SmartPreviewOut(ApiModel):
+    total: int
+    items: list[TrackOut]
 
 
 class UpdatePlaylistIn(ApiModel):
@@ -1212,3 +1254,225 @@ class StoryImageIn(ApiModel):
 class StoryImageOut(ApiModel):
     url: str
     expires_in: int
+
+
+# ── guess the song (0019) ──
+
+
+class QuizStartIn(ApiModel):
+    source: Literal["library", "catalog"] = "library"
+
+
+class QuizChoiceOut(ApiModel):
+    id: int
+    title: str
+    artist: str
+
+
+class QuizQuestionOut(ApiModel):
+    index: int
+    choices: list[QuizChoiceOut]
+    # Filled in once answered: what the player picked, and the right one.
+    answered: int | None = None
+    answer_id: int | None = None
+    correct: bool | None = None
+    points: int = 0
+
+
+class QuizGameOut(ApiModel):
+    id: int
+    source: Literal["library", "catalog"]
+    questions: list[QuizQuestionOut]
+    score: int
+    correct: int
+    finished: bool
+    max_score: int
+
+
+class QuizAnswerIn(ApiModel):
+    choice_id: int
+
+
+class QuizAnswerOut(ApiModel):
+    correct: bool
+    answer_id: int
+    points: int
+    score: int
+    finished: bool
+    answer: TrackOut | None = None
+
+
+class QuizLeaderOut(ApiModel):
+    rank: int
+    user_id: int
+    first_name: str
+    username: str | None = None
+    best_score: int
+    games: int
+    is_me: bool
+
+
+class QuizBoardOut(ApiModel):
+    scope: Literal["friends", "global"]
+    entries: list[QuizLeaderOut]
+    my_games: int
+    my_best: int
+    my_week_best: int
+
+
+# ── wake-up alarms (0020) ──
+
+AlarmSource = Literal["likes", "playlist", "daylist", "recent"]
+
+
+class AlarmIn(ApiModel):
+    minute_of_day: int = Field(ge=0, le=1439)
+    # A bit per weekday, Monday = 1 … Sunday = 64; 0 rings once.
+    days: int = Field(127, ge=0, le=127)
+    tz_offset_minutes: int = Field(ge=-720, le=840)
+    label: str | None = Field(None, max_length=60)
+    source: AlarmSource = "likes"
+    playlist_id: int | None = None
+
+
+class AlarmPatchIn(ApiModel):
+    minute_of_day: int | None = Field(None, ge=0, le=1439)
+    days: int | None = Field(None, ge=0, le=127)
+    tz_offset_minutes: int | None = Field(None, ge=-720, le=840)
+    label: str | None = Field(None, max_length=60)
+    source: AlarmSource | None = None
+    playlist_id: int | None = None
+    enabled: bool | None = None
+
+
+class AlarmOut(ApiModel):
+    id: int
+    minute_of_day: int
+    days: int
+    tz_offset_minutes: int
+    label: str | None
+    source: AlarmSource
+    playlist_id: int | None
+    enabled: bool
+    next_fire_at: datetime | None
+    last_fired_at: datetime | None
+
+
+class WakeOut(ApiModel):
+    alarm: AlarmOut
+    items: list[TrackOut]
+
+
+# ── streaks and badges (0021) ──
+
+
+class StreakOut(ApiModel):
+    current: int
+    longest: int
+    today_done: bool
+    # The last seven days in the listener's time zone, oldest first.
+    week: list[bool]
+
+
+class BadgeOut(ApiModel):
+    code: str
+    goal: int
+    progress: int
+    earned: bool
+    earned_at: datetime | None = None
+    # Earned since the listener last looked.
+    new: bool = False
+
+
+class AchievementsOut(ApiModel):
+    streak: StreakOut
+    badges: list[BadgeOut]
+    earned: int
+    total: int
+
+
+# ── playlist import (from text / an exported CSV) ──
+
+
+class ImportIn(ApiModel):
+    text: str = Field(min_length=1, max_length=100_000)
+
+
+class ImportLineOut(ApiModel):
+    line: str
+    track: TrackOut | None = None
+    score: float
+
+
+class ImportOut(ApiModel):
+    lines: list[ImportLineOut]
+    matched: int
+    total: int
+    # Lines that held nothing to match on: links, separators.
+    skipped: int
+
+
+# ── comments and reactions on a song (0022) ──
+
+Reaction = Literal["fire", "heart", "cry", "love", "party", "clap"]
+
+
+class CommentIn(ApiModel):
+    body: str = Field(min_length=1, max_length=500)
+    # A moment in the song the comment is about, in seconds.
+    at_second: int | None = Field(None, ge=0, le=24 * 3600)
+
+
+class CommentAuthor(ApiModel):
+    id: int
+    first_name: str
+    username: str | None = None
+
+
+class CommentOut(ApiModel):
+    id: int
+    author: CommentAuthor
+    body: str
+    at_second: int | None = None
+    created_at: datetime
+    mine: bool
+
+
+class CommentPageOut(ApiModel):
+    items: list[CommentOut]
+    next_cursor: str | None = None
+    total: int
+
+
+class ReactionsOut(ApiModel):
+    counts: dict[str, int]
+    mine: list[Reaction]
+
+
+# ── listening stats ──
+
+
+class StatsArtistOut(ApiModel):
+    id: int
+    name: str
+    plays: int
+
+
+class StatsTrackOut(ApiModel):
+    track: TrackOut
+    plays: int
+
+
+class ListeningStatsOut(ApiModel):
+    days: int
+    start: date
+    minutes: int
+    plays: int
+    songs: int
+    artists: int
+    previous_minutes: int
+    daily_minutes: list[int]
+    hourly_plays: list[int]
+    top_tracks: list[StatsTrackOut]
+    top_artists: list[StatsArtistOut]
+    sources: dict[str, int]

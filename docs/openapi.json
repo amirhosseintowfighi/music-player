@@ -393,6 +393,80 @@
         ]
       }
     },
+    "/v1/me/streak": {
+      "get": {
+        "tags": [
+          "achievements"
+        ],
+        "summary": "My Streak",
+        "description": "Just the streak: cheap enough for the home screen.",
+        "operationId": "my_streak_v1_me_streak_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreakOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/me/achievements": {
+      "get": {
+        "tags": [
+          "achievements"
+        ],
+        "summary": "My Achievements",
+        "description": "The streak and every badge, with progress. Newly reached badges are recorded.",
+        "operationId": "my_achievements_v1_me_achievements_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AchievementsOut"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/me/achievements/seen": {
+      "post": {
+        "tags": [
+          "achievements"
+        ],
+        "summary": "Achievements Seen",
+        "description": "The listener has seen their new badges: stop calling them new.",
+        "operationId": "achievements_seen_v1_me_achievements_seen_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
     "/admin/login": {
       "post": {
         "tags": [
@@ -1254,6 +1328,90 @@
                     "type": "boolean"
                   },
                   "title": "Response Hide Track Admin Tracks  Track Id  Hide Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/comments": {
+      "get": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Recent Comments",
+        "description": "The newest comments on songs (0022), for moderation.",
+        "operationId": "recent_comments_admin_comments_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  "type": "array",
+                  "title": "Response Recent Comments Admin Comments Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/admin/comments/{comment_id}/hide": {
+      "post": {
+        "tags": [
+          "admin"
+        ],
+        "summary": "Hide Comment",
+        "description": "Takes a comment on a song down (0022). Hidden, not deleted: it stays auditable.",
+        "operationId": "hide_comment_admin_comments__comment_id__hide_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "comment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Comment Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "type": "boolean"
+                  },
+                  "title": "Response Hide Comment Admin Comments  Comment Id  Hide Post"
                 }
               }
             }
@@ -3120,6 +3278,223 @@
         }
       }
     },
+    "/v1/alarms": {
+      "get": {
+        "tags": [
+          "alarms"
+        ],
+        "summary": "My Alarms",
+        "operationId": "my_alarms_v1_alarms_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AlarmOut"
+                  },
+                  "type": "array",
+                  "title": "Response My Alarms V1 Alarms Get"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      },
+      "post": {
+        "tags": [
+          "alarms"
+        ],
+        "summary": "Create Alarm",
+        "operationId": "create_alarm_v1_alarms_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlarmIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlarmOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/alarms/{alarm_id}": {
+      "patch": {
+        "tags": [
+          "alarms"
+        ],
+        "summary": "Update Alarm",
+        "operationId": "update_alarm_v1_alarms__alarm_id__patch",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alarm_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alarm Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AlarmPatchIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlarmOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "alarms"
+        ],
+        "summary": "Delete Alarm",
+        "operationId": "delete_alarm_v1_alarms__alarm_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alarm_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alarm Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/alarms/{alarm_id}/wake": {
+      "get": {
+        "tags": [
+          "alarms"
+        ],
+        "summary": "Wake",
+        "description": "What the alarm plays: opened from the button on the bot's wake-up message.",
+        "operationId": "wake_v1_alarms__alarm_id__wake_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "alarm_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Alarm Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WakeOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/library/channels": {
       "get": {
         "tags": [
@@ -3423,6 +3798,350 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ChannelOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tracks/{track_id}/comments": {
+      "get": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Track Comments",
+        "operationId": "track_comments_v1_tracks__track_id__comments_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Track Id"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 50,
+              "minimum": 1,
+              "default": 20,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentPageOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Add Comment",
+        "description": "``no_links`` refuses links and @handles; at most ten comments in ten minutes.",
+        "operationId": "add_comment_v1_tracks__track_id__comments_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Track Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/comments/{comment_id}": {
+      "delete": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Delete Comment",
+        "operationId": "delete_comment_v1_comments__comment_id__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "comment_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Comment Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tracks/{track_id}/reactions": {
+      "get": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Track Reactions",
+        "operationId": "track_reactions_v1_tracks__track_id__reactions_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Track Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReactionsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/tracks/{track_id}/reactions/{emoji}": {
+      "put": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Add Reaction",
+        "operationId": "add_reaction_v1_tracks__track_id__reactions__emoji__put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Track Id"
+            }
+          },
+          {
+            "name": "emoji",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "fire",
+                "heart",
+                "cry",
+                "love",
+                "party",
+                "clap"
+              ],
+              "type": "string",
+              "title": "Emoji"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReactionsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "comments"
+        ],
+        "summary": "Remove Reaction",
+        "operationId": "remove_reaction_v1_tracks__track_id__reactions__emoji__delete",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "track_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Track Id"
+            }
+          },
+          {
+            "name": "emoji",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "fire",
+                "heart",
+                "cry",
+                "love",
+                "party",
+                "clap"
+              ],
+              "type": "string",
+              "title": "Emoji"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReactionsOut"
                 }
               }
             }
@@ -7470,6 +8189,204 @@
         ]
       }
     },
+    "/v1/playlists/smart": {
+      "post": {
+        "tags": [
+          "playlists"
+        ],
+        "summary": "Create Smart Playlist",
+        "description": "A playlist made of rules; its songs are picked now and kept up to date.",
+        "operationId": "create_smart_playlist_v1_playlists_smart_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSmartPlaylistIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/playlists/smart/preview": {
+      "post": {
+        "tags": [
+          "playlists"
+        ],
+        "summary": "Preview Smart Playlist",
+        "description": "What a set of rules would pick, without saving anything: for the rule editor.",
+        "operationId": "preview_smart_playlist_v1_playlists_smart_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmartRulesIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SmartPreviewOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/playlists/{playlist_id}/rules": {
+      "put": {
+        "tags": [
+          "playlists"
+        ],
+        "summary": "Update Smart Rules",
+        "operationId": "update_smart_rules_v1_playlists__playlist_id__rules_put",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "playlist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Playlist Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SmartRulesIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/playlists/{playlist_id}/refresh": {
+      "post": {
+        "tags": [
+          "playlists"
+        ],
+        "summary": "Refresh Smart Playlist",
+        "operationId": "refresh_smart_playlist_v1_playlists__playlist_id__refresh_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "playlist_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Playlist Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlaylistDetailOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/playlists/{playlist_id}": {
       "get": {
         "tags": [
@@ -7844,6 +8761,323 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/PlaylistOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/playlists/import/match": {
+      "post": {
+        "tags": [
+          "playlists"
+        ],
+        "summary": "Match Import",
+        "description": "Matches a pasted list of songs (or an exported CSV) against the catalogue.\n\nNothing is saved: the client shows what was found and creates the playlist with\nthe ``track_ids`` it keeps (``POST /v1/playlists``).",
+        "operationId": "match_import_v1_playlists_import_match_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/quiz": {
+      "post": {
+        "tags": [
+          "quiz"
+        ],
+        "summary": "Start Game",
+        "description": "A new game. ``not_enough_songs`` means the library is too small: try ``catalog``.",
+        "operationId": "start_game_v1_quiz_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizStartIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizGameOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ]
+      }
+    },
+    "/v1/quiz/board": {
+      "get": {
+        "tags": [
+          "quiz"
+        ],
+        "summary": "Board",
+        "description": "This week's best scores: you and the people you follow, or everyone.",
+        "operationId": "board_v1_quiz_board_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "enum": [
+                "friends",
+                "global"
+              ],
+              "type": "string",
+              "default": "friends",
+              "title": "Scope"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizBoardOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quiz/{game_id}": {
+      "get": {
+        "tags": [
+          "quiz"
+        ],
+        "summary": "Get Game",
+        "operationId": "get_game_v1_quiz__game_id__get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "game_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Game Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizGameOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quiz/{game_id}/questions/{index}/clip": {
+      "post": {
+        "tags": [
+          "quiz"
+        ],
+        "summary": "Question Clip",
+        "description": "The clip to guess from: a capped ticket that never spends the daily play limit.",
+        "operationId": "question_clip_v1_quiz__game_id__questions__index__clip_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "game_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Game Id"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StreamOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/quiz/{game_id}/questions/{index}/answer": {
+      "post": {
+        "tags": [
+          "quiz"
+        ],
+        "summary": "Answer Question",
+        "operationId": "answer_question_v1_quiz__game_id__questions__index__answer_post",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "game_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Game Id"
+            }
+          },
+          {
+            "name": "index",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "title": "Index"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuizAnswerIn"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuizAnswerOut"
                 }
               }
             }
@@ -8806,6 +10040,55 @@
         ]
       }
     },
+    "/v1/me/stats": {
+      "get": {
+        "tags": [
+          "stats"
+        ],
+        "summary": "My Stats",
+        "description": "Minutes per day and per hour, top songs and artists, and the period before.\n\n``days`` is 7 or 30.",
+        "operationId": "my_stats_v1_me_stats_get",
+        "security": [
+          {
+            "HTTPBearer": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 7,
+              "title": "Days"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ListeningStatsOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/tracks/thumbs": {
       "post": {
         "tags": [
@@ -8978,6 +10261,37 @@
   },
   "components": {
     "schemas": {
+      "AchievementsOut": {
+        "properties": {
+          "streak": {
+            "$ref": "#/components/schemas/StreakOut"
+          },
+          "badges": {
+            "items": {
+              "$ref": "#/components/schemas/BadgeOut"
+            },
+            "type": "array",
+            "title": "Badges"
+          },
+          "earned": {
+            "type": "integer",
+            "title": "Earned"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "streak",
+          "badges",
+          "earned",
+          "total"
+        ],
+        "title": "AchievementsOut"
+      },
       "AddChannelIn": {
         "properties": {
           "ref": {
@@ -9344,6 +10658,262 @@
         ],
         "title": "AdminUpsertIn"
       },
+      "AlarmIn": {
+        "properties": {
+          "minute_of_day": {
+            "type": "integer",
+            "maximum": 1439.0,
+            "minimum": 0.0,
+            "title": "Minute Of Day"
+          },
+          "days": {
+            "type": "integer",
+            "maximum": 127.0,
+            "minimum": 0.0,
+            "title": "Days",
+            "default": 127
+          },
+          "tz_offset_minutes": {
+            "type": "integer",
+            "maximum": 840.0,
+            "minimum": -720.0,
+            "title": "Tz Offset Minutes"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "likes",
+              "playlist",
+              "daylist",
+              "recent"
+            ],
+            "title": "Source",
+            "default": "likes"
+          },
+          "playlist_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "minute_of_day",
+          "tz_offset_minutes"
+        ],
+        "title": "AlarmIn"
+      },
+      "AlarmOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "minute_of_day": {
+            "type": "integer",
+            "title": "Minute Of Day"
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "tz_offset_minutes": {
+            "type": "integer",
+            "title": "Tz Offset Minutes"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "likes",
+              "playlist",
+              "daylist",
+              "recent"
+            ],
+            "title": "Source"
+          },
+          "playlist_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Id"
+          },
+          "enabled": {
+            "type": "boolean",
+            "title": "Enabled"
+          },
+          "next_fire_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Fire At"
+          },
+          "last_fired_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Last Fired At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "minute_of_day",
+          "days",
+          "tz_offset_minutes",
+          "label",
+          "source",
+          "playlist_id",
+          "enabled",
+          "next_fire_at",
+          "last_fired_at"
+        ],
+        "title": "AlarmOut"
+      },
+      "AlarmPatchIn": {
+        "properties": {
+          "minute_of_day": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1439.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Minute Of Day"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 127.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "tz_offset_minutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 840.0,
+                "minimum": -720.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tz Offset Minutes"
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 60
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Label"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "likes",
+                  "playlist",
+                  "daylist",
+                  "recent"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          },
+          "playlist_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Playlist Id"
+          },
+          "enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Enabled"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "AlarmPatchIn"
+      },
       "AlbumOut": {
         "properties": {
           "album": {
@@ -9669,6 +11239,52 @@
           "created_at"
         ],
         "title": "AuditEntryOut"
+      },
+      "BadgeOut": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "goal": {
+            "type": "integer",
+            "title": "Goal"
+          },
+          "progress": {
+            "type": "integer",
+            "title": "Progress"
+          },
+          "earned": {
+            "type": "boolean",
+            "title": "Earned"
+          },
+          "earned_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Earned At"
+          },
+          "new": {
+            "type": "boolean",
+            "title": "New",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "code",
+          "goal",
+          "progress",
+          "earned"
+        ],
+        "title": "BadgeOut"
       },
       "BanIn": {
         "properties": {
@@ -10338,6 +11954,143 @@
         ],
         "title": "ClientLogOut"
       },
+      "CommentAuthor": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "first_name"
+        ],
+        "title": "CommentAuthor"
+      },
+      "CommentIn": {
+        "properties": {
+          "body": {
+            "type": "string",
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Body"
+          },
+          "at_second": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 86400.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At Second"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "body"
+        ],
+        "title": "CommentIn"
+      },
+      "CommentOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "author": {
+            "$ref": "#/components/schemas/CommentAuthor"
+          },
+          "body": {
+            "type": "string",
+            "title": "Body"
+          },
+          "at_second": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "At Second"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          },
+          "mine": {
+            "type": "boolean",
+            "title": "Mine"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "author",
+          "body",
+          "created_at",
+          "mine"
+        ],
+        "title": "CommentOut"
+      },
+      "CommentPageOut": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CommentOut"
+            },
+            "type": "array",
+            "title": "Items"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "items",
+          "total"
+        ],
+        "title": "CommentPageOut"
+      },
       "ConnectCommandIn": {
         "properties": {
           "target": {
@@ -10784,6 +12537,38 @@
           "name"
         ],
         "title": "CreatePlaylistIn"
+      },
+      "CreateSmartPlaylistIn": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 500
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "rules": {
+            "$ref": "#/components/schemas/SmartRules"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "name",
+          "rules"
+        ],
+        "title": "CreateSmartPlaylistIn"
       },
       "CreditsOut": {
         "properties": {
@@ -11509,6 +13294,83 @@
         ],
         "title": "ImportChannelsOut"
       },
+      "ImportIn": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "maxLength": 100000,
+            "minLength": 1,
+            "title": "Text"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "ImportIn"
+      },
+      "ImportLineOut": {
+        "properties": {
+          "line": {
+            "type": "string",
+            "title": "Line"
+          },
+          "track": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrackOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "score": {
+            "type": "number",
+            "title": "Score"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "line",
+          "score"
+        ],
+        "title": "ImportLineOut"
+      },
+      "ImportOut": {
+        "properties": {
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/ImportLineOut"
+            },
+            "type": "array",
+            "title": "Lines"
+          },
+          "matched": {
+            "type": "integer",
+            "title": "Matched"
+          },
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "skipped": {
+            "type": "integer",
+            "title": "Skipped"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "lines",
+          "matched",
+          "total",
+          "skipped"
+        ],
+        "title": "ImportOut"
+      },
       "JamAddIn": {
         "properties": {
           "track_ids": {
@@ -11790,6 +13652,91 @@
           "likes_count"
         ],
         "title": "LikeOut"
+      },
+      "ListeningStatsOut": {
+        "properties": {
+          "days": {
+            "type": "integer",
+            "title": "Days"
+          },
+          "start": {
+            "type": "string",
+            "format": "date",
+            "title": "Start"
+          },
+          "minutes": {
+            "type": "integer",
+            "title": "Minutes"
+          },
+          "plays": {
+            "type": "integer",
+            "title": "Plays"
+          },
+          "songs": {
+            "type": "integer",
+            "title": "Songs"
+          },
+          "artists": {
+            "type": "integer",
+            "title": "Artists"
+          },
+          "previous_minutes": {
+            "type": "integer",
+            "title": "Previous Minutes"
+          },
+          "daily_minutes": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Daily Minutes"
+          },
+          "hourly_plays": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "title": "Hourly Plays"
+          },
+          "top_tracks": {
+            "items": {
+              "$ref": "#/components/schemas/StatsTrackOut"
+            },
+            "type": "array",
+            "title": "Top Tracks"
+          },
+          "top_artists": {
+            "items": {
+              "$ref": "#/components/schemas/StatsArtistOut"
+            },
+            "type": "array",
+            "title": "Top Artists"
+          },
+          "sources": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Sources"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "days",
+          "start",
+          "minutes",
+          "plays",
+          "songs",
+          "artists",
+          "previous_minutes",
+          "daily_minutes",
+          "hourly_plays",
+          "top_tracks",
+          "top_artists",
+          "sources"
+        ],
+        "title": "ListeningStatsOut"
       },
       "LoudnessIn": {
         "properties": {
@@ -13204,7 +15151,8 @@
               "radio",
               "release_radar",
               "blend",
-              "daylist"
+              "daylist",
+              "smart"
             ],
             "title": "Kind"
           },
@@ -13288,6 +15236,28 @@
             "type": "boolean",
             "title": "Exclude From Taste",
             "default": false
+          },
+          "rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SmartRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refreshed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshed At"
           },
           "items": {
             "items": {
@@ -13345,7 +15315,8 @@
               "radio",
               "release_radar",
               "blend",
-              "daylist"
+              "daylist",
+              "smart"
             ],
             "title": "Kind"
           },
@@ -13429,6 +15400,28 @@
             "type": "boolean",
             "title": "Exclude From Taste",
             "default": false
+          },
+          "rules": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SmartRules"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "refreshed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshed At"
           }
         },
         "additionalProperties": false,
@@ -13722,6 +15715,339 @@
           "public"
         ],
         "title": "PublicProfileIn"
+      },
+      "QuizAnswerIn": {
+        "properties": {
+          "choice_id": {
+            "type": "integer",
+            "title": "Choice Id"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "choice_id"
+        ],
+        "title": "QuizAnswerIn"
+      },
+      "QuizAnswerOut": {
+        "properties": {
+          "correct": {
+            "type": "boolean",
+            "title": "Correct"
+          },
+          "answer_id": {
+            "type": "integer",
+            "title": "Answer Id"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points"
+          },
+          "score": {
+            "type": "integer",
+            "title": "Score"
+          },
+          "finished": {
+            "type": "boolean",
+            "title": "Finished"
+          },
+          "answer": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TrackOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "correct",
+          "answer_id",
+          "points",
+          "score",
+          "finished"
+        ],
+        "title": "QuizAnswerOut"
+      },
+      "QuizBoardOut": {
+        "properties": {
+          "scope": {
+            "type": "string",
+            "enum": [
+              "friends",
+              "global"
+            ],
+            "title": "Scope"
+          },
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/QuizLeaderOut"
+            },
+            "type": "array",
+            "title": "Entries"
+          },
+          "my_games": {
+            "type": "integer",
+            "title": "My Games"
+          },
+          "my_best": {
+            "type": "integer",
+            "title": "My Best"
+          },
+          "my_week_best": {
+            "type": "integer",
+            "title": "My Week Best"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "scope",
+          "entries",
+          "my_games",
+          "my_best",
+          "my_week_best"
+        ],
+        "title": "QuizBoardOut"
+      },
+      "QuizChoiceOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "artist": {
+            "type": "string",
+            "title": "Artist"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "artist"
+        ],
+        "title": "QuizChoiceOut"
+      },
+      "QuizGameOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "library",
+              "catalog"
+            ],
+            "title": "Source"
+          },
+          "questions": {
+            "items": {
+              "$ref": "#/components/schemas/QuizQuestionOut"
+            },
+            "type": "array",
+            "title": "Questions"
+          },
+          "score": {
+            "type": "integer",
+            "title": "Score"
+          },
+          "correct": {
+            "type": "integer",
+            "title": "Correct"
+          },
+          "finished": {
+            "type": "boolean",
+            "title": "Finished"
+          },
+          "max_score": {
+            "type": "integer",
+            "title": "Max Score"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "source",
+          "questions",
+          "score",
+          "correct",
+          "finished",
+          "max_score"
+        ],
+        "title": "QuizGameOut"
+      },
+      "QuizLeaderOut": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "user_id": {
+            "type": "integer",
+            "title": "User Id"
+          },
+          "first_name": {
+            "type": "string",
+            "title": "First Name"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "best_score": {
+            "type": "integer",
+            "title": "Best Score"
+          },
+          "games": {
+            "type": "integer",
+            "title": "Games"
+          },
+          "is_me": {
+            "type": "boolean",
+            "title": "Is Me"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rank",
+          "user_id",
+          "first_name",
+          "best_score",
+          "games",
+          "is_me"
+        ],
+        "title": "QuizLeaderOut"
+      },
+      "QuizQuestionOut": {
+        "properties": {
+          "index": {
+            "type": "integer",
+            "title": "Index"
+          },
+          "choices": {
+            "items": {
+              "$ref": "#/components/schemas/QuizChoiceOut"
+            },
+            "type": "array",
+            "title": "Choices"
+          },
+          "answered": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answered"
+          },
+          "answer_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Answer Id"
+          },
+          "correct": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Correct"
+          },
+          "points": {
+            "type": "integer",
+            "title": "Points",
+            "default": 0
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "index",
+          "choices"
+        ],
+        "title": "QuizQuestionOut"
+      },
+      "QuizStartIn": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "library",
+              "catalog"
+            ],
+            "title": "Source",
+            "default": "library"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "QuizStartIn"
+      },
+      "ReactionsOut": {
+        "properties": {
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "type": "object",
+            "title": "Counts"
+          },
+          "mine": {
+            "items": {
+              "type": "string",
+              "enum": [
+                "fire",
+                "heart",
+                "cry",
+                "love",
+                "party",
+                "clap"
+              ]
+            },
+            "type": "array",
+            "title": "Mine"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "counts",
+          "mine"
+        ],
+        "title": "ReactionsOut"
       },
       "RefreshIn": {
         "properties": {
@@ -14082,6 +16408,233 @@
         ],
         "title": "SettingIn"
       },
+      "SmartPreviewOut": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "total",
+          "items"
+        ],
+        "title": "SmartPreviewOut"
+      },
+      "SmartRules": {
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "library",
+              "likes",
+              "catalog"
+            ],
+            "title": "Source",
+            "default": "library"
+          },
+          "artist_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Artist Ids"
+          },
+          "channel_ids": {
+            "items": {
+              "type": "integer"
+            },
+            "type": "array",
+            "maxItems": 20,
+            "title": "Channel Ids"
+          },
+          "language": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "fa",
+                  "en",
+                  "ar",
+                  "tr",
+                  "ku",
+                  "other"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Language"
+          },
+          "min_duration": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7200.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Duration"
+          },
+          "max_duration": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 7200.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Max Duration"
+          },
+          "year_from": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 1900.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year From"
+          },
+          "year_to": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 2100.0,
+                "minimum": 1900.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year To"
+          },
+          "not_played_days": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 365.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Not Played Days"
+          },
+          "min_my_plays": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "maximum": 1000.0,
+                "minimum": 1.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min My Plays"
+          },
+          "sort": {
+            "type": "string",
+            "enum": [
+              "recent",
+              "popular",
+              "random",
+              "most_played",
+              "least_played"
+            ],
+            "title": "Sort",
+            "default": "recent"
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 200.0,
+            "minimum": 5.0,
+            "title": "Limit",
+            "default": 50
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "SmartRules",
+        "description": "What a smart playlist is made of (0018). Every rule is optional; together they AND.\n\n``source`` is where songs are drawn from: the channels in the listener's library,\nthe songs they liked, or the whole catalogue."
+      },
+      "SmartRulesIn": {
+        "properties": {
+          "rules": {
+            "$ref": "#/components/schemas/SmartRules"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "rules"
+        ],
+        "title": "SmartRulesIn"
+      },
+      "StatsArtistOut": {
+        "properties": {
+          "id": {
+            "type": "integer",
+            "title": "Id"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "plays": {
+            "type": "integer",
+            "title": "Plays"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "plays"
+        ],
+        "title": "StatsArtistOut"
+      },
+      "StatsTrackOut": {
+        "properties": {
+          "track": {
+            "$ref": "#/components/schemas/TrackOut"
+          },
+          "plays": {
+            "type": "integer",
+            "title": "Plays"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "track",
+          "plays"
+        ],
+        "title": "StatsTrackOut"
+      },
       "StoryImageIn": {
         "properties": {
           "image": {
@@ -14117,6 +16670,38 @@
           "expires_in"
         ],
         "title": "StoryImageOut"
+      },
+      "StreakOut": {
+        "properties": {
+          "current": {
+            "type": "integer",
+            "title": "Current"
+          },
+          "longest": {
+            "type": "integer",
+            "title": "Longest"
+          },
+          "today_done": {
+            "type": "boolean",
+            "title": "Today Done"
+          },
+          "week": {
+            "items": {
+              "type": "boolean"
+            },
+            "type": "array",
+            "title": "Week"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "current",
+          "longest",
+          "today_done",
+          "week"
+        ],
+        "title": "StreakOut"
       },
       "StreamOut": {
         "properties": {
@@ -15055,6 +17640,27 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WakeOut": {
+        "properties": {
+          "alarm": {
+            "$ref": "#/components/schemas/AlarmOut"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackOut"
+            },
+            "type": "array",
+            "title": "Items"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "alarm",
+          "items"
+        ],
+        "title": "WakeOut"
       },
       "WebWidgetLoginIn": {
         "properties": {

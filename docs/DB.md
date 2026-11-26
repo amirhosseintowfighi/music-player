@@ -794,3 +794,17 @@ erDiagram
 
 جدول ماند ولی معنایش عوض شد: حالا حداکثر **یک** ردیف دارد — اکانت resolver. pool،
 round-robin و sharding (`channels.indexer_account_id`) دیگر استفاده نمی‌شوند.
+
+## مهاجرت‌های ۰۰۱۸ تا ۰۰۲۳ (آپشن‌های تازه)
+
+| مهاجرت | تغییر |
+|---|---|
+| ۰۰۱۸ | `playlists.kind` مقدار `smart` می‌گیرد؛ ستون‌های `rules jsonb` و `refreshed_at`؛ CHECK: پلی‌لیست هوشمند بدون قانون نداریم |
+| ۰۰۱۹ | `quiz_games` (یک ردیف برای هر بازی؛ سؤال‌ها و جواب‌ها در `questions jsonb`، امتیاز و `finished_at`) |
+| ۰۰۲۰ | `alarms` (دقیقهٔ روز، بیت روزها، offset منطقهٔ زمانی، منبع، `next_fire_at` با ایندکس جزئی)؛ نوع اعلان `alarm` |
+| ۰۰۲۱ | `user_badges` (نشانی که گرفته شده، با تاریخ و `seen`) — استریک ذخیره نمی‌شود، از `play_history` حساب می‌شود |
+| ۰۰۲۲ | `track_comments` (روی ترک ریشه، `at_second`، `hidden` برای بازبینی) و `track_reactions` (کلید: ترک، کاربر، ایموجی) |
+| ۰۰۲۳ | نوع اعلان `daily_song` |
+
+همه افزایشی‌اند (جدول تازه، ستون nullable یا CHECK بازتر) و downgrade دارند.
+

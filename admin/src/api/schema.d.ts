@@ -186,6 +186,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/streak": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Streak
+         * @description Just the streak: cheap enough for the home screen.
+         */
+        get: operations["my_streak_v1_me_streak_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/achievements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Achievements
+         * @description The streak and every badge, with progress. Newly reached badges are recorded.
+         */
+        get: operations["my_achievements_v1_me_achievements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/achievements/seen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Achievements Seen
+         * @description The listener has seen their new badges: stop calling them new.
+         */
+        post: operations["achievements_seen_v1_me_achievements_seen_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/login": {
         parameters: {
             query?: never;
@@ -481,6 +541,46 @@ export interface paths {
         put?: never;
         /** Hide Track */
         post: operations["hide_track_admin_tracks__track_id__hide_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Recent Comments
+         * @description The newest comments on songs (0022), for moderation.
+         */
+        get: operations["recent_comments_admin_comments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/comments/{comment_id}/hide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hide Comment
+         * @description Takes a comment on a song down (0022). Hidden, not deleted: it stays auditable.
+         */
+        post: operations["hide_comment_admin_comments__comment_id__hide_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1015,6 +1115,62 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/alarms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** My Alarms */
+        get: operations["my_alarms_v1_alarms_get"];
+        put?: never;
+        /** Create Alarm */
+        post: operations["create_alarm_v1_alarms_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/alarms/{alarm_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Alarm */
+        delete: operations["delete_alarm_v1_alarms__alarm_id__delete"];
+        options?: never;
+        head?: never;
+        /** Update Alarm */
+        patch: operations["update_alarm_v1_alarms__alarm_id__patch"];
+        trace?: never;
+    };
+    "/v1/alarms/{alarm_id}/wake": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Wake
+         * @description What the alarm plays: opened from the button on the bot's wake-up message.
+         */
+        get: operations["wake_v1_alarms__alarm_id__wake_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/library/channels": {
         parameters: {
             query?: never;
@@ -1119,6 +1275,79 @@ export interface paths {
         put?: never;
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tracks/{track_id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Track Comments */
+        get: operations["track_comments_v1_tracks__track_id__comments_get"];
+        put?: never;
+        /**
+         * Add Comment
+         * @description ``no_links`` refuses links and @handles; at most ten comments in ten minutes.
+         */
+        post: operations["add_comment_v1_tracks__track_id__comments_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/comments/{comment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete Comment */
+        delete: operations["delete_comment_v1_comments__comment_id__delete"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tracks/{track_id}/reactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Track Reactions */
+        get: operations["track_reactions_v1_tracks__track_id__reactions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tracks/{track_id}/reactions/{emoji}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Add Reaction */
+        put: operations["add_reaction_v1_tracks__track_id__reactions__emoji__put"];
+        post?: never;
+        /** Remove Reaction */
+        delete: operations["remove_reaction_v1_tracks__track_id__reactions__emoji__delete"];
         options?: never;
         head?: never;
         patch?: never;
@@ -2431,6 +2660,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/playlists/smart": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Smart Playlist
+         * @description A playlist made of rules; its songs are picked now and kept up to date.
+         */
+        post: operations["create_smart_playlist_v1_playlists_smart_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/playlists/smart/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Preview Smart Playlist
+         * @description What a set of rules would pick, without saving anything: for the rule editor.
+         */
+        post: operations["preview_smart_playlist_v1_playlists_smart_preview_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/playlists/{playlist_id}/rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Update Smart Rules */
+        put: operations["update_smart_rules_v1_playlists__playlist_id__rules_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/playlists/{playlist_id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Refresh Smart Playlist */
+        post: operations["refresh_smart_playlist_v1_playlists__playlist_id__refresh_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/playlists/{playlist_id}": {
         parameters: {
             query?: never;
@@ -2532,6 +2835,123 @@ export interface paths {
         put?: never;
         /** Join Collaboration */
         post: operations["join_collaboration_v1_playlists_shared__slug__join_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/playlists/import/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Match Import
+         * @description Matches a pasted list of songs (or an exported CSV) against the catalogue.
+         *
+         *     Nothing is saved: the client shows what was found and creates the playlist with
+         *     the ``track_ids`` it keeps (``POST /v1/playlists``).
+         */
+        post: operations["match_import_v1_playlists_import_match_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quiz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start Game
+         * @description A new game. ``not_enough_songs`` means the library is too small: try ``catalog``.
+         */
+        post: operations["start_game_v1_quiz_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quiz/board": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Board
+         * @description This week's best scores: you and the people you follow, or everyone.
+         */
+        get: operations["board_v1_quiz_board_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quiz/{game_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Game */
+        get: operations["get_game_v1_quiz__game_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quiz/{game_id}/questions/{index}/clip": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Question Clip
+         * @description The clip to guess from: a capped ticket that never spends the daily play limit.
+         */
+        post: operations["question_clip_v1_quiz__game_id__questions__index__clip_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quiz/{game_id}/questions/{index}/answer": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Answer Question */
+        post: operations["answer_question_v1_quiz__game_id__questions__index__answer_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2804,6 +3224,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * My Stats
+         * @description Minutes per day and per hour, top songs and artists, and the period before.
+         *
+         *     ``days`` is 7 or 30.
+         */
+        get: operations["my_stats_v1_me_stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/tracks/thumbs": {
         parameters: {
             query?: never;
@@ -2899,6 +3341,16 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AchievementsOut */
+        AchievementsOut: {
+            streak: components["schemas"]["StreakOut"];
+            /** Badges */
+            badges: components["schemas"]["BadgeOut"][];
+            /** Earned */
+            earned: number;
+            /** Total */
+            total: number;
+        };
         /** AddChannelIn */
         AddChannelIn: {
             /**
@@ -3037,6 +3489,71 @@ export interface components {
              */
             is_active: boolean;
         };
+        /** AlarmIn */
+        AlarmIn: {
+            /** Minute Of Day */
+            minute_of_day: number;
+            /**
+             * Days
+             * @default 127
+             */
+            days: number;
+            /** Tz Offset Minutes */
+            tz_offset_minutes: number;
+            /** Label */
+            label?: string | null;
+            /**
+             * Source
+             * @default likes
+             * @enum {string}
+             */
+            source: "likes" | "playlist" | "daylist" | "recent";
+            /** Playlist Id */
+            playlist_id?: number | null;
+        };
+        /** AlarmOut */
+        AlarmOut: {
+            /** Id */
+            id: number;
+            /** Minute Of Day */
+            minute_of_day: number;
+            /** Days */
+            days: number;
+            /** Tz Offset Minutes */
+            tz_offset_minutes: number;
+            /** Label */
+            label: string | null;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "likes" | "playlist" | "daylist" | "recent";
+            /** Playlist Id */
+            playlist_id: number | null;
+            /** Enabled */
+            enabled: boolean;
+            /** Next Fire At */
+            next_fire_at: string | null;
+            /** Last Fired At */
+            last_fired_at: string | null;
+        };
+        /** AlarmPatchIn */
+        AlarmPatchIn: {
+            /** Minute Of Day */
+            minute_of_day?: number | null;
+            /** Days */
+            days?: number | null;
+            /** Tz Offset Minutes */
+            tz_offset_minutes?: number | null;
+            /** Label */
+            label?: string | null;
+            /** Source */
+            source?: ("likes" | "playlist" | "daylist" | "recent") | null;
+            /** Playlist Id */
+            playlist_id?: number | null;
+            /** Enabled */
+            enabled?: boolean | null;
+        };
         /** AlbumOut */
         AlbumOut: {
             /** Album */
@@ -3159,6 +3676,24 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** BadgeOut */
+        BadgeOut: {
+            /** Code */
+            code: string;
+            /** Goal */
+            goal: number;
+            /** Progress */
+            progress: number;
+            /** Earned */
+            earned: boolean;
+            /** Earned At */
+            earned_at?: string | null;
+            /**
+             * New
+             * @default false
+             */
+            new: boolean;
         };
         /** BanIn */
         BanIn: {
@@ -3376,6 +3911,48 @@ export interface components {
             /** Items */
             items: components["schemas"]["ClientEventOut"][];
         };
+        /** CommentAuthor */
+        CommentAuthor: {
+            /** Id */
+            id: number;
+            /** First Name */
+            first_name: string;
+            /** Username */
+            username?: string | null;
+        };
+        /** CommentIn */
+        CommentIn: {
+            /** Body */
+            body: string;
+            /** At Second */
+            at_second?: number | null;
+        };
+        /** CommentOut */
+        CommentOut: {
+            /** Id */
+            id: number;
+            author: components["schemas"]["CommentAuthor"];
+            /** Body */
+            body: string;
+            /** At Second */
+            at_second?: number | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Mine */
+            mine: boolean;
+        };
+        /** CommentPageOut */
+        CommentPageOut: {
+            /** Items */
+            items: components["schemas"]["CommentOut"][];
+            /** Next Cursor */
+            next_cursor?: string | null;
+            /** Total */
+            total: number;
+        };
         /** ConnectCommandIn */
         ConnectCommandIn: {
             /** Target */
@@ -3551,6 +4128,14 @@ export interface components {
             description?: string | null;
             /** Track Ids */
             track_ids?: number[];
+        };
+        /** CreateSmartPlaylistIn */
+        CreateSmartPlaylistIn: {
+            /** Name */
+            name: string;
+            /** Description */
+            description?: string | null;
+            rules: components["schemas"]["SmartRules"];
         };
         /** CreditsOut */
         CreditsOut: {
@@ -3822,6 +4407,30 @@ export interface components {
             /** Invalid */
             invalid: string[];
         };
+        /** ImportIn */
+        ImportIn: {
+            /** Text */
+            text: string;
+        };
+        /** ImportLineOut */
+        ImportLineOut: {
+            /** Line */
+            line: string;
+            track?: components["schemas"]["TrackOut"] | null;
+            /** Score */
+            score: number;
+        };
+        /** ImportOut */
+        ImportOut: {
+            /** Lines */
+            lines: components["schemas"]["ImportLineOut"][];
+            /** Matched */
+            matched: number;
+            /** Total */
+            total: number;
+            /** Skipped */
+            skipped: number;
+        };
         /** JamAddIn */
         JamAddIn: {
             /** Track Ids */
@@ -3914,6 +4523,38 @@ export interface components {
             liked: boolean;
             /** Likes Count */
             likes_count: number;
+        };
+        /** ListeningStatsOut */
+        ListeningStatsOut: {
+            /** Days */
+            days: number;
+            /**
+             * Start
+             * Format: date
+             */
+            start: string;
+            /** Minutes */
+            minutes: number;
+            /** Plays */
+            plays: number;
+            /** Songs */
+            songs: number;
+            /** Artists */
+            artists: number;
+            /** Previous Minutes */
+            previous_minutes: number;
+            /** Daily Minutes */
+            daily_minutes: number[];
+            /** Hourly Plays */
+            hourly_plays: number[];
+            /** Top Tracks */
+            top_tracks: components["schemas"]["StatsTrackOut"][];
+            /** Top Artists */
+            top_artists: components["schemas"]["StatsArtistOut"][];
+            /** Sources */
+            sources: {
+                [key: string]: number;
+            };
         };
         /**
          * LoudnessIn
@@ -4435,7 +5076,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio" | "release_radar" | "blend" | "daylist";
+            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio" | "release_radar" | "blend" | "daylist" | "smart";
             /** Is Public */
             is_public: boolean;
             /** Is Collaborative */
@@ -4472,6 +5113,9 @@ export interface components {
              * @default false
              */
             exclude_from_taste: boolean;
+            rules?: components["schemas"]["SmartRules"] | null;
+            /** Refreshed At */
+            refreshed_at?: string | null;
             /** Items */
             items: components["schemas"]["TrackOut"][];
         };
@@ -4487,7 +5131,7 @@ export interface components {
              * Kind
              * @enum {string}
              */
-            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio" | "release_radar" | "blend" | "daylist";
+            kind: "manual" | "smart_ai" | "discover_weekly" | "daily_mix" | "radio" | "release_radar" | "blend" | "daylist" | "smart";
             /** Is Public */
             is_public: boolean;
             /** Is Collaborative */
@@ -4524,6 +5168,9 @@ export interface components {
              * @default false
              */
             exclude_from_taste: boolean;
+            rules?: components["schemas"]["SmartRules"] | null;
+            /** Refreshed At */
+            refreshed_at?: string | null;
         };
         /** PrivateSessionIn */
         PrivateSessionIn: {
@@ -4619,6 +5266,123 @@ export interface components {
         PublicProfileIn: {
             /** Public */
             public: boolean;
+        };
+        /** QuizAnswerIn */
+        QuizAnswerIn: {
+            /** Choice Id */
+            choice_id: number;
+        };
+        /** QuizAnswerOut */
+        QuizAnswerOut: {
+            /** Correct */
+            correct: boolean;
+            /** Answer Id */
+            answer_id: number;
+            /** Points */
+            points: number;
+            /** Score */
+            score: number;
+            /** Finished */
+            finished: boolean;
+            answer?: components["schemas"]["TrackOut"] | null;
+        };
+        /** QuizBoardOut */
+        QuizBoardOut: {
+            /**
+             * Scope
+             * @enum {string}
+             */
+            scope: "friends" | "global";
+            /** Entries */
+            entries: components["schemas"]["QuizLeaderOut"][];
+            /** My Games */
+            my_games: number;
+            /** My Best */
+            my_best: number;
+            /** My Week Best */
+            my_week_best: number;
+        };
+        /** QuizChoiceOut */
+        QuizChoiceOut: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
+            /** Artist */
+            artist: string;
+        };
+        /** QuizGameOut */
+        QuizGameOut: {
+            /** Id */
+            id: number;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "library" | "catalog";
+            /** Questions */
+            questions: components["schemas"]["QuizQuestionOut"][];
+            /** Score */
+            score: number;
+            /** Correct */
+            correct: number;
+            /** Finished */
+            finished: boolean;
+            /** Max Score */
+            max_score: number;
+        };
+        /** QuizLeaderOut */
+        QuizLeaderOut: {
+            /** Rank */
+            rank: number;
+            /** User Id */
+            user_id: number;
+            /** First Name */
+            first_name: string;
+            /** Username */
+            username?: string | null;
+            /** Best Score */
+            best_score: number;
+            /** Games */
+            games: number;
+            /** Is Me */
+            is_me: boolean;
+        };
+        /** QuizQuestionOut */
+        QuizQuestionOut: {
+            /** Index */
+            index: number;
+            /** Choices */
+            choices: components["schemas"]["QuizChoiceOut"][];
+            /** Answered */
+            answered?: number | null;
+            /** Answer Id */
+            answer_id?: number | null;
+            /** Correct */
+            correct?: boolean | null;
+            /**
+             * Points
+             * @default 0
+             */
+            points: number;
+        };
+        /** QuizStartIn */
+        QuizStartIn: {
+            /**
+             * Source
+             * @default library
+             * @enum {string}
+             */
+            source: "library" | "catalog";
+        };
+        /** ReactionsOut */
+        ReactionsOut: {
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Mine */
+            mine: ("fire" | "heart" | "cry" | "love" | "party" | "clap")[];
         };
         /** RefreshIn */
         RefreshIn: {
@@ -4772,6 +5536,76 @@ export interface components {
             /** Value */
             value: unknown;
         };
+        /** SmartPreviewOut */
+        SmartPreviewOut: {
+            /** Total */
+            total: number;
+            /** Items */
+            items: components["schemas"]["TrackOut"][];
+        };
+        /**
+         * SmartRules
+         * @description What a smart playlist is made of (0018). Every rule is optional; together they AND.
+         *
+         *     ``source`` is where songs are drawn from: the channels in the listener's library,
+         *     the songs they liked, or the whole catalogue.
+         */
+        SmartRules: {
+            /**
+             * Source
+             * @default library
+             * @enum {string}
+             */
+            source: "library" | "likes" | "catalog";
+            /** Artist Ids */
+            artist_ids?: number[];
+            /** Channel Ids */
+            channel_ids?: number[];
+            /** Language */
+            language?: ("fa" | "en" | "ar" | "tr" | "ku" | "other") | null;
+            /** Min Duration */
+            min_duration?: number | null;
+            /** Max Duration */
+            max_duration?: number | null;
+            /** Year From */
+            year_from?: number | null;
+            /** Year To */
+            year_to?: number | null;
+            /** Not Played Days */
+            not_played_days?: number | null;
+            /** Min My Plays */
+            min_my_plays?: number | null;
+            /**
+             * Sort
+             * @default recent
+             * @enum {string}
+             */
+            sort: "recent" | "popular" | "random" | "most_played" | "least_played";
+            /**
+             * Limit
+             * @default 50
+             */
+            limit: number;
+        };
+        /** SmartRulesIn */
+        SmartRulesIn: {
+            rules: components["schemas"]["SmartRules"];
+        };
+        /** StatsArtistOut */
+        StatsArtistOut: {
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Plays */
+            plays: number;
+        };
+        /** StatsTrackOut */
+        StatsTrackOut: {
+            track: components["schemas"]["TrackOut"];
+            /** Plays */
+            plays: number;
+        };
         /**
          * StoryImageIn
          * @description A share card drawn by the client, base64 of a PNG or JPEG.
@@ -4786,6 +5620,17 @@ export interface components {
             url: string;
             /** Expires In */
             expires_in: number;
+        };
+        /** StreakOut */
+        StreakOut: {
+            /** Current */
+            current: number;
+            /** Longest */
+            longest: number;
+            /** Today Done */
+            today_done: boolean;
+            /** Week */
+            week: boolean[];
         };
         /** StreamOut */
         StreamOut: {
@@ -5094,6 +5939,12 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** WakeOut */
+        WakeOut: {
+            alarm: components["schemas"]["AlarmOut"];
+            /** Items */
+            items: components["schemas"]["TrackOut"][];
         };
         /**
          * WebWidgetLoginIn
@@ -5423,6 +6274,64 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["GateOut"];
                 };
+            };
+        };
+    };
+    my_streak_v1_me_streak_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreakOut"];
+                };
+            };
+        };
+    };
+    my_achievements_v1_me_achievements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AchievementsOut"];
+                };
+            };
+        };
+    };
+    achievements_seen_v1_me_achievements_seen_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5916,6 +6825,61 @@ export interface operations {
             header?: never;
             path: {
                 track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: boolean;
+                    };
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    recent_comments_admin_comments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    }[];
+                };
+            };
+        };
+    };
+    hide_comment_admin_comments__comment_id__hide_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comment_id: number;
             };
             cookie?: never;
         };
@@ -6994,6 +7958,154 @@ export interface operations {
             };
         };
     };
+    my_alarms_v1_alarms_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlarmOut"][];
+                };
+            };
+        };
+    };
+    create_alarm_v1_alarms_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlarmIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlarmOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_alarm_v1_alarms__alarm_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alarm_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_alarm_v1_alarms__alarm_id__patch: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alarm_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AlarmPatchIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AlarmOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    wake_v1_alarms__alarm_id__wake_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                alarm_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WakeOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     my_channels_v1_library_channels_get: {
         parameters: {
             query?: never;
@@ -7180,6 +8292,199 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ChannelOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    track_comments_v1_tracks__track_id__comments_get: {
+        parameters: {
+            query?: {
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentPageOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_comment_v1_tracks__track_id__comments_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CommentIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CommentOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    delete_comment_v1_comments__comment_id__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                comment_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    track_reactions_v1_tracks__track_id__reactions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReactionsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    add_reaction_v1_tracks__track_id__reactions__emoji__put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+                emoji: "fire" | "heart" | "cry" | "love" | "party" | "clap";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReactionsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    remove_reaction_v1_tracks__track_id__reactions__emoji__delete: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                track_id: number;
+                emoji: "fire" | "heart" | "cry" | "love" | "party" | "clap";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReactionsOut"];
                 };
             };
             /** @description Validation Error */
@@ -9654,6 +10959,138 @@ export interface operations {
             };
         };
     };
+    create_smart_playlist_v1_playlists_smart_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSmartPlaylistIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    preview_smart_playlist_v1_playlists_smart_preview_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SmartRulesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SmartPreviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    update_smart_rules_v1_playlists__playlist_id__rules_put: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SmartRulesIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    refresh_smart_playlist_v1_playlists__playlist_id__refresh_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                playlist_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlaylistDetailOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     playlist_detail_v1_playlists__playlist_id__get: {
         parameters: {
             query?: never;
@@ -9896,6 +11333,202 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PlaylistOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_import_v1_playlists_import_match_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ImportIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_game_v1_quiz_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizStartIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizGameOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    board_v1_quiz_board_get: {
+        parameters: {
+            query?: {
+                scope?: "friends" | "global";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizBoardOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_game_v1_quiz__game_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizGameOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    question_clip_v1_quiz__game_id__questions__index__clip_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: number;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StreamOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    answer_question_v1_quiz__game_id__questions__index__answer_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                game_id: number;
+                index: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuizAnswerIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuizAnswerOut"];
                 };
             };
             /** @description Validation Error */
@@ -10406,6 +12039,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NotificationPrefsOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    my_stats_v1_me_stats_get: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ListeningStatsOut"];
                 };
             };
             /** @description Validation Error */

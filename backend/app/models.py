@@ -332,6 +332,9 @@ class Playlist(Base):
         BigInteger, ForeignKey("playlist_folders.id", ondelete="SET NULL")
     )
     exclude_from_taste: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    # Smart playlists (0018): the rules, and when their songs were last rebuilt.
+    rules: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    refreshed_at: Mapped[datetime | None] = mapped_column(TS)
     created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
 
@@ -676,3 +679,74 @@ class ChannelOwner(Base):
         BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
     )
     verified_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class QuizGame(Base):
+    """Guess the song (0019). ``questions`` keeps the answers; the API never shows them early."""
+
+    __tablename__ = "quiz_games"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    source: Mapped[str] = mapped_column(Text)
+    questions: Mapped[list[dict[str, Any]]] = mapped_column(JSONB)
+    score: Mapped[int] = mapped_column(Integer, server_default="0")
+    correct: Mapped[int] = mapped_column(SmallInteger, server_default="0")
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    finished_at: Mapped[datetime | None] = mapped_column(TS)
+
+
+class Alarm(Base):
+    """A wake-up alarm (0020): the bot's message at the listener's chosen minute."""
+
+    __tablename__ = "alarms"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    label: Mapped[str | None] = mapped_column(Text)
+    minute_of_day: Mapped[int] = mapped_column(SmallInteger)
+    days: Mapped[int] = mapped_column(SmallInteger, server_default="127")
+    tz_offset_minutes: Mapped[int] = mapped_column(Integer)
+    source: Mapped[str] = mapped_column(Text, server_default="likes")
+    playlist_id: Mapped[int | None] = mapped_column(
+        BigInteger, ForeignKey("playlists.id", ondelete="SET NULL")
+    )
+    enabled: Mapped[bool] = mapped_column(Boolean, server_default="true")
+    next_fire_at: Mapped[datetime | None] = mapped_column(TS)
+    last_fired_at: Mapped[datetime | None] = mapped_column(TS)
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class UserBadge(Base):
+    """A badge a listener has earned (0021); computed, then remembered with its date."""
+
+    __tablename__ = "user_badges"
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    badge: Mapped[str] = mapped_column(Text, primary_key=True)
+    earned_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+    seen: Mapped[bool] = mapped_column(Boolean, server_default="false")
+
+
+class TrackComment(Base):
+    """A comment on a song (0022), optionally at a moment in it."""
+
+    __tablename__ = "track_comments"
+    id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
+    track_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("tracks.id", ondelete="CASCADE"))
+    user_id: Mapped[int] = mapped_column(BigInteger, ForeignKey("users.id", ondelete="CASCADE"))
+    body: Mapped[str] = mapped_column(Text)
+    at_second: Mapped[int | None] = mapped_column(Integer)
+    hidden: Mapped[bool] = mapped_column(Boolean, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())
+
+
+class TrackReaction(Base):
+    __tablename__ = "track_reactions"
+    track_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("tracks.id", ondelete="CASCADE"), primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True
+    )
+    emoji: Mapped[str] = mapped_column(Text, primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(TS, server_default=func.now())

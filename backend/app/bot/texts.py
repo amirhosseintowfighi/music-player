@@ -28,6 +28,10 @@ TEXTS: dict[str, dict[Lang, str]] = {
             "• کانال خصوصی خودت: من را ادمین کانال کن؛ از آن به بعد آهنگ‌های جدید اضافه می‌شوند.\n"
             "• در هر چتی بنویس @{bot} و اسم آهنگ تا همان‌جا برای دوستت بفرستی\n"
             "• /jam با دوستانت هم‌زمان موزیک گوش بده\n"
+            "• /random یک آهنگ تصادفی از کتابخانه‌ات\n"
+            "• /daily هر روز یک آهنگ برایت بفرستم\n"
+            "• /stats آمار هفته و استریکت\n"
+            "• /quiz بازی «آهنگ را حدس بزن»\n"
             "• /lang تغییر زبان"
         ),
         "en": (
@@ -36,6 +40,10 @@ TEXTS: dict[str, dict[Lang, str]] = {
             "• Your private channel: make me an admin; new tracks are added from then on.\n"
             "• In any chat, type @{bot} and a song name to send it right there\n"
             "• /jam listen together with friends, in sync\n"
+            "• /random a random song from your library\n"
+            "• /daily get a song from me every day\n"
+            "• /stats your week and your streak\n"
+            "• /quiz play Guess the song\n"
             "• /lang change language"
         ),
     },
@@ -196,6 +204,64 @@ TEXTS: dict[str, dict[Lang, str]] = {
         "fa": "\U0001f195 {count} آهنگ تازه از {artist}، از جمله «{title}»",
         "en": "\U0001f195 {count} new tracks from {artist}, including «{title}»",
     },
+    "notify_alarm": {
+        "fa": "⏰ صبح بخیر! {label}\nبا «{title}» بیدار شو.",
+        "en": "⏰ Good morning! {label}\nWake up to «{title}».",
+    },
+    "notify_alarm_plain": {
+        "fa": "⏰ وقت بیدار شدن است! {label}",
+        "en": "⏰ Time to wake up! {label}",
+    },
+    "wake_up": {"fa": "▶️ پخش آهنگ بیداری", "en": "▶️ Play my wake-up music"},
+    "notify_daily_song": {
+        "fa": "🎁 آهنگ امروزت: «{title}»",
+        "en": "🎁 Your song for today: «{title}»",
+    },
+    "play_song": {"fa": "▶️ پخش آهنگ", "en": "▶️ Play it"},
+    "random_song": {
+        "fa": "🎲 این یکی چطوره؟\n«{title}» — {artist}",
+        "en": "🎲 How about this one?\n«{title}» — {artist}",
+    },
+    "random_another": {"fa": "🎲 یکی دیگه", "en": "🎲 Another one"},
+    "random_none": {
+        "fa": "هنوز آهنگی نداری. یک کانال اضافه کن (یوزرنیمش را بفرست) و دوباره امتحان کن.",
+        "en": "No songs yet. Add a channel (send its @username) and try again.",
+    },
+    "daily_on": {
+        "fa": "🎁 از فردا هر روز حدود ساعت ۱۱ یک آهنگ برایت می‌فرستم. خاموش کردن: /daily off",
+        "en": "🎁 From tomorrow I'll send you a song every day around 11am. To stop: /daily off",
+    },
+    "daily_off": {
+        "fa": "باشه، آهنگ روزانه خاموش شد. روشن کردن دوباره: /daily",
+        "en": "OK, no more daily songs. To turn it back on: /daily",
+    },
+    "stats_text": {
+        "fa": (
+            "📊 هفته‌ات در یک نگاه\n"
+            "⏱ {minutes} دقیقه · ▶️ {plays} پخش · 🎵 {songs} آهنگ\n"
+            "🔥 استریک: {streak} روز (بیشترین: {longest})\n"
+            "{top}"
+        ),
+        "en": (
+            "📊 Your week at a glance\n"
+            "⏱ {minutes} min · ▶️ {plays} plays · 🎵 {songs} songs\n"
+            "🔥 Streak: {streak} days (longest: {longest})\n"
+            "{top}"
+        ),
+    },
+    "stats_top": {"fa": "🏆 آهنگ هفته: «{title}»", "en": "🏆 Song of the week: «{title}»"},
+    "stats_open": {"fa": "📊 آمار کامل", "en": "📊 Full stats"},
+    "quiz_intro": {
+        "fa": (
+            "🎮 «آهنگ را حدس بزن»: چند ثانیه می‌شنوی و از چهار اسم درست را "
+            "انتخاب می‌کنی. ببینیم چند می‌گیری!"
+        ),
+        "en": (
+            "🎮 Guess the song: hear a few seconds, pick the right title of four. "
+            "Let's see your score!"
+        ),
+    },
+    "quiz_open": {"fa": "🎮 شروع بازی", "en": "🎮 Play"},
     "notify_discover": {
         "fa": "\u2728 «کشف هفتگی» تازه‌ات آماده است.",
         "en": "\u2728 Your new Discover Weekly is ready.",

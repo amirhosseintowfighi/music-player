@@ -12,6 +12,7 @@ import {
   useMyChannels,
 } from '@/api/hooks';
 import { ChannelCard } from '@/components/ChannelCard';
+import { ExtrasRow } from '@/components/ExtrasRow';
 import { TrackRow } from '@/components/TrackRow';
 import { Cover, EmptyState, ErrorNote, Glass, LoadMore, SectionHead, Spinner, cx } from '@/components/ui';
 import { JamIcon, PlayIcon } from '@/components/icons';
@@ -238,6 +239,8 @@ export function Home() {
           )}
         </div>
       </header>
+
+      <ExtrasRow />
 
       {!hasChannels && !channels.isLoading && (
         <EmptyState
